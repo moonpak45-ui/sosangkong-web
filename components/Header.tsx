@@ -61,7 +61,7 @@ export default function Header() {
         <nav style={styles.nav}>
           {session ? (
             <>
-              <a href="/mypage" style={styles.navLink}>
+              <a href="/my-page" style={styles.navLink}>
                 마이페이지
               </a>
               <button onClick={handleLogout} style={styles.logoutBtn}>
