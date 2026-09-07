@@ -8,13 +8,27 @@ import { supabase } from '../lib/supabaseClient'
 export default function Header() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
+  const [role, setRole] = useState<'buyer' | 'partner' | null>(null)
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    async function loadRole(userId: string) {
+      const { data } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
+      setRole((data?.role as 'buyer' | 'partner' | undefined) ?? null)
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      if (data.session) loadRole(data.session.user.id)
+    })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
+      if (newSession) {
+        loadRole(newSession.user.id)
+      } else {
+        setRole(null)
+      }
     })
 
     return () => {
@@ -61,9 +75,15 @@ export default function Header() {
         <nav style={styles.nav}>
           {session ? (
             <>
-              <a href="/my-page" style={styles.navLink}>
-                마이페이지
-              </a>
+              {role === 'partner' ? (
+                <a href="/partner/dashboard" style={styles.navLink}>
+                  공급업체 마이페이지
+                </a>
+              ) : (
+                <a href="/my-page" style={styles.navLink}>
+                  마이페이지
+                </a>
+              )}
               <button onClick={handleLogout} style={styles.logoutBtn}>
                 로그아웃
               </button>
