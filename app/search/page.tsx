@@ -35,6 +35,21 @@ function SearchPageInner() {
   const [loading, setLoading] = useState(true)
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [sortKey, setSortKey] = useState<'match' | 'rating'>('match')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function requestQuote(ids: string[]) {
+    if (ids.length === 0) return
+    router.push(`/quote-request?partner_ids=${ids.join(',')}`)
+  }
 
   // 카테고리 목록 불러오기 (검색바 드롭다운용)
   useEffect(() => {
@@ -204,7 +219,16 @@ function SearchPageInner() {
                 <option value="match">조건 일치도순</option>
                 <option value="rating">평점순</option>
               </select>
-              <span style={{ fontSize: 12.5, color: colors.muted }}>총 {visibleResults.length}곳</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span style={{ fontSize: 12.5, color: colors.muted }}>총 {visibleResults.length}곳</span>
+                <button
+                  style={{ ...styles.rcCta, marginTop: 0, opacity: selectedIds.size === 0 ? 0.5 : 1 }}
+                  disabled={selectedIds.size === 0}
+                  onClick={() => requestQuote(Array.from(selectedIds))}
+                >
+                  선택한 {selectedIds.size}곳에 견적요청
+                </button>
+              </div>
             </div>
 
             {loading && <p style={{ color: colors.muted, padding: '40px 0' }}>검색 중...</p>}
@@ -221,6 +245,12 @@ function SearchPageInner() {
             {!loading &&
               visibleResults.map((p) => (
                 <div key={p.id} style={styles.resultCard}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(p.id)}
+                    onChange={() => toggleSelected(p.id)}
+                    style={{ width: 18, height: 18, cursor: 'pointer' }}
+                  />
                   <div style={styles.rcIcon}>
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
                       <path
@@ -251,7 +281,9 @@ function SearchPageInner() {
                   <div style={styles.rcRight}>
                     <div style={styles.rcMatch}>{p.matchScore}%</div>
                     <div style={styles.rcMatchLabel}>일치</div>
-                    <button style={styles.rcCta}>무료 견적 요청</button>
+                    <button style={styles.rcCta} onClick={() => requestQuote([p.id])}>
+                      무료 견적 요청
+                    </button>
                   </div>
                 </div>
               ))}
@@ -343,7 +375,7 @@ const styles: { [k: string]: React.CSSProperties } = {
     padding: '20px 22px',
     marginBottom: 14,
     display: 'grid',
-    gridTemplateColumns: 'auto 1fr auto',
+    gridTemplateColumns: 'auto auto 1fr auto',
     gap: 20,
     alignItems: 'center',
   },
