@@ -103,6 +103,7 @@ export default function MyPage() {
   const [deals, setDeals] = useState<DealRow[]>([])
   const [quoteRequests, setQuoteRequests] = useState<QuoteRequestRow[]>([])
   const [favorites, setFavorites] = useState<FavoriteRow[]>([])
+  const [reviewedDealIds, setReviewedDealIds] = useState<Set<string>>(new Set())
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -130,34 +131,37 @@ export default function MyPage() {
       }
       setBuyerProfile(profile)
 
-      const [{ data: dealRows }, { data: requestRows }, { data: favoriteRows }] = await Promise.all([
-        supabase
-          .from('deals')
-          .select(
-            `id, amount, status, confirmed_at,
-             partners ( id, name, region, rating_avg ),
-             quotes ( id, quote_requests ( attributes ) )`
-          )
-          .eq('buyer_id', profile.id)
-          .order('confirmed_at', { ascending: false }),
-        supabase
-          .from('quote_requests')
-          .select('id, title, status, created_at, quote_request_targets ( id, status )')
-          .eq('buyer_id', profile.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('favorites')
-          .select(
-            `id,
-             partners ( id, name, region, rating_avg, partner_categories ( categories ( name ) ) )`
-          )
-          .eq('buyer_id', profile.id)
-          .order('created_at', { ascending: false }),
-      ])
+      const [{ data: dealRows }, { data: requestRows }, { data: favoriteRows }, { data: reviewRows }] =
+        await Promise.all([
+          supabase
+            .from('deals')
+            .select(
+              `id, amount, status, confirmed_at,
+               partners ( id, name, region, rating_avg ),
+               quotes ( id, quote_requests ( attributes ) )`
+            )
+            .eq('buyer_id', profile.id)
+            .order('confirmed_at', { ascending: false }),
+          supabase
+            .from('quote_requests')
+            .select('id, title, status, created_at, quote_request_targets ( id, status )')
+            .eq('buyer_id', profile.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('favorites')
+            .select(
+              `id,
+               partners ( id, name, region, rating_avg, partner_categories ( categories ( name ) ) )`
+            )
+            .eq('buyer_id', profile.id)
+            .order('created_at', { ascending: false }),
+          supabase.from('reviews').select('deal_id').eq('buyer_id', profile.id),
+        ])
 
       setDeals((dealRows || []) as unknown as DealRow[])
       setQuoteRequests((requestRows || []) as unknown as QuoteRequestRow[])
       setFavorites((favoriteRows || []) as unknown as FavoriteRow[])
+      setReviewedDealIds(new Set((reviewRows || []).map((r) => r.deal_id as string)))
       setLoading(false)
     }
 
@@ -434,27 +438,43 @@ export default function MyPage() {
                       <th style={styles.th}>금액</th>
                       <th style={styles.th}>상태</th>
                       <th style={styles.th}></th>
+                      <th style={styles.th}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {deals.map((row) => (
-                      <tr key={row.id}>
-                        <td style={styles.td}>{formatDate(row.confirmed_at)}</td>
-                        <td style={styles.td}>{row.partners?.name || '-'}</td>
-                        <td style={styles.td}>{itemsSummary(row)}</td>
-                        <td style={styles.td}>{Number(row.amount).toLocaleString('ko-KR')}원</td>
-                        <td style={styles.td}>
-                          <span style={{ ...styles.htag, ...htagStyle(row.status) }}>{STATUS_LABEL[row.status]}</span>
-                        </td>
-                        <td style={styles.td}>
-                          {row.partners && (
-                            <a href={`/quote-request?partner_ids=${row.partners.id}`} style={styles.repeatLink}>
-                              재주문
-                            </a>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {deals.map((row) => {
+                      const canReview = row.status === 'completed' || row.status === 'in_progress'
+                      const reviewed = reviewedDealIds.has(row.id)
+                      return (
+                        <tr key={row.id}>
+                          <td style={styles.td}>{formatDate(row.confirmed_at)}</td>
+                          <td style={styles.td}>{row.partners?.name || '-'}</td>
+                          <td style={styles.td}>{itemsSummary(row)}</td>
+                          <td style={styles.td}>{Number(row.amount).toLocaleString('ko-KR')}원</td>
+                          <td style={styles.td}>
+                            <span style={{ ...styles.htag, ...htagStyle(row.status) }}>
+                              {STATUS_LABEL[row.status]}
+                            </span>
+                          </td>
+                          <td style={styles.td}>
+                            {row.partners && (
+                              <a href={`/quote-request?partner_ids=${row.partners.id}`} style={styles.repeatLink}>
+                                재주문
+                              </a>
+                            )}
+                          </td>
+                          <td style={styles.td}>
+                            {reviewed ? (
+                              <span style={{ fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>리뷰 완료</span>
+                            ) : canReview ? (
+                              <a href={`/review/write?deal_id=${row.id}`} style={styles.repeatLink}>
+                                리뷰 작성
+                              </a>
+                            ) : null}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
