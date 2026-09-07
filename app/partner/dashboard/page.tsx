@@ -324,7 +324,9 @@ export default function PartnerDashboardPage() {
             <a href="#settlements" style={styles.menuItem}>
               정산
             </a>
-            <span style={styles.menuItemDisabled}>프로필 · 배송조건 관리 (준비 중)</span>
+            <a href="/partner/profile" style={styles.menuItem}>
+              프로필 · 배송조건 관리
+            </a>
           </div>
 
           <div>
@@ -609,7 +611,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   bizMeta: { fontSize: 12, color: colors.muted, marginTop: 4 },
   menuItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px', fontSize: 14, color: colors.muted, fontWeight: 600, borderRadius: 6, textDecoration: 'none' },
   menuItemActive: { background: colors.paper2, color: colors.deep },
-  menuItemDisabled: { display: 'block', padding: '10px 8px', fontSize: 14, color: '#AAB6C0', fontWeight: 600, borderRadius: 6 },
   menuBadge: { background: colors.amber, color: colors.deep, fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 10 },
   sectionTitle: { fontSize: 19, marginBottom: 6, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep },
   sectionSub: { fontSize: 13.5, color: colors.muted, marginBottom: 22 },
