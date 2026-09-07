@@ -8,13 +8,13 @@ import { supabase } from '../lib/supabaseClient'
 export default function Header() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
-  const [role, setRole] = useState<'buyer' | 'partner' | null>(null)
+  const [role, setRole] = useState<'buyer' | 'partner' | 'admin' | null>(null)
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
     async function loadRole(userId: string) {
       const { data } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
-      setRole((data?.role as 'buyer' | 'partner' | undefined) ?? null)
+      setRole((data?.role as 'buyer' | 'partner' | 'admin' | undefined) ?? null)
     }
 
     supabase.auth.getSession().then(({ data }) => {
@@ -75,7 +75,11 @@ export default function Header() {
         <nav style={styles.nav}>
           {session ? (
             <>
-              {role === 'partner' ? (
+              {role === 'admin' ? (
+                <a href="/admin/dashboard" style={styles.navLink}>
+                  관리자 콘솔
+                </a>
+              ) : role === 'partner' ? (
                 <a href="/partner/dashboard" style={styles.navLink}>
                   공급업체 마이페이지
                 </a>
