@@ -3,6 +3,8 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
+import { useFavorites } from '../../lib/useFavorites'
+import FavoriteHeart from '../../components/FavoriteHeart'
 
 type Category = {
   id: string
@@ -36,6 +38,7 @@ function SearchPageInner() {
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [sortKey, setSortKey] = useState<'match' | 'rating'>('match')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const { favoritePartnerIds, toggleFavorite, pendingId } = useFavorites()
 
   function toggleSelected(id: string) {
     setSelectedIds((prev) => {
@@ -262,7 +265,9 @@ function SearchPageInner() {
                   </div>
                   <div>
                     <div style={styles.rcNameRow}>
-                      <span style={styles.rcName}>{p.name}</span>
+                      <a href={`/partner/${p.id}`} style={styles.rcName}>
+                        {p.name}
+                      </a>
                       {p.verified_badge && <span style={styles.rcBadge}>✓ 검증 업체</span>}
                     </div>
                     <div style={styles.rcLoc}>{p.region || '지역 정보 없음'}</div>
@@ -278,6 +283,11 @@ function SearchPageInner() {
                       <div style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>{p.description}</div>
                     )}
                   </div>
+                  <FavoriteHeart
+                    active={favoritePartnerIds.has(p.id)}
+                    pending={pendingId === p.id}
+                    onClick={() => toggleFavorite(p.id)}
+                  />
                   <div style={styles.rcRight}>
                     <div style={styles.rcMatch}>{p.matchScore}%</div>
                     <div style={styles.rcMatchLabel}>일치</div>
@@ -375,7 +385,7 @@ const styles: { [k: string]: React.CSSProperties } = {
     padding: '20px 22px',
     marginBottom: 14,
     display: 'grid',
-    gridTemplateColumns: 'auto auto 1fr auto',
+    gridTemplateColumns: 'auto auto 1fr auto auto',
     gap: 20,
     alignItems: 'center',
   },
@@ -390,7 +400,7 @@ const styles: { [k: string]: React.CSSProperties } = {
     flexShrink: 0,
   },
   rcNameRow: { display: 'flex', alignItems: 'center', gap: 8 },
-  rcName: { fontSize: 16, fontWeight: 700 },
+  rcName: { fontSize: 16, fontWeight: 700, color: colors.ink, textDecoration: 'none' },
   rcBadge: { fontSize: 10.5, fontWeight: 700, background: colors.goodBg, color: colors.good, padding: '3px 8px', borderRadius: 10 },
   rcLoc: { fontSize: 12.5, color: colors.muted, marginTop: 3 },
   rcStats: { display: 'flex', gap: 16, marginTop: 10 },
