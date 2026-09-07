@@ -35,7 +35,22 @@ type Partner = {
   status: string
 }
 
+type DealRow = {
+  id: string
+  amount: number
+  status: 'in_progress' | 'completed' | 'disputed'
+  confirmed_at: string
+  buyer_profiles: { business_name: string } | null
+  quotes: { id: string; quote_requests: { attributes: RequestAttributes | null } | null } | null
+}
+
 const PAYMENT_METHODS = ['계좌이체', '현금', '월말 정산']
+
+const DEAL_STATUS_LABEL: Record<DealRow['status'], string> = {
+  in_progress: '진행중',
+  completed: '거래완료',
+  disputed: '분쟁중',
+}
 
 function itemsText(attrs: RequestAttributes | null): string {
   const items = attrs?.items
@@ -43,10 +58,32 @@ function itemsText(attrs: RequestAttributes | null): string {
   return items.map((it) => [it.name, it.qty, it.unit].filter(Boolean).join(' ')).join(' · ')
 }
 
+function itemsSummary(attrs: RequestAttributes | null): string {
+  const items = attrs?.items
+  if (!items || items.length === 0) return '-'
+  return items.length > 1 ? `${items[0].name} 외 ${items.length - 1}건` : items[0].name
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}.${m}.${day}`
+}
+
+function dealStatusStyle(status: DealRow['status']): React.CSSProperties {
+  if (status === 'completed') return { background: colors.goodBg, color: colors.good }
+  if (status === 'disputed') return { background: colors.warnBg, color: colors.warn }
+  return { background: '#E7EEF5', color: colors.navy }
+}
+
+
 export default function PartnerDashboardPage() {
   const [session, setSession] = useState<{ userId: string } | null | undefined>(undefined)
   const [partner, setPartner] = useState<Partner | null | undefined>(undefined)
   const [targets, setTargets] = useState<ReceivedRequest[]>([])
+  const [deals, setDeals] = useState<DealRow[]>([])
   const [loading, setLoading] = useState(true)
 
   const [openId, setOpenId] = useState<string | null>(null)
@@ -80,21 +117,33 @@ export default function PartnerDashboardPage() {
       }
       setPartner(partnerRow)
 
-      const { data: targetRows } = await supabase
-        .from('quote_request_targets')
-        .select(
-          `id, sent_at,
-           quote_requests (
-             id, title, attributes, created_at,
-             categories ( name ),
-             buyer_profiles ( business_name, region, industry )
-           )`
-        )
-        .eq('partner_id', partnerRow.id)
-        .eq('status', 'waiting')
-        .order('sent_at', { ascending: false })
+      const [{ data: targetRows }, { data: dealRows }] = await Promise.all([
+        supabase
+          .from('quote_request_targets')
+          .select(
+            `id, sent_at,
+             quote_requests (
+               id, title, attributes, created_at,
+               categories ( name ),
+               buyer_profiles ( business_name, region, industry )
+             )`
+          )
+          .eq('partner_id', partnerRow.id)
+          .eq('status', 'waiting')
+          .order('sent_at', { ascending: false }),
+        supabase
+          .from('deals')
+          .select(
+            `id, amount, status, confirmed_at,
+             buyer_profiles ( business_name ),
+             quotes ( id, quote_requests ( attributes ) )`
+          )
+          .eq('partner_id', partnerRow.id)
+          .order('confirmed_at', { ascending: false }),
+      ])
 
       setTargets((targetRows || []) as unknown as ReceivedRequest[])
+      setDeals((dealRows || []) as unknown as DealRow[])
       setLoading(false)
     }
 
@@ -213,7 +262,10 @@ export default function PartnerDashboardPage() {
               받은 견적요청
               {targets.length > 0 && <span style={styles.menuBadge}>{targets.length}</span>}
             </a>
-            <span style={styles.menuItemDisabled}>진행 중인 거래 (준비 중)</span>
+            <a href="#deals" style={styles.menuItem}>
+              진행 중인 거래
+              {deals.length > 0 && <span style={styles.menuBadge}>{deals.length}</span>}
+            </a>
             <span style={styles.menuItemDisabled}>거래이력 · 정산 (준비 중)</span>
             <span style={styles.menuItemDisabled}>프로필 · 배송조건 관리 (준비 중)</span>
           </div>
@@ -352,6 +404,50 @@ export default function PartnerDashboardPage() {
                 )
               })
             )}
+
+            <div id="deals" style={{ ...styles.sectionTitle, marginTop: 44 }}>
+              진행 중인 거래
+            </div>
+            <div style={styles.sectionSub}>확정된 거래 내역입니다. 상태가 바뀌면 이곳에서 확인할 수 있어요.</div>
+
+            {deals.length === 0 ? (
+              <div style={styles.emptyState}>
+                <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>진행 중인 거래가 없어요</h3>
+                <p style={{ fontSize: 13.5, color: colors.muted }}>
+                  견적을 제출하고 소상공인이 확정하면 이곳에서 거래를 확인할 수 있어요.
+                </p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', marginBottom: 44 }}>
+                <table style={styles.historyTable}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>확정일</th>
+                      <th style={styles.th}>소상공인</th>
+                      <th style={styles.th}>품목</th>
+                      <th style={styles.th}>거래액</th>
+                      <th style={styles.th}>상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deals.map((row) => (
+                      <tr key={row.id}>
+                        <td style={styles.td}>{formatDate(row.confirmed_at)}</td>
+                        <td style={styles.td}>{row.buyer_profiles?.business_name || '-'}</td>
+                        <td style={styles.td}>{itemsSummary(row.quotes?.quote_requests?.attributes ?? null)}</td>
+                        <td style={styles.td}>{Number(row.amount).toLocaleString('ko-KR')}원</td>
+                        <td style={styles.td}>
+                          <span style={{ ...styles.htag, ...dealStatusStyle(row.status) }}>
+                            {DEAL_STATUS_LABEL[row.status]}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
@@ -412,4 +508,8 @@ const styles: { [k: string]: React.CSSProperties } = {
   radioChipSel: { background: colors.deep, color: colors.white, borderColor: colors.deep },
   errorBox: { background: '#FDECEC', color: '#B3261E', borderRadius: 7, padding: '10px 12px', fontSize: 12.5, marginTop: 4 },
   btnPrimary: { background: colors.amber, color: colors.deep, border: 'none', borderRadius: 6, padding: '13px 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', marginTop: 20 },
+  historyTable: { width: '100%', borderCollapse: 'collapse', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, overflow: 'hidden' },
+  th: { background: colors.paper2, fontSize: 12.5, color: colors.muted, fontWeight: 700, padding: '12px 16px', textAlign: 'left' },
+  td: { padding: '14px 16px', fontSize: 13.5, borderTop: `1px solid ${colors.paper2}` },
+  htag: { fontSize: 11.5, fontWeight: 700, padding: '4px 9px', borderRadius: 12 },
 }
