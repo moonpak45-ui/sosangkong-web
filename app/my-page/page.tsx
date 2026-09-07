@@ -42,6 +42,17 @@ type QuoteRequestRow = {
   quote_request_targets: { id: string; status: 'waiting' | 'responded' | 'declined' }[]
 }
 
+type FavoriteRow = {
+  id: string
+  partners: {
+    id: string
+    name: string
+    region: string | null
+    rating_avg: number
+    partner_categories: { categories: { name: string } | null }[]
+  } | null
+}
+
 const REQUEST_STATUS_LABEL: Record<QuoteRequestRow['status'], string> = {
   open: '회신 대기',
   matched: '회신 도착',
@@ -88,6 +99,8 @@ export default function MyPage() {
   const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null | undefined>(undefined)
   const [deals, setDeals] = useState<DealRow[]>([])
   const [quoteRequests, setQuoteRequests] = useState<QuoteRequestRow[]>([])
+  const [favorites, setFavorites] = useState<FavoriteRow[]>([])
+  const [removingId, setRemovingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -114,7 +127,7 @@ export default function MyPage() {
       }
       setBuyerProfile(profile)
 
-      const [{ data: dealRows }, { data: requestRows }] = await Promise.all([
+      const [{ data: dealRows }, { data: requestRows }, { data: favoriteRows }] = await Promise.all([
         supabase
           .from('deals')
           .select(
@@ -129,15 +142,33 @@ export default function MyPage() {
           .select('id, title, status, created_at, quote_request_targets ( id, status )')
           .eq('buyer_id', profile.id)
           .order('created_at', { ascending: false }),
+        supabase
+          .from('favorites')
+          .select(
+            `id,
+             partners ( id, name, region, rating_avg, partner_categories ( categories ( name ) ) )`
+          )
+          .eq('buyer_id', profile.id)
+          .order('created_at', { ascending: false }),
       ])
 
       setDeals((dealRows || []) as unknown as DealRow[])
       setQuoteRequests((requestRows || []) as unknown as QuoteRequestRow[])
+      setFavorites((favoriteRows || []) as unknown as FavoriteRow[])
       setLoading(false)
     }
 
     load()
   }, [])
+
+  async function removeFavorite(favoriteId: string) {
+    setRemovingId(favoriteId)
+    const { error } = await supabase.from('favorites').delete().eq('id', favoriteId)
+    setRemovingId(null)
+    if (!error) {
+      setFavorites((prev) => prev.filter((f) => f.id !== favoriteId))
+    }
+  }
 
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: colors.muted }}>불러오는 중...</div>
@@ -187,7 +218,10 @@ export default function MyPage() {
             <a href="#quotes" style={styles.menuItem}>
               견적 요청 현황
             </a>
-            <span style={styles.menuItemDisabled}>찜한 업체 (준비 중)</span>
+            <a href="#favorites" style={styles.menuItem}>
+              찜한 업체
+              {favorites.length > 0 && <span style={styles.menuBadge}>{favorites.length}</span>}
+            </a>
             <span style={styles.menuItemDisabled}>사업장 정보 수정 (준비 중)</span>
           </div>
 
@@ -296,6 +330,73 @@ export default function MyPage() {
               </div>
             )}
 
+            <div id="favorites" style={{ ...styles.sectionTitle, marginTop: 44 }}>
+              찜한 업체
+            </div>
+            <div style={styles.sectionSub}>관심 있는 공급업체를 모아두고 필요할 때 바로 견적을 요청하세요.</div>
+
+            {favorites.length === 0 ? (
+              <div style={styles.emptyState}>
+                <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>찜한 업체가 없어요</h3>
+                <p style={{ fontSize: 13.5, color: colors.muted }}>
+                  검색결과나 업체 상세페이지에서 하트 아이콘을 누르면 이곳에 모아둘 수 있어요.
+                </p>
+                <a href="/search" style={{ ...styles.btnOutline, marginTop: 16 }}>
+                  공급업체 찾으러 가기
+                </a>
+              </div>
+            ) : (
+              <div style={styles.activeGrid}>
+                {favorites.map((f) => {
+                  const partner = f.partners
+                  if (!partner) return null
+                  const categoryNames = (partner.partner_categories || [])
+                    .map((pc) => pc.categories?.name)
+                    .filter((n): n is string => Boolean(n))
+                  return (
+                    <div key={f.id} style={styles.activeCard}>
+                      <div style={styles.acTop}>
+                        <div style={styles.acIcon}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M4 12c2-3 4-4 8-4s6 1 8 4c-2 3-4 4-8 4s-6-1-8-4Z" stroke="#065A82" strokeWidth="1.6" />
+                          </svg>
+                        </div>
+                        <div>
+                          <a href={`/partner/${partner.id}`} style={styles.acName}>
+                            {partner.name}
+                          </a>
+                          <div style={styles.acMeta}>
+                            {[partner.region, categoryNames.join(', ')].filter(Boolean).join(' · ') || '정보 없음'}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={styles.acStats}>
+                        <div style={styles.acStat}>
+                          <b>{Number(partner.rating_avg || 0).toFixed(1)}</b>
+                          <span>평점</span>
+                        </div>
+                      </div>
+                      <div style={styles.acActions}>
+                        <a
+                          href={`/quote-request?partner_ids=${partner.id}`}
+                          style={{ ...styles.acBtn, ...styles.acBtnPrimary }}
+                        >
+                          견적 요청하기
+                        </a>
+                        <button
+                          onClick={() => removeFavorite(f.id)}
+                          disabled={removingId === f.id}
+                          style={{ ...styles.acBtn, ...styles.acBtnOutline }}
+                        >
+                          {removingId === f.id ? '해제 중...' : '찜 해제'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
             <div id="history" style={{ ...styles.sectionTitle, marginTop: 44 }}>
               거래 이력
             </div>
@@ -387,13 +488,14 @@ const styles: { [k: string]: React.CSSProperties } = {
   menuItem: { display: 'block', padding: '10px 8px', fontSize: 14, color: colors.muted, fontWeight: 600, borderRadius: 6, textDecoration: 'none' },
   menuItemActive: { background: colors.paper2, color: colors.deep },
   menuItemDisabled: { display: 'block', padding: '10px 8px', fontSize: 14, color: '#AAB6C0', fontWeight: 600, borderRadius: 6 },
+  menuBadge: { background: colors.amber, color: colors.deep, fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 10, marginLeft: 6 },
   sectionTitle: { fontSize: 19, marginBottom: 6, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep },
   sectionSub: { fontSize: 13.5, color: colors.muted, marginBottom: 22 },
   activeGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 44 },
   activeCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: 20 },
   acTop: { display: 'flex', alignItems: 'center', gap: 12 },
   acIcon: { width: 40, height: 40, borderRadius: 9, background: colors.paper2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  acName: { fontSize: 14.5, fontWeight: 700 },
+  acName: { fontSize: 14.5, fontWeight: 700, color: colors.ink, textDecoration: 'none' },
   acMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   acSince: { marginLeft: 'auto', fontSize: 11.5, color: colors.muted, textAlign: 'right' },
   acStats: { display: 'flex', gap: 14, margin: '14px 0', padding: '12px 0', borderTop: `1px dashed ${colors.line}`, borderBottom: `1px dashed ${colors.line}` },
