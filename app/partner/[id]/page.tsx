@@ -18,17 +18,40 @@ type PartnerDetail = {
 
 type CategoryRow = { categories: { name: string } | null }
 
+type ReviewRow = {
+  id: string
+  overall_rating: number
+  tags: string[] | null
+  content: string | null
+  is_anonymous: boolean
+  created_at: string
+  deals: { buyer_profiles: { business_name: string } | null } | null
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}.${m}.${day}`
+}
+
+function stars(rating: number) {
+  return '★★★★★'.slice(0, rating) + '☆☆☆☆☆'.slice(rating)
+}
+
 export default function PartnerDetailPage() {
   const params = useParams<{ id: string }>()
   const partnerId = params.id
 
   const [partner, setPartner] = useState<PartnerDetail | null | undefined>(undefined)
   const [categoryNames, setCategoryNames] = useState<string[]>([])
+  const [reviews, setReviews] = useState<ReviewRow[]>([])
   const { favoritePartnerIds, toggleFavorite, pendingId } = useFavorites()
 
   useEffect(() => {
     async function load() {
-      const [{ data: partnerRow }, { data: catRows }] = await Promise.all([
+      const [{ data: partnerRow }, { data: catRows }, { data: reviewRows }] = await Promise.all([
         supabase
           .from('partners')
           .select('id, name, region, description, verified_badge, rating_avg, review_count')
@@ -38,6 +61,14 @@ export default function PartnerDetailPage() {
           .from('partner_categories')
           .select('categories ( name )')
           .eq('partner_id', partnerId),
+        supabase
+          .from('reviews')
+          .select(
+            `id, overall_rating, tags, content, is_anonymous, created_at,
+             deals!inner ( partner_id, buyer_profiles ( business_name ) )`
+          )
+          .eq('deals.partner_id', partnerId)
+          .order('created_at', { ascending: false }),
       ])
 
       setPartner((partnerRow as PartnerDetail) || null)
@@ -46,6 +77,7 @@ export default function PartnerDetailPage() {
           .map((r) => r.categories?.name)
           .filter((n): n is string => Boolean(n))
       )
+      setReviews((reviewRows || []) as unknown as ReviewRow[])
     }
 
     if (partnerId) load()
@@ -114,6 +146,40 @@ export default function PartnerDetailPage() {
             무료 견적 요청
           </a>
         </div>
+
+        <div style={styles.reviewSection}>
+          <h2 style={styles.reviewH2}>이용자 후기 ({reviews.length})</h2>
+
+          {reviews.length === 0 ? (
+            <div style={styles.reviewEmpty}>
+              <p style={{ fontSize: 13.5, color: colors.muted }}>아직 등록된 후기가 없어요.</p>
+            </div>
+          ) : (
+            reviews.map((r) => (
+              <div key={r.id} style={styles.reviewCard}>
+                <div style={styles.reviewTop}>
+                  <div>
+                    <span style={styles.reviewStars}>{stars(r.overall_rating)}</span>
+                    <span style={styles.reviewer}>
+                      {r.is_anonymous ? '이용자' : r.deals?.buyer_profiles?.business_name || '이용자'}
+                    </span>
+                  </div>
+                  <span style={styles.reviewDate}>{formatDate(r.created_at)}</span>
+                </div>
+                {r.tags && r.tags.length > 0 && (
+                  <div style={styles.catRow}>
+                    {r.tags.map((tag) => (
+                      <span key={tag} style={styles.reviewTagChip}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {r.content && <p style={styles.reviewContent}>{r.content}</p>}
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )
@@ -153,4 +219,14 @@ const styles: { [k: string]: React.CSSProperties } = {
     padding: '13px 24px', fontSize: 14.5, fontWeight: 700, cursor: 'pointer',
     textDecoration: 'none', marginTop: 24,
   },
+  reviewSection: { marginTop: 32 },
+  reviewH2: { fontSize: 17, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, marginBottom: 14 },
+  reviewEmpty: { textAlign: 'center', padding: '40px 20px', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10 },
+  reviewCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: '18px 20px', marginBottom: 12 },
+  reviewTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
+  reviewStars: { color: colors.amber, fontSize: 14, marginRight: 8 },
+  reviewer: { fontSize: 13, fontWeight: 700, color: colors.ink },
+  reviewDate: { fontSize: 11.5, color: colors.muted, flexShrink: 0 },
+  reviewTagChip: { fontSize: 11, fontWeight: 600, color: colors.navy, background: colors.paper2, padding: '4px 9px', borderRadius: 20 },
+  reviewContent: { fontSize: 13, color: colors.ink, lineHeight: 1.6, marginTop: 10 },
 }
