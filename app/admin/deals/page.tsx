@@ -1,12 +1,241 @@
 'use client'
 
-import { styles } from '../_shared'
+import { useEffect, useState } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
+import { colors, styles, formatDate, won, DEAL_STATUS_LABEL, REQUEST_STATUS_LABEL, statusBadgeStyle } from '../_shared'
+
+type QuoteRequestRow = {
+  id: string
+  title: string | null
+  status: 'open' | 'matched' | 'closed'
+  created_at: string
+  buyer_profiles: { business_name: string } | null
+  quote_request_targets: { id: string; status: 'waiting' | 'responded' | 'declined' }[]
+}
+
+type AdminDealRow = {
+  id: string
+  amount: number
+  status: 'in_progress' | 'completed' | 'disputed'
+  confirmed_at: string
+  buyer_profiles: { business_name: string } | null
+  partners: { name: string } | null
+  settlements: { commission_amount: number; net_amount: number; status: string }[] | null
+}
+
+type DisputeRow = {
+  id: string
+  status: string
+  reason: string | null
+  created_at: string
+  deals: {
+    id: string
+    buyer_profiles: { business_name: string } | null
+    partners: { name: string } | null
+  } | null
+}
 
 export default function AdminDealsPage() {
+  const [tab, setTab] = useState<'requests' | 'deals' | 'disputes'>('requests')
+  const [loading, setLoading] = useState(true)
+  const [requests, setRequests] = useState<QuoteRequestRow[]>([])
+  const [deals, setDeals] = useState<AdminDealRow[]>([])
+  const [disputes, setDisputes] = useState<DisputeRow[]>([])
+
+  useEffect(() => {
+    async function load() {
+      const [{ data: requestRows }, { data: dealRows }, { data: disputeRows }] = await Promise.all([
+        supabase
+          .from('quote_requests')
+          .select(
+            `id, title, status, created_at,
+             buyer_profiles ( business_name ),
+             quote_request_targets ( id, status )`
+          )
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('deals')
+          .select(
+            `id, amount, status, confirmed_at,
+             buyer_profiles ( business_name ),
+             partners ( name ),
+             settlements ( commission_amount, net_amount, status )`
+          )
+          .order('confirmed_at', { ascending: false }),
+        supabase
+          .from('disputes')
+          .select(
+            `id, status, reason, created_at,
+             deals ( id, buyer_profiles ( business_name ), partners ( name ) )`
+          )
+          .order('created_at', { ascending: false }),
+      ])
+
+      setRequests((requestRows || []) as unknown as QuoteRequestRow[])
+      setDeals((dealRows || []) as unknown as AdminDealRow[])
+      setDisputes((disputeRows || []) as unknown as DisputeRow[])
+      setLoading(false)
+    }
+
+    load()
+  }, [])
+
+  if (loading) {
+    return <div style={{ padding: 60, textAlign: 'center', color: colors.muted }}>불러오는 중...</div>
+  }
+
   return (
     <div>
       <div style={styles.sectionTitle}>거래·견적 관리</div>
-      <div style={styles.sectionSub}>준비 중입니다.</div>
+      <div style={styles.sectionSub}>견적요청, 확정된 거래, 분쟁·클레임 현황을 확인하세요.</div>
+
+      <div style={styles.tabRow}>
+        <div
+          style={{ ...styles.tab, ...(tab === 'requests' ? styles.tabActive : {}) }}
+          onClick={() => setTab('requests')}
+        >
+          견적요청 현황 ({requests.length})
+        </div>
+        <div style={{ ...styles.tab, ...(tab === 'deals' ? styles.tabActive : {}) }} onClick={() => setTab('deals')}>
+          거래 확정 내역 ({deals.length})
+        </div>
+        <div
+          style={{ ...styles.tab, ...(tab === 'disputes' ? styles.tabActive : {}) }}
+          onClick={() => setTab('disputes')}
+        >
+          분쟁·클레임 ({disputes.length})
+        </div>
+      </div>
+
+      {tab === 'requests' &&
+        (requests.length === 0 ? (
+          <div style={styles.emptyState}>
+            <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>견적요청 내역이 없어요</h3>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={styles.historyTable}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>요청일</th>
+                  <th style={styles.th}>소상공인</th>
+                  <th style={styles.th}>제목</th>
+                  <th style={styles.th}>발송업체수</th>
+                  <th style={styles.th}>회신현황</th>
+                  <th style={styles.th}>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((r) => {
+                  const total = r.quote_request_targets.length
+                  const responded = r.quote_request_targets.filter((t) => t.status === 'responded').length
+                  return (
+                    <tr key={r.id}>
+                      <td style={styles.td}>{formatDate(r.created_at)}</td>
+                      <td style={styles.td}>{r.buyer_profiles?.business_name || '-'}</td>
+                      <td style={styles.td}>{r.title || '견적 요청'}</td>
+                      <td style={styles.td}>{total}곳</td>
+                      <td style={styles.td}>
+                        {responded}/{total} 완료
+                      </td>
+                      <td style={styles.td}>
+                        <span style={{ ...styles.htag, ...statusBadgeStyle(r.status) }}>
+                          {REQUEST_STATUS_LABEL[r.status] || r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
+
+      {tab === 'deals' &&
+        (deals.length === 0 ? (
+          <div style={styles.emptyState}>
+            <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>확정된 거래가 없어요</h3>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={styles.historyTable}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>확정일</th>
+                  <th style={styles.th}>소상공인</th>
+                  <th style={styles.th}>공급업체</th>
+                  <th style={styles.th}>거래액</th>
+                  <th style={styles.th}>수수료</th>
+                  <th style={styles.th}>정산상태</th>
+                  <th style={styles.th}>거래상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deals.map((d) => {
+                  const settlement = d.settlements?.[0]
+                  return (
+                    <tr key={d.id}>
+                      <td style={styles.td}>{formatDate(d.confirmed_at)}</td>
+                      <td style={styles.td}>{d.buyer_profiles?.business_name || '-'}</td>
+                      <td style={styles.td}>{d.partners?.name || '-'}</td>
+                      <td style={styles.td}>{won(d.amount)}</td>
+                      <td style={styles.td}>{settlement ? won(settlement.commission_amount) : '-'}</td>
+                      <td style={styles.td}>
+                        {settlement ? (
+                          <span style={{ ...styles.htag, ...statusBadgeStyle(settlement.status) }}>
+                            {settlement.status === 'completed' ? '정산 완료' : '정산 예정'}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td style={styles.td}>
+                        <span style={{ ...styles.htag, ...statusBadgeStyle(d.status) }}>
+                          {DEAL_STATUS_LABEL[d.status] || d.status}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
+
+      {tab === 'disputes' &&
+        (disputes.length === 0 ? (
+          <div style={styles.emptyState}>
+            <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>등록된 분쟁·클레임이 없어요</h3>
+            <p style={{ fontSize: 13.5, color: colors.muted }}>거래 중 분쟁이 접수되면 이곳에서 확인할 수 있어요.</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={styles.historyTable}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>접수일</th>
+                  <th style={styles.th}>소상공인</th>
+                  <th style={styles.th}>공급업체</th>
+                  <th style={styles.th}>사유</th>
+                  <th style={styles.th}>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {disputes.map((d) => (
+                  <tr key={d.id}>
+                    <td style={styles.td}>{formatDate(d.created_at)}</td>
+                    <td style={styles.td}>{d.deals?.buyer_profiles?.business_name || '-'}</td>
+                    <td style={styles.td}>{d.deals?.partners?.name || '-'}</td>
+                    <td style={styles.td}>{d.reason || '-'}</td>
+                    <td style={styles.td}>
+                      <span style={{ ...styles.htag, ...statusBadgeStyle(d.status) }}>{d.status}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
     </div>
   )
 }
