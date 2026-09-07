@@ -34,6 +34,7 @@ function ReviewWriteInner() {
 
   const [session, setSession] = useState<{ userId: string } | null | undefined>(undefined)
   const [buyerProfileId, setBuyerProfileId] = useState<string | null>(null)
+  const [partnerId, setPartnerId] = useState<string | null>(null)
   const [partnerName, setPartnerName] = useState('')
   const [alreadyReviewed, setAlreadyReviewed] = useState(false)
 
@@ -83,7 +84,7 @@ function ReviewWriteInner() {
 
       const { data: deal } = await supabase
         .from('deals')
-        .select('id, buyer_id, partners ( name )')
+        .select('id, buyer_id, partner_id, partners ( name )')
         .eq('id', dealId)
         .maybeSingle()
 
@@ -92,6 +93,7 @@ function ReviewWriteInner() {
         setLoading(false)
         return
       }
+      setPartnerId(deal.partner_id)
       setPartnerName((deal.partners as unknown as { name: string } | null)?.name || '')
 
       const { data: existingReview } = await supabase
@@ -129,13 +131,14 @@ function ReviewWriteInner() {
       setSubmitError('전체 만족도를 선택해주세요.')
       return
     }
-    if (!buyerProfileId) return
+    if (!buyerProfileId || !partnerId) return
 
     setSubmitting(true)
 
     const { error } = await supabase.from('reviews').insert({
       deal_id: dealId,
       buyer_id: buyerProfileId,
+      partner_id: partnerId,
       overall_rating: overallRating,
       sub_ratings: {
         delivery: deliveryRating,
