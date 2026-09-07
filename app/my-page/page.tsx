@@ -465,7 +465,9 @@ export default function MyPage() {
                           </td>
                           <td style={styles.td}>
                             {reviewed ? (
-                              <span style={{ fontSize: 12.5, color: colors.muted, fontWeight: 600 }}>리뷰 완료</span>
+                              <a href={`/review/view?deal_id=${row.id}`} style={styles.repeatLink}>
+                                리뷰 완료
+                              </a>
                             ) : canReview ? (
                               <a href={`/review/write?deal_id=${row.id}`} style={styles.repeatLink}>
                                 리뷰 작성
