@@ -32,6 +32,9 @@ type BuyerProfile = {
   business_name: string
   region: string | null
   industry: string | null
+  biz_reg_no: string | null
+  address: string | null
+  contact_name: string | null
 }
 
 type QuoteRequestRow = {
@@ -116,7 +119,7 @@ export default function MyPage() {
 
       const { data: profile } = await supabase
         .from('buyer_profiles')
-        .select('id, business_name, region, industry')
+        .select('id, business_name, region, industry, biz_reg_no, address, contact_name')
         .eq('user_id', authSession.user.id)
         .maybeSingle()
 
@@ -206,7 +209,16 @@ export default function MyPage() {
             <div style={styles.bizCard}>
               <div style={styles.bizName}>{buyerProfile!.business_name}</div>
               <div style={styles.bizMeta}>
-                {[buyerProfile!.region, buyerProfile!.industry].filter(Boolean).join(' · ') || '사업장 정보 미입력'}
+                {Boolean(
+                  buyerProfile!.business_name &&
+                    buyerProfile!.biz_reg_no &&
+                    buyerProfile!.industry &&
+                    buyerProfile!.region &&
+                    buyerProfile!.contact_name &&
+                    buyerProfile!.address
+                )
+                  ? '정보 입력완료'
+                  : '사업장 정보 미입력'}
               </div>
             </div>
             <a href="#partners" style={{ ...styles.menuItem, ...styles.menuItemActive }}>
@@ -222,7 +234,9 @@ export default function MyPage() {
               찜한 업체
               {favorites.length > 0 && <span style={styles.menuBadge}>{favorites.length}</span>}
             </a>
-            <span style={styles.menuItemDisabled}>사업장 정보 수정 (준비 중)</span>
+            <a href="/my-page/profile" style={styles.menuItem}>
+              사업장 정보 수정
+            </a>
           </div>
 
           <div>
@@ -487,7 +501,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   bizMeta: { fontSize: 12, color: colors.muted, marginTop: 4 },
   menuItem: { display: 'block', padding: '10px 8px', fontSize: 14, color: colors.muted, fontWeight: 600, borderRadius: 6, textDecoration: 'none' },
   menuItemActive: { background: colors.paper2, color: colors.deep },
-  menuItemDisabled: { display: 'block', padding: '10px 8px', fontSize: 14, color: '#AAB6C0', fontWeight: 600, borderRadius: 6 },
   menuBadge: { background: colors.amber, color: colors.deep, fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 10, marginLeft: 6 },
   sectionTitle: { fontSize: 19, marginBottom: 6, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep },
   sectionSub: { fontSize: 13.5, color: colors.muted, marginBottom: 22 },
