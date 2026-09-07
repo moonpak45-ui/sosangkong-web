@@ -34,6 +34,20 @@ type BuyerProfile = {
   industry: string | null
 }
 
+type QuoteRequestRow = {
+  id: string
+  title: string | null
+  status: 'open' | 'matched' | 'closed'
+  created_at: string
+  quote_request_targets: { id: string; status: 'waiting' | 'responded' | 'declined' }[]
+}
+
+const REQUEST_STATUS_LABEL: Record<QuoteRequestRow['status'], string> = {
+  open: '회신 대기',
+  matched: '회신 도착',
+  closed: '확정 완료',
+}
+
 const STATUS_LABEL: Record<DealRow['status'], string> = {
   in_progress: '진행중',
   completed: '거래완료',
@@ -73,6 +87,7 @@ export default function MyPage() {
   const [session, setSession] = useState<{ userId: string } | null | undefined>(undefined)
   const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null | undefined>(undefined)
   const [deals, setDeals] = useState<DealRow[]>([])
+  const [quoteRequests, setQuoteRequests] = useState<QuoteRequestRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -99,17 +114,25 @@ export default function MyPage() {
       }
       setBuyerProfile(profile)
 
-      const { data: dealRows } = await supabase
-        .from('deals')
-        .select(
-          `id, amount, status, confirmed_at,
-           partners ( id, name, region, rating_avg ),
-           quotes ( id, quote_requests ( attributes ) )`
-        )
-        .eq('buyer_id', profile.id)
-        .order('confirmed_at', { ascending: false })
+      const [{ data: dealRows }, { data: requestRows }] = await Promise.all([
+        supabase
+          .from('deals')
+          .select(
+            `id, amount, status, confirmed_at,
+             partners ( id, name, region, rating_avg ),
+             quotes ( id, quote_requests ( attributes ) )`
+          )
+          .eq('buyer_id', profile.id)
+          .order('confirmed_at', { ascending: false }),
+        supabase
+          .from('quote_requests')
+          .select('id, title, status, created_at, quote_request_targets ( id, status )')
+          .eq('buyer_id', profile.id)
+          .order('created_at', { ascending: false }),
+      ])
 
       setDeals((dealRows || []) as unknown as DealRow[])
+      setQuoteRequests((requestRows || []) as unknown as QuoteRequestRow[])
       setLoading(false)
     }
 
@@ -161,8 +184,10 @@ export default function MyPage() {
             <a href="#history" style={styles.menuItem}>
               거래 이력
             </a>
+            <a href="#quotes" style={styles.menuItem}>
+              견적 요청 현황
+            </a>
             <span style={styles.menuItemDisabled}>찜한 업체 (준비 중)</span>
-            <span style={styles.menuItemDisabled}>견적 요청 현황 (준비 중)</span>
             <span style={styles.menuItemDisabled}>사업장 정보 수정 (준비 중)</span>
           </div>
 
@@ -224,6 +249,50 @@ export default function MyPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            <div id="quotes" style={{ ...styles.sectionTitle, marginTop: 44 }}>
+              견적 요청 현황
+            </div>
+            <div style={styles.sectionSub}>보낸 견적 요청과 회신 현황입니다. 항목을 클릭하면 받은 견적을 비교할 수 있어요.</div>
+
+            {quoteRequests.length === 0 ? (
+              <div style={styles.emptyState}>
+                <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>보낸 견적 요청이 없어요</h3>
+                <p style={{ fontSize: 13.5, color: colors.muted }}>
+                  공급업체를 검색해 견적을 요청하면 이곳에서 회신 현황을 확인할 수 있어요.
+                </p>
+                <a href="/search" style={{ ...styles.btnOutline, marginTop: 16 }}>
+                  공급업체 찾으러 가기
+                </a>
+              </div>
+            ) : (
+              <div style={{ marginBottom: 44 }}>
+                {quoteRequests.map((qr) => {
+                  const total = qr.quote_request_targets.length
+                  const responded = qr.quote_request_targets.filter((t) => t.status === 'responded').length
+                  return (
+                    <a key={qr.id} href={`/quote-compare/${qr.id}`} style={styles.reqCard}>
+                      <div style={styles.reqTop}>
+                        <div>
+                          <div style={styles.reqTitle}>{qr.title || '견적 요청'}</div>
+                          <div style={styles.reqMeta}>
+                            {formatDate(qr.created_at)} · {total}곳에 발송
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            ...styles.reqStatus,
+                            ...(qr.status === 'closed' ? styles.reqStatusReady : styles.reqStatusWaiting),
+                          }}
+                        >
+                          {qr.status === 'closed' ? REQUEST_STATUS_LABEL.closed : `회신 ${responded}/${total} 완료`}
+                        </span>
+                      </div>
+                    </a>
+                  )
+                })}
               </div>
             )}
 
@@ -333,6 +402,13 @@ const styles: { [k: string]: React.CSSProperties } = {
   acBtn: { flex: 1, padding: 9, borderRadius: 6, fontSize: 12.8, fontWeight: 700, cursor: 'pointer', textAlign: 'center', textDecoration: 'none' },
   acBtnPrimary: { background: colors.navy, color: colors.white, border: 'none' },
   acBtnOutline: { background: colors.white, color: colors.navy, border: `1px solid ${colors.line}` },
+  reqCard: { display: 'block', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: '18px 22px', marginBottom: 12, textDecoration: 'none' },
+  reqTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
+  reqTitle: { fontSize: 14.5, fontWeight: 700, color: colors.ink },
+  reqMeta: { fontSize: 12.5, color: colors.muted, marginTop: 4 },
+  reqStatus: { fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 14, whiteSpace: 'nowrap' },
+  reqStatusWaiting: { background: colors.paper2, color: colors.muted },
+  reqStatusReady: { background: colors.goodBg, color: colors.good },
   historyTable: { width: '100%', borderCollapse: 'collapse', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, overflow: 'hidden' },
   th: { background: colors.paper2, fontSize: 12.5, color: colors.muted, fontWeight: 700, padding: '12px 16px', textAlign: 'left' },
   td: { padding: '14px 16px', fontSize: 13.5, borderTop: `1px solid ${colors.paper2}` },
