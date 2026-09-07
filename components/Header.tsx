@@ -9,6 +9,7 @@ export default function Header() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [role, setRole] = useState<'buyer' | 'partner' | 'admin' | null>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
@@ -17,17 +18,31 @@ export default function Header() {
       setRole((data?.role as 'buyer' | 'partner' | 'admin' | undefined) ?? null)
     }
 
+    async function loadUnreadCount(userId: string) {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_read', false)
+      setUnreadCount(count || 0)
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
-      if (data.session) loadRole(data.session.user.id)
+      if (data.session) {
+        loadRole(data.session.user.id)
+        loadUnreadCount(data.session.user.id)
+      }
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       if (newSession) {
         loadRole(newSession.user.id)
+        loadUnreadCount(newSession.user.id)
       } else {
         setRole(null)
+        setUnreadCount(0)
       }
     })
 
@@ -75,6 +90,20 @@ export default function Header() {
         <nav style={styles.nav}>
           {session ? (
             <>
+              <a href="/notifications" style={styles.bellLink} aria-label="알림함">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M6 10a6 6 0 1 1 12 0c0 3.4 1 5 2 6H4c1-1 2-2.6 2-6Z"
+                    stroke={colors.ink}
+                    strokeWidth="1.6"
+                    strokeLinejoin="round"
+                  />
+                  <path d="M10 19a2 2 0 0 0 4 0" stroke={colors.ink} strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span style={styles.bellBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+                )}
+              </a>
               {role === 'admin' ? (
                 <a href="/admin/dashboard" style={styles.navLink}>
                   관리자 콘솔
@@ -175,6 +204,27 @@ const styles: { [k: string]: React.CSSProperties } = {
     fontWeight: 600,
     color: colors.ink,
     textDecoration: 'none',
+  },
+  bellLink: {
+    position: 'relative',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textDecoration: 'none',
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    background: '#B3261E',
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: 700,
+    lineHeight: 1,
+    padding: '3px 5px',
+    borderRadius: 20,
+    minWidth: 15,
+    textAlign: 'center',
   },
   loginBtn: {
     fontSize: 13.5,
