@@ -44,12 +44,31 @@ type DealRow = {
   quotes: { id: string; quote_requests: { attributes: RequestAttributes | null } | null } | null
 }
 
+type SettlementRow = {
+  id: string
+  gross_amount: number
+  commission_amount: number
+  net_amount: number
+  status: string
+  settled_at: string | null
+  deals: {
+    id: string
+    confirmed_at: string
+    buyer_profiles: { business_name: string } | null
+  } | null
+}
+
 const PAYMENT_METHODS = ['계좌이체', '현금', '월말 정산']
 
 const DEAL_STATUS_LABEL: Record<DealRow['status'], string> = {
   in_progress: '진행중',
   completed: '거래완료',
   disputed: '분쟁중',
+}
+
+const SETTLEMENT_STATUS_LABEL: Record<string, string> = {
+  pending: '정산 예정',
+  completed: '정산 완료',
 }
 
 function itemsText(attrs: RequestAttributes | null): string {
@@ -78,12 +97,21 @@ function dealStatusStyle(status: DealRow['status']): React.CSSProperties {
   return { background: '#E7EEF5', color: colors.navy }
 }
 
+function settlementStatusStyle(status: string): React.CSSProperties {
+  if (status === 'completed') return { background: colors.goodBg, color: colors.good }
+  if (status === 'disputed') return { background: colors.warnBg, color: colors.warn }
+  return { background: '#E7EEF5', color: colors.navy }
+}
+
+const MONTH_START = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+
 
 export default function PartnerDashboardPage() {
   const [session, setSession] = useState<{ userId: string } | null | undefined>(undefined)
   const [partner, setPartner] = useState<Partner | null | undefined>(undefined)
   const [targets, setTargets] = useState<ReceivedRequest[]>([])
   const [deals, setDeals] = useState<DealRow[]>([])
+  const [settlements, setSettlements] = useState<SettlementRow[]>([])
   const [loading, setLoading] = useState(true)
 
   const [openId, setOpenId] = useState<string | null>(null)
@@ -117,7 +145,7 @@ export default function PartnerDashboardPage() {
       }
       setPartner(partnerRow)
 
-      const [{ data: targetRows }, { data: dealRows }] = await Promise.all([
+      const [{ data: targetRows }, { data: dealRows }, { data: settlementRows }] = await Promise.all([
         supabase
           .from('quote_request_targets')
           .select(
@@ -140,10 +168,25 @@ export default function PartnerDashboardPage() {
           )
           .eq('partner_id', partnerRow.id)
           .order('confirmed_at', { ascending: false }),
+        supabase
+          .from('settlements')
+          .select(
+            `id, gross_amount, commission_amount, net_amount, status, settled_at,
+             deals ( id, confirmed_at, buyer_profiles ( business_name ) )`
+          ),
       ])
 
       setTargets((targetRows || []) as unknown as ReceivedRequest[])
       setDeals((dealRows || []) as unknown as DealRow[])
+
+      const settlementList = (settlementRows || []) as unknown as SettlementRow[]
+      settlementList.sort((a, b) => {
+        const aDate = a.deals?.confirmed_at || ''
+        const bDate = b.deals?.confirmed_at || ''
+        return aDate < bDate ? 1 : -1
+      })
+      setSettlements(settlementList)
+
       setLoading(false)
     }
 
@@ -244,6 +287,18 @@ export default function PartnerDashboardPage() {
     )
   }
 
+  const isThisMonth = (iso: string) => new Date(iso) >= MONTH_START
+  const thisMonthSettlements = settlements.filter((s) => s.deals && isThisMonth(s.deals.confirmed_at))
+
+  const nextSettlementAmount = settlements
+    .filter((s) => s.status === 'pending')
+    .reduce((sum, s) => sum + Number(s.net_amount), 0)
+  const thisMonthDealAmount = thisMonthSettlements.reduce((sum, s) => sum + Number(s.gross_amount), 0)
+  const thisMonthCommission = thisMonthSettlements.reduce((sum, s) => sum + Number(s.commission_amount), 0)
+  const totalSettledAmount = settlements
+    .filter((s) => s.status === 'completed')
+    .reduce((sum, s) => sum + Number(s.net_amount), 0)
+
   return (
     <div style={{ background: colors.paper }}>
       <div style={styles.wrap}>
@@ -266,7 +321,9 @@ export default function PartnerDashboardPage() {
               진행 중인 거래
               {deals.length > 0 && <span style={styles.menuBadge}>{deals.length}</span>}
             </a>
-            <span style={styles.menuItemDisabled}>거래이력 · 정산 (준비 중)</span>
+            <a href="#settlements" style={styles.menuItem}>
+              정산
+            </a>
             <span style={styles.menuItemDisabled}>프로필 · 배송조건 관리 (준비 중)</span>
           </div>
 
@@ -448,6 +505,77 @@ export default function PartnerDashboardPage() {
               </div>
             )}
 
+            <div id="settlements" style={{ ...styles.sectionTitle, marginTop: 44 }}>
+              정산
+            </div>
+            <div style={styles.sectionSub}>거래 확정 시 자동으로 생성된 정산 내역입니다.</div>
+
+            <div style={styles.statsGrid}>
+              <div style={styles.statCard}>
+                <div style={styles.statLabel}>다음 정산 예정액</div>
+                <div style={styles.statValue}>{nextSettlementAmount.toLocaleString('ko-KR')}원</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statLabel}>이번 달 확정 거래액</div>
+                <div style={styles.statValue}>{thisMonthDealAmount.toLocaleString('ko-KR')}원</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statLabel}>이번 달 수수료 합계</div>
+                <div style={styles.statValue}>{thisMonthCommission.toLocaleString('ko-KR')}원</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statLabel}>누적 정산 완료액</div>
+                <div style={styles.statValue}>{totalSettledAmount.toLocaleString('ko-KR')}원</div>
+              </div>
+            </div>
+
+            {settlements.length === 0 ? (
+              <div style={styles.emptyState}>
+                <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>정산 내역이 없어요</h3>
+                <p style={{ fontSize: 13.5, color: colors.muted }}>
+                  거래가 확정되면 이곳에 정산 내역이 자동으로 생성됩니다.
+                </p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={styles.historyTable}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>거래확정일</th>
+                      <th style={styles.th}>소상공인</th>
+                      <th style={styles.th}>거래액</th>
+                      <th style={styles.th}>적용 수수료율</th>
+                      <th style={styles.th}>수수료</th>
+                      <th style={styles.th}>정산액</th>
+                      <th style={styles.th}>정산상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settlements.map((row) => {
+                      const rate =
+                        Number(row.gross_amount) > 0
+                          ? ((Number(row.commission_amount) / Number(row.gross_amount)) * 100).toFixed(1) + '%'
+                          : '-'
+                      return (
+                        <tr key={row.id}>
+                          <td style={styles.td}>{row.deals ? formatDate(row.deals.confirmed_at) : '-'}</td>
+                          <td style={styles.td}>{row.deals?.buyer_profiles?.business_name || '-'}</td>
+                          <td style={styles.td}>{Number(row.gross_amount).toLocaleString('ko-KR')}원</td>
+                          <td style={styles.td}>{rate}</td>
+                          <td style={styles.td}>{Number(row.commission_amount).toLocaleString('ko-KR')}원</td>
+                          <td style={styles.td}>{Number(row.net_amount).toLocaleString('ko-KR')}원</td>
+                          <td style={styles.td}>
+                            <span style={{ ...styles.htag, ...settlementStatusStyle(row.status) }}>
+                              {SETTLEMENT_STATUS_LABEL[row.status] || row.status}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -512,4 +640,8 @@ const styles: { [k: string]: React.CSSProperties } = {
   th: { background: colors.paper2, fontSize: 12.5, color: colors.muted, fontWeight: 700, padding: '12px 16px', textAlign: 'left' },
   td: { padding: '14px 16px', fontSize: 13.5, borderTop: `1px solid ${colors.paper2}` },
   htag: { fontSize: 11.5, fontWeight: 700, padding: '4px 9px', borderRadius: 12 },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 },
+  statCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: '18px 20px' },
+  statLabel: { fontSize: 12, color: colors.muted, fontWeight: 600, marginBottom: 8 },
+  statValue: { fontSize: 19, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep },
 }
