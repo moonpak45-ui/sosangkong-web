@@ -46,6 +46,34 @@ export const styles: { [k: string]: React.CSSProperties } = {
   errorBox: { background: '#FDECEC', color: '#B3261E', borderRadius: 7, padding: '10px 12px', fontSize: 12.5, marginTop: 4 },
 }
 
+export const DEAL_STATUS_LABEL: Record<string, string> = {
+  in_progress: '진행중',
+  completed: '거래완료',
+  disputed: '분쟁중',
+}
+
+export const PARTNER_STATUS_LABEL: Record<string, string> = {
+  pending: '승인 대기',
+  approved: '승인됨',
+  suspended: '정지',
+}
+
+export const REQUEST_STATUS_LABEL: Record<string, string> = {
+  open: '회신 대기',
+  matched: '회신 도착',
+  closed: '확정 완료',
+}
+
+export function statusBadgeStyle(status: string): React.CSSProperties {
+  if (status === 'completed' || status === 'approved' || status === 'closed') {
+    return { background: colors.goodBg, color: colors.good }
+  }
+  if (status === 'disputed' || status === 'suspended') {
+    return { background: colors.warnBg, color: colors.warn }
+  }
+  return { background: '#E7EEF5', color: colors.navy }
+}
+
 export function formatDate(iso: string) {
   const d = new Date(iso)
   const y = d.getFullYear()
