@@ -306,6 +306,37 @@ v5까지는 각 사본이 실제 콘텐츠 높이(~93mm)만큼만 차지하고 �
   균등하게 남기며 정중앙에 있는 것도 눈으로 확인함. 검증에 쓴
   puppeteer-core는 이번에도 확인 후 제거.
 
+**폰트 한 단계 확대 (v7)**
+
+v6까지의 폰트(품목 표 7~8px 등)로 여백이 47mm(약 33%)나 남는 게 확인돼서,
+가독성을 위해 폰트/padding을 한 단계씩 키움. `half` 블록 높이(140.5mm)와
+`pageSheet` 높이(281mm)는 그대로 - 구조는 안 건드리고 안에 들어가는 값만
+키움. v5/v6에서 자리잡은 "화면·인쇄 공용 inline style 한 곳" 원칙도 계속
+유지 - 이번에도 `@media print` 전용 분기 추가하지 않음.
+
+| 요소 | v6 | v7 |
+|---|---|---|
+| 품목 표 본문(`itemTd`/`itemTdTotal`) | 7px, padding 1px/3px | 9px, padding 2px/3px |
+| 품목 표 헤더(`itemTh`) | 8px, padding 1px/3px | 10px, padding 2px/4px |
+| 정보박스(`infoTh`/`infoTd`) | 8px, padding 1px/4px | 10px, padding 2px/5px |
+| 정산요약(`summaryTh`/`summaryTd`) | 8px, padding 2px/5px(유지) | 10px, padding 2px/5px(유지) |
+| 제목(`title`) | 14px | 16px |
+| 부제(`subtitle`) | 9px | 10px |
+| `sheetHead` 아래 여백 | 4px | 6px |
+
+**검증**: 다시 puppeteer-core로 로컬 Chrome 띄워 확인(방식은 v6과 동일 -
+실제 로그인 → 실제 거래 페이지 → 화면/인쇄 모드 각각 측정 → 실제
+print-to-PDF 생성). 결과:
+- 사본 1개 콘텐츠 실제 높이: 화면·인쇄 모드 공통 **121.576mm** (v6의
+  93.41mm에서 증가, `half` 한도 140.5mm 대비 약 19mm/13% 여유 남음 - 아직
+  안전 마진 있음, 실제 품목이 더 많거나 이름이 길어지는 경우를 위해 더는
+  키우지 않는 게 안전).
+- 점선 위치: 화면·인쇄 모드 공통 카드 상단 기준 **140.498mm**(목표
+  140.5mm) - `half` 높이가 고정이라 콘텐츠 크기와 무관하게 그대로 유지됨.
+- `pageSheet` 높이: 정확히 **281.000mm** 그대로.
+- 실제 print-to-PDF `/Pages` `/Count` = **1** 재확인(빈 2페이지 회귀 없음).
+- 검증에 쓴 puppeteer-core는 확인 후 다시 제거.
+
 **정보 박스**: 공급자/공급받는자 각각 `<table>`(사업자번호/상호·성명/주소/
 연락처, 공급받는자는 성명·담당자·연락처까지) 형태로, 남색(`colors.navy`)
 테두리를 씀. 2단 배치는 `.responsive-two-col` 재사용. 공급자는 담당자
