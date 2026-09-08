@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles } from '../_shared'
+import { useAdminRole } from '../AdminRoleContext'
 
 type CategoryRow = { id: string; name: string }
 type AttributeDefRow = { id: string; name: string; required: boolean | null }
 
 export default function AdminCategoriesPage() {
+  const adminRole = useAdminRole()
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -173,6 +175,19 @@ export default function AdminCategoriesPage() {
     setAttributeDefs((prev) => [...prev, data as AttributeDefRow].sort((a, b) => a.name.localeCompare(b.name)))
     setNewAttrName('')
     setNewAttrRequired(false)
+  }
+
+  // URL 직접 접근 방어(사이드바 메뉴는 AdminLayout이 이미 숨김) - RLS도
+  // categories insert/update/delete를 super_admin 전용으로 막아뒀지만,
+  // sub_admin이 화면 자체에 들어와서 "권한 없음" 에러만 잔뜩 보는 대신
+  // 여기서 먼저 막아 안내 문구를 보여줌.
+  if (adminRole === 'sub_admin') {
+    return (
+      <div style={styles.emptyState}>
+        <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>접근 권한이 없어요</h3>
+        <p style={{ fontSize: 13.5, color: colors.muted }}>카테고리 관리는 최고 관리자만 이용할 수 있어요.</p>
+      </div>
+    )
   }
 
   if (loading) {

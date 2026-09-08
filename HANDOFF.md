@@ -45,7 +45,8 @@ constraint`)를 이용해 실제 컬럼을 하나씩 알아낼 수 있습니다(
 |---|---|---|
 | test01@test.com | 123456789 | buyer (소상공인, 사업장명 "all식당") |
 | test4@email.com | 123456789 | partner (공급업체, "test공급식자재") |
-| test3@test.com | 123456789 | admin |
+| test3@test.com | 123456789 | admin (super_admin) |
+| subadmin-test@test.com | subAdmin987! | admin (sub_admin) — sub_admin 권한 테스트용으로 생성, 계정 자체는 계속 남겨둠 |
 
 그 외 seed 데이터에 "핫한 핫도그"(buyer) × "고푸드"(partner) 조합으로 실제 거래
 내역(`deals`, `quote_requests` 등)이 여러 건 들어있습니다 — 로그인 정보는 모름,
@@ -60,7 +61,9 @@ constraint`)를 이용해 실제 컬럼을 하나씩 알아낼 수 있습니다(
 - 마이페이지/파트너 대시보드 공용 "계정 설정"(이메일 조회, 비밀번호 변경)
 - 재고관리북(ledgerbook) 1단계 — 거래전표/외상잔액/재고, 파트너 전용
 - 재고관리북(ledgerbook) 2단계 — 소상공인 조회 화면(미결제 배지, 품목 드릴다운)
-- **재고관리북(ledgerbook) 3단계** (이번 작업, 아래 상세) — 거래명세서 A4 인쇄
+- 재고관리북(ledgerbook) 3단계 — 거래명세서 A4 인쇄(v1~v9, 여러 차례 수정)
+- **관리자 콘솔 3건** (이번 작업, 아래 상세) — 회원 목록 로그인 ID 표시,
+  관리자 비밀번호 변경, 중급 관리자(sub_admin) 권한 체계
 
 ## 재고관리북(ledgerbook) 1단계
 
@@ -526,9 +529,137 @@ contact_name`(유일하게 있는 이름 필드)을 그대로 사용 — 스펙�
 카카오 알림톡 발송 — 건당 비용 + 발송대행사 계약이 필요해 매출 발생 이후
 유료 addon으로 별도 진행 예정. 관련 버튼/placeholder도 추가하지 않음.
 
+## 관리자 콘솔 3건 (회원 로그인 ID 표시 / 관리자 비밀번호 변경 / sub_admin 권한 체계)
+
+### 1. 회원 목록에 로그인 ID(이메일) 컬럼 추가
+
+`app/admin/members/page.tsx`. `users.email`은 이미 회원가입 시 채워지는
+컬럼이라(로그인 화면 코드 참고) `auth.users`를 별도로 조인할 필요 없이,
+기존 PostgREST 임베딩에 `email`만 추가하면 됐음:
+- 소상공인 탭: `buyer_profiles` 조회에 이미 있던 `users ( status )`를
+  `users ( status, email )`로 확장.
+- 공급업체 탭: `partners` 조회에 `user_id`와 `users ( email )`을 새로
+  추가 — `partners → users` 임베딩이 이 리포에서 처음 쓰인 사례인데
+  실제로도 FK가 잡혀 있어서 별도 조치 없이 바로 됐음(실제 계정으로
+  확인함).
+
+### 2. 관리자 비밀번호 변경
+
+새 파일 없이 기존 `components/AccountSettingsForm.tsx`(마이페이지/파트너
+"계정 설정"에서 이미 쓰던 공용 컴포넌트 - 이메일 조회 + 비밀번호 2회 입력
++ `supabase.auth.updateUser({password})`)를 그대로 재사용.
+`app/admin/account/page.tsx`에서 `backHref="/admin/dashboard"`로 감싸기만
+하고, `AdminLayout`의 NAV_ITEMS에 "내 계정" 추가. 별도 접근 제어 코드
+없음 - `/admin/*`는 이미 `AdminLayout`이 관리자 세션을 요구하므로
+자동으로 보호됨.
+
+실제 계정(test3@test.com)으로 비밀번호를 임시값으로 바꿨다가 재로그인
+없이 세션이 유지되는 것과 다른 관리자 페이지 접근이 계속 되는 것을 확인,
+이후 원래 비밀번호로 다시 돌려놓음(테스트 계정 상태 보존).
+
+### 3. 중급 관리자(sub_admin) 권한 체계
+
+**스키마/RLS** (`supabase/migrations/20260908130000_admin_subadmin_roles.sql`,
+실행 완료됨):
+- `users.role`(`'buyer'|'partner'|'admin'`)은 그대로 두고, 새 컬럼
+  `users.admin_role`(`'super_admin'|'sub_admin'|null`)을 추가 —
+  role≠'admin'인 행은 항상 null. 기존 admin 계정은 전부 super_admin으로
+  백필해서 기존 관리자가 권한을 잃지 않게 함.
+- `qd_is_super_admin()` 함수 신설(`qd_is_admin()`과 동일 패턴, users
+  테이블만 조회). `qd_is_admin()`은 그대로 둬서 회원관리·거래견적관리
+  정책(둘 다 sub_admin도 가능해야 함)은 안 건드림.
+- `categories`의 insert/update/delete 정책만 `qd_is_admin()` →
+  `qd_is_super_admin()`으로 좁힘(select는 공개 정책 그대로 - `/search`
+  등에서 비로그인도 카테고리 조회 가능해야 함).
+- **`users` 테이블의 기존 "admin은 전체 select/update" 정책을 쪼갬** —
+  이게 이번 작업에서 가장 중요한 RLS 변경: 기존엔 `qd_is_admin()` 하나로
+  role='admin'이면 무조건 `users` 테이블 전체(다른 관리자 행 포함)를
+  select/update할 수 있었음. sub_admin이 "관리자 계정 관리" 화면에 URL로
+  직접 들어와도 RLS로 막히려면 이 테이블 접근 자체가 나뉘어야 해서,
+  `users_select_admin_members`/`users_update_admin_members`(`qd_is_admin()
+  and role in ('buyer','partner')` - 회원관리용, sub_admin도 가능)와
+  `users_select_super_admin_all`/`users_update_super_admin_all`
+  (`qd_is_super_admin()` - 관리자 행 포함 전체, super_admin 전용) 두
+  쌍으로 나눔. sub_admin은 여전히 본인 행은 `users_select_own`으로 보임.
+  **실제 REST API를 직접 호출해서 확인함**: sub_admin 세션으로
+  `GET /rest/v1/users?role=eq.admin`을 호출하면 본인 행(sub_admin 자신)만
+  오고 다른 super_admin 행은 안 옴.
+- `users_insert_super_admin` 정책 신설 - 관리자 계정 생성 시 필요(아래
+  참고).
+
+**화면**:
+- `AdminLayout`(`app/admin/layout.tsx`)이 세션 확인 시 `role`뿐 아니라
+  `admin_role`도 같이 조회해서 `AdminRoleContext`(새 파일
+  `app/admin/AdminRoleContext.tsx`)로 하위 페이지에 내려줌. NAV_ITEMS에
+  `superAdminOnly: true` 플래그를 단 항목("카테고리 관리", "관리자 계정
+  관리")은 sub_admin 세션이면 사이드바에서 아예 안 보임(필터링).
+- `app/admin/categories/page.tsx`와 새 `app/admin/admins/page.tsx`
+  둘 다 `useAdminRole()`로 `admin_role === 'sub_admin'`이면 본문 렌더링
+  전에 "접근 권한이 없어요" 안내만 보여주고 끝냄 - 사이드바에 안 보여도
+  URL 직접 입력하면 들어와지므로 이 가드가 필요(RLS와 별개의 UX용 방어).
+- 새 화면 `/admin/admins`(관리자 계정 관리, super_admin 전용): 관리자
+  목록(이메일/역할) 조회, 새 관리자 계정 생성 폼(이메일/초기 비밀번호/역할
+  선택), 기존 관리자의 역할을 "중급으로"/"최고로" 버튼으로 전환.
+
+**관리자 계정 생성 - service role key 없이 처리한 방법** (`app/admin/
+admins/page.tsx`의 `createAdmin()`): 이 프로젝트는 service role key가
+없어서(`.env.local`에 anon/publishable key만 있음) Admin API로 "세션
+안 건드리고 새 유저 생성"을 할 수 없음. 유일한 방법은 클라이언트에서
+`supabase.auth.signUp()`을 쓰는 건데, 이 프로젝트는 이메일 확인이
+꺼져 있어서(회원가입 후 바로 로그인되는 기존 코드로 확인) signUp()이
+성공하면 **브라우저 세션이 방금 만든 새 계정으로 즉시 바뀜** - super_admin이
+관리자를 하나 만들 때마다 자기도 모르게 로그아웃되거나 새 계정으로
+전환되면 안 되므로:
+1. signUp() 호출 **전에** `supabase.auth.getSession()`으로 지금(super_admin)
+   세션의 access_token/refresh_token을 미리 저장.
+2. `signUp({email, password})` 호출 - 세션이 새 계정으로 바뀔 수 있음.
+3. 그 상태에서 새 계정의 `users` 행을 insert(`role:'admin', admin_role`) -
+   세션이 새 계정으로 바뀌어 있으면 기존 `users_insert_own`(`id =
+   auth.uid()`)으로, 혹시 안 바뀌어 있으면(프로젝트 설정이 나중에
+   바뀌어 이메일 확인이 켜지는 경우 대비) 새로 추가한
+   `users_insert_super_admin`(`qd_is_super_admin()`) 정책으로 - 두 정책이
+   OR로 결합되므로 어느 쪽이든 성공함.
+4. `supabase.auth.setSession({access_token, refresh_token})`으로 저장해둔
+   원래 super_admin 세션을 무조건 복구(1번에서 세션이 안 바뀐 경우엔
+   그냥 같은 값으로 덮어써서 무해함).
+
+실제로 이 흐름이 세션을 안 건드리는지 REST API로 직접 진단해서 확인함
+(signUp 응답에 session이 즉시 포함되는지, 곧바로 같은 계정으로 로그인이
+되는지 별도 스크립트로 확인 - 이메일 확인 꺼져있음을 재확인). 이미 가입된
+이메일로 다시 생성 시도하면(Supabase가 이메일 열거 방지를 위해 에러
+대신 `identities: []`인 가짜 user를 돌려주는 경우 포함) "이미 가입된
+이메일이거나 계정 생성에 실패했습니다" 에러로 처리함.
+
+**⚠ 알아두면 좋은 기존 구멍(이번에 만든 건 아니고, 이번 작업 중 발견함)**:
+`users_insert_own` 정책(`with check (id = auth.uid())`)은 `role` 값 자체를
+검증하지 않음 - 즉 이론적으로는 아무나 회원가입 시 자기 `users` 행의
+`role`을 `'admin'`으로 직접 보내도 RLS가 막지 못함(지금까지 실제로 이
+경로로 악용된 적은 없어 보이지만, `role` 컬럼에 check 제약이나 트리거로
+"본인이 스스로 admin이 될 수 없다"를 강제하는 게 더 안전함 - 이번 작업
+범위 밖이라 손대지 않았고, 여기 기록만 남김).
+
+**실제 로그인으로 검증한 것** (test3@test.com=super_admin,
+subadmin-test@test.com=sub_admin, 둘 다 위 표 참고):
+- super_admin: 사이드바 6개 항목(대시보드/회원관리/거래견적관리/카테고리
+  관리/관리자 계정 관리/내 계정) 전부 보임, `/admin/admins`에서 새
+  sub_admin 계정 생성 성공, 생성 직후에도 여전히 test3@test.com으로
+  로그인된 상태 유지(세션 안 바뀜) 확인.
+- sub_admin: 사이드바 4개 항목만 보임(카테고리 관리·관리자 계정 관리
+  없음), `/admin/members`·`/admin/deals`는 정상 접근, `/admin/categories`·
+  `/admin/admins`는 URL 직접 입력해도 "접근 권한이 없어요" 화면.
+- **RLS 자체도 화면을 거치지 않고 REST API를 직접 호출해서 검증함**(UI
+  가드는 우회 가능하므로 이게 진짜 방어선): sub_admin 세션으로
+  `categories` insert 시도 → `403 new row violates row-level security
+  policy`, `users?role=eq.admin` select → 본인 행만 반환.
+- super_admin의 "중급으로"/"최고로" 역할 전환 버튼도 실제로 admin_role이
+  바뀌는 것까지 확인(테스트 후 sub_admin으로 원복해둠).
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
 - ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
   선택/월별 필터링 같은 `/partner/ledger` 사용성 개선
 - 카카오 알림톡 발송 연동 (유료 addon, 매출 발생 이후 예정)
 - `category_attribute_defs` 실제 스키마에 맞춘 관리 UI (보류 중)
+- `users_insert_own` 정책에 `role` 값 검증 추가 - 지금은 회원가입 시
+  누구나 자기 `role`을 `'admin'`으로 직접 보낼 수 있는 구멍이 있음(위
+  "관리자 콘솔 3건" 섹션 참고, 이번 작업 범위 밖이라 손 안 댐)

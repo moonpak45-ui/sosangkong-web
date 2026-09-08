@@ -12,7 +12,7 @@ type BuyerRow = {
   region: string | null
   created_at: string
   user_id: string
-  users: { status: string | null } | null
+  users: { status: string | null; email: string | null } | null
   deals: { count: number }[] | null
 }
 
@@ -24,6 +24,8 @@ type PartnerRow = {
   created_at: string
   verified_badge: boolean
   status: string
+  user_id: string
+  users: { email: string | null } | null
 }
 
 export default function AdminMembersPage() {
@@ -41,13 +43,13 @@ export default function AdminMembersPage() {
           .from('buyer_profiles')
           .select(
             `id, business_name, contact_name, industry, region, created_at, user_id,
-             users ( status ),
+             users ( status, email ),
              deals ( count )`
           )
           .order('created_at', { ascending: false }),
         supabase
           .from('partners')
-          .select('id, name, description, region, created_at, verified_badge, status')
+          .select('id, name, description, region, created_at, verified_badge, status, user_id, users ( email )')
           .order('created_at', { ascending: false }),
       ])
 
@@ -85,7 +87,9 @@ export default function AdminMembersPage() {
       setActionError('상태 변경 중 오류가 발생했습니다: ' + error.message)
       return
     }
-    setBuyers((prev) => prev.map((b) => (b.user_id === userId ? { ...b, users: { status } } : b)))
+    setBuyers((prev) =>
+      prev.map((b) => (b.user_id === userId ? { ...b, users: { email: b.users?.email ?? null, status } } : b))
+    )
   }
 
   if (loading) {
@@ -122,6 +126,7 @@ export default function AdminMembersPage() {
               <thead>
                 <tr>
                   <th style={styles.th}>사업장명</th>
+                  <th style={styles.th}>아이디</th>
                   <th style={styles.th}>대표자</th>
                   <th style={styles.th}>업종/지역</th>
                   <th style={styles.th}>가입일</th>
@@ -137,6 +142,7 @@ export default function AdminMembersPage() {
                   return (
                     <tr key={b.id}>
                       <td style={styles.td}>{b.business_name}</td>
+                      <td style={styles.td}>{b.users?.email || '-'}</td>
                       <td style={styles.td}>{b.contact_name || '-'}</td>
                       <td style={styles.td}>{[b.industry, b.region].filter(Boolean).join(' · ') || '-'}</td>
                       <td style={styles.td}>{formatDate(b.created_at)}</td>
@@ -185,6 +191,7 @@ export default function AdminMembersPage() {
             <thead>
               <tr>
                 <th style={styles.th}>업체명</th>
+                <th style={styles.th}>아이디</th>
                 <th style={styles.th}>취급품목/지역</th>
                 <th style={styles.th}>가입일</th>
                 <th style={styles.th}>인증여부</th>
@@ -196,6 +203,7 @@ export default function AdminMembersPage() {
               {partners.map((p) => (
                 <tr key={p.id}>
                   <td style={styles.td}>{p.name}</td>
+                  <td style={styles.td}>{p.users?.email || '-'}</td>
                   <td style={styles.td}>{[p.description, p.region].filter(Boolean).join(' · ') || '-'}</td>
                   <td style={styles.td}>{formatDate(p.created_at)}</td>
                   <td style={styles.td}>{p.verified_badge ? '✓ 검증' : '-'}</td>
