@@ -119,6 +119,31 @@ body {
   }
 }
 
+/* Desktop only (>=769px, matching .responsive-two-col's breakpoint): pin
+   the sidebar in place while the (often much taller, anchor-link-driven)
+   content column scrolls past it - my-page/partner-dashboard side menus
+   are in-page #anchors on one long page, so without this the whole grid
+   row scrolls together and the menu disappears above the viewport the
+   moment you jump to a lower anchor. align-self:start is required because
+   .responsive-two-col is a grid, whose items stretch to the row's full
+   height by default - a stretched item has no room left to visually
+   "stick" while scrolling. top:88px clears the site's own sticky header
+   (measured ~69px tall) plus a bit of breathing room. Below 768px the
+   sidebar stacks above the content in normal flow, where sticky isn't
+   appropriate, so it's explicitly left static there. */
+.responsive-sidebar-divider {
+  position: static;
+}
+@media (min-width: 769px) {
+  .responsive-sidebar-divider {
+    position: sticky;
+    top: 88px;
+    align-self: start;
+    max-height: calc(100vh - 108px);
+    overflow-y: auto;
+  }
+}
+
 /* /search: filter bar (category / region / submit). Height is always auto
    (content-driven) — never fixed — so a stacked mobile layout can grow. */
 .search-bar-grid {

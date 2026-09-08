@@ -697,6 +697,73 @@ role:'buyer'/'partner' self-insert → 정상 201, 남의 id로 insert 시도 �
 있음 - RLS 정책이 기대대로 동작하지 않을 때는 추측으로 정책을 계속
 고치기보다 이 방법을 먼저 써볼 것.
 
+## /my-page, /partner/dashboard 사이드바가 앵커 이동 시 화면 밖으로 사라지던 버그 수정
+
+**문제**: `/my-page`(소상공인)와 `/partner/dashboard`(공급업체) 둘 다 하나의
+긴 페이지 안에 모든 섹션(받은 견적요청/진행 중인 거래/정산/... 등)을 다
+렌더링해두고, 왼쪽 카테고리 메뉴는 실제 라우팅이 아니라 그 안의 `#anchor`
+링크(`#requests`, `#deals`, `#history`, `#settlements` 등)로 구현돼
+있었음. 앵커를 클릭하면 브라우저가 페이지 전체를 그 위치로 스크롤하는데,
+사이드바도 똑같이 일반 문서 흐름(`position: static`) 안에 있어서 같이
+밀려 올라가 화면 밖으로 사라짐 - 특히 페이지 하단부 섹션으로 이동할수록
+심함.
+
+`/admin/dashboard`(관리자 콘솔)는 이 문제가 없었는데, 이유는 CSS가 아니라
+**구조 자체가 다르기 때문** — 관리자 콘솔의 메뉴는 앵커가 아니라 진짜
+라우트(`/admin/members`, `/admin/deals` 등)라서 클릭할 때마다 새 페이지가
+스크롤 맨 위에서 시작함. 그래서 "관리자 콘솔의 CSS를 참고"하되, 실제로는
+사이드바에 `position: sticky`를 새로 추가하는 방향으로 처리함(관리자
+콘솔 사이드바엔 원래 sticky가 없었음 - 처음 코드를 확인하고 나서 알게 됨).
+
+**수정**: 세 화면(my-page/partner-dashboard/admin) 사이드바가 전부 같은
+공용 클래스 `.responsive-sidebar-divider`(`app/globals.css`)를 쓰고
+있어서, 컴포넌트 코드는 건드리지 않고 이 클래스 하나에만 sticky를
+추가함:
+```css
+.responsive-sidebar-divider {
+  position: static;
+}
+@media (min-width: 769px) {
+  .responsive-sidebar-divider {
+    position: sticky;
+    top: 88px;
+    align-self: start;
+    max-height: calc(100vh - 108px);
+    overflow-y: auto;
+  }
+}
+```
+- `.responsive-two-col`이 `display: grid`라서 기본적으로 grid item이 행
+  전체 높이로 늘어나(`align-items: stretch` 기본값) sticky가 움직일
+  공간이 없음 - `align-self: start`로 사이드바 자신의 콘텐츠 높이만큼만
+  차지하게 해야 sticky가 실제로 동작함.
+- `top: 88px`는 실측값 - `Header`(`components/Header.tsx`)가 이미
+  `position: sticky; top: 0`인데, 실제 렌더링 높이(69.25px, Puppeteer로
+  측정)에 여유 20px 정도를 더한 값. 헤더와 겹치지 않으면서 헤더 바로
+  아래 붙도록 함.
+- `@media (min-width: 769px)`만 적용 - `.responsive-two-col`이 768px
+  이하에서 1열로 접혀 사이드바가 콘텐츠 위에 쌓이는 기존 모바일 레이아웃은
+  그대로 두고(`position: static`), sticky는 2열 레이아웃이 실제로 있는
+  데스크톱에서만 의미가 있음.
+- `max-height`/`overflow-y: auto`는 방어적으로 추가 - 지금은 메뉴 항목이
+  몇 개 안 돼서 필요 없지만, 나중에 사이드바 메뉴가 늘어나 뷰포트보다
+  길어지는 경우에도 사이드바 자체가 스크롤되게 해서 화면을 벗어나지
+  않도록 함.
+
+이 클래스를 쓰는 화면이 이 셋뿐이라(`grep`으로 확인) 관리자 콘솔도
+같이 sticky해짐 - 관리자는 원래 이 버그가 없었지만(각 메뉴가 별도
+라우트라 페이지 자체가 짧고 스크롤이 거의 없음), sticky가 추가돼도
+무해하고 오히려 페이지가 길어질 경우를 대비한 일관성 있는 개선.
+
+**검증**(실제 로그인, Puppeteer):
+- `/partner/dashboard`: "정산"(페이지 맨 아래쪽 섹션) 클릭 → 스크롤
+  613px 발생, 사이드바는 `top: 88px`에 고정된 채 뷰포트 안에 그대로 보임.
+- `/my-page`: "거래 이력" 클릭 → 스크롤 964px 발생, 사이드바 동일하게
+  유지됨.
+- 모바일 뷰포트(390px)에서 `.responsive-sidebar-divider`의 computed
+  position이 여전히 `static`인 것 확인 - 데스크톱 전용 변경이 모바일
+  레이아웃(사이드바가 콘텐츠 위에 쌓이는 기존 방식)에 영향 없음을 재확인.
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
 - ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
