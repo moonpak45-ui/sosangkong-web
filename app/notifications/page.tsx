@@ -87,14 +87,14 @@ export default function NotificationsPage() {
 
   function targetHref(n: NotificationRow): string {
     if (n.type === 'quote') {
-      if (role === 'partner') return '/partner/dashboard#requests'
+      if (role === 'partner') return '/partner/dashboard'
       return n.related_id ? `/quote-compare/${n.related_id}` : '/my-page'
     }
     if (n.type === 'deal') {
-      return role === 'partner' ? '/partner/dashboard#deals' : '/my-page#history'
+      return role === 'partner' ? '/partner/dashboard/deals' : '/my-page/history'
     }
     if (n.type === 'review') {
-      return '/partner/dashboard#deals'
+      return '/partner/dashboard/deals'
     }
     return role === 'partner' ? '/partner/dashboard' : role === 'admin' ? '/admin/dashboard' : '/my-page'
   }

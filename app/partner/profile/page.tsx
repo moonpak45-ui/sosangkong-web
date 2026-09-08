@@ -266,19 +266,13 @@ export default function PartnerProfileEditPage() {
   }
 
   return (
-    <div style={{ background: colors.paper }}>
-      <div style={styles.wrap}>
-        <a href="/partner/dashboard" style={styles.backLink}>
-          ← 공급업체 마이페이지로
-        </a>
+    <div style={styles.wrap}>
+      <div style={styles.pageHead}>
+        <h1 style={styles.h1}>프로필 · 배송조건 관리</h1>
+        <p style={styles.headP}>업체 정보와 취급 카테고리를 최신 상태로 관리하세요.</p>
+      </div>
 
-        <div style={styles.pageHead}>
-          <div style={styles.eyebrow}>공급업체 마이페이지</div>
-          <h1 style={styles.h1}>프로필 · 배송조건 관리</h1>
-          <p style={styles.headP}>업체 정보와 취급 카테고리를 최신 상태로 관리하세요.</p>
-        </div>
-
-        <div style={styles.card}>
+      <div style={styles.card}>
           {saved && <div style={styles.successBox}>저장되었습니다.</div>}
           {saveError && <div style={styles.errorBox}>{saveError}</div>}
 
@@ -447,7 +441,6 @@ export default function PartnerProfileEditPage() {
             {addingStock ? '등록 중...' : '재고 추가'}
           </button>
         </div>
-      </div>
     </div>
   )
 }
@@ -467,10 +460,8 @@ const colors = {
 }
 
 const styles: { [k: string]: React.CSSProperties } = {
-  wrap: { maxWidth: 640, margin: '0 auto', padding: '0 32px' },
-  backLink: { display: 'inline-block', marginTop: 26, fontSize: 13, color: colors.muted, textDecoration: 'none' },
-  pageHead: { padding: '18px 0 6px' },
-  eyebrow: { fontSize: 13, color: colors.navy, fontWeight: 700, marginBottom: 8 },
+  wrap: { maxWidth: 640 },
+  pageHead: { padding: '0 0 6px' },
   h1: { fontSize: 23, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, margin: 0 },
   headP: { marginTop: 8, color: colors.muted, fontSize: 14 },
   card: {

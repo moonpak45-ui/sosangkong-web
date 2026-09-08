@@ -764,6 +764,148 @@ role:'buyer'/'partner' self-insert → 정상 201, 남의 id로 insert 시도 �
   position이 여전히 `static`인 것 확인 - 데스크톱 전용 변경이 모바일
   레이아웃(사이드바가 콘텐츠 위에 쌓이는 기존 방식)에 영향 없음을 재확인.
 
+## /partner/*, /my-page/* 전면 라우팅 재정리 (앵커 → 실제 라우트 + 공용 sticky 사이드바 레이아웃)
+
+앞선 "sticky 사이드바" 수정으로 스크롤 시 사이드바가 화면 밖으로 사라지는
+문제는 고쳤지만, 근본 구조 문제는 남아 있었음: `/partner/dashboard`와
+`/my-page`가 각각 모든 하위 섹션을 `#anchor`로 한 페이지에 욱여넣고 있어서
+(1) 클릭해도 사이드바 활성 표시가 안 바뀌고 (2) "프로필 관리"/"계정 설정"만
+별도 라우트라 그리로 가면 사이드바 자체가 사라졌음. 이번 작업으로 두
+마이페이지 전체를 `/admin/dashboard`와 동일한 패턴(공용 레이아웃 컴포넌트 +
+실제 라우트 + `usePathname()` 기반 활성 표시)으로 통일함.
+
+### 라우트 매핑
+
+**공급업체** (`/partner/*`):
+| 메뉴 | 이전 | 이후 |
+|---|---|---|
+| 받은 견적요청 | `/partner/dashboard#requests` | `/partner/dashboard` (index) |
+| 진행 중인 거래 | `/partner/dashboard#deals` | `/partner/dashboard/deals` (신규) |
+| 거래전표 등록 | `/partner/dashboard#ledger-entry` | `/partner/dashboard/ledger-entry` (신규) |
+| 매출·재고 현황 | `/partner/ledger` | `/partner/ledger` (그대로, 레이아웃만 편입) |
+| 정산 | `/partner/dashboard#settlements` | `/partner/dashboard/settlement` (신규) |
+| 프로필·배송조건 관리 | `/partner/profile` | `/partner/profile` (그대로, 레이아웃만 편입) |
+| 계정 설정 | `/partner/account` | `/partner/account` (그대로, 레이아웃만 편입) |
+
+**소상공인** (`/my-page/*`):
+| 메뉴 | 이전 | 이후 |
+|---|---|---|
+| 거래처 관리 | `/my-page#partners` | `/my-page` (index) |
+| 거래 이력 | `/my-page#history` | `/my-page/history` (신규) |
+| 견적 요청 현황 | `/my-page#quotes` | `/my-page/quotes` (신규) |
+| 찜한 업체 | `/my-page#favorites` | `/my-page/favorites` (신규) |
+| 사업장 정보 수정 | `/my-page/profile` | `/my-page/profile` (그대로, 레이아웃만 편입) |
+| 계정 설정 | `/my-page/account` | `/my-page/account` (그대로, 레이아웃만 편입) |
+
+### 공용 레이아웃 구조
+
+- `app/partner/layout.tsx` / `app/my-page/layout.tsx` (신규) - 로그인
+  확인(+ 공급업체/소상공인 프로필 존재 확인)을 **한 번만** 수행하고,
+  사이드바(업체 카드 + 메뉴)를 렌더링한 뒤 `children`을 감쌈. 활성 메뉴는
+  `usePathname() === item.href`로 판정 - 새로고침해도 URL이 그대로라 자동
+  유지됨(요청하신 4번 확인 항목).
+- `app/partner/PartnerLayoutContext.tsx` / `app/my-page/MyPageLayoutContext.tsx`
+  (신규) - 레이아웃이 확인한 `partner`/`buyerProfile` 정보를 React
+  Context로 하위 페이지에 내려줌. 각 하위 페이지는 이 값(주로 `partner.id`/
+  `buyerProfile.id`)만 가져다 쓰고, 세션·프로필을 다시 조회하지 않음
+  (`app/admin`의 `AdminRoleContext` 패턴과 동일).
+- `app/partner/_shared.ts` / `app/my-page/_shared.ts` (신규) - 기존에 각
+  페이지 파일 맨 아래 반복되던 `colors`/`styles`(사이드바, 카드, 표, 배지
+  등)를 한 곳으로 모음(`app/admin/_shared.ts`와 동일 패턴) - 이번에
+  7개(공급업체)+6개(소상공인) 파일로 쪼개지면서 중복이 커질 뻔한 걸 방지.
+- 사이드바 자체의 sticky 처리(`.responsive-sidebar-divider`, `app/
+  globals.css`)는 바로 앞 작업에서 이미 되어 있던 걸 그대로 재사용 - 이번
+  작업은 그 CSS를 건드리지 않음.
+- 배지(받은 견적요청/진행 중인 거래 건수, 찜한 업체 수)는 레이아웃이 별도
+  경량 count 쿼리(`{count:'exact', head:true}`)로 가져와 표시 - 예전엔
+  한 페이지 안의 로컬 state 길이였지만, 페이지가 쪼개지면서 사이드바와
+  콘텐츠가 다른 컴포넌트 트리가 됐기 때문. 견적 제출/찜 해제처럼 배지
+  숫자에 영향을 주는 액션 뒤에는 context의 `refreshCounts()`/
+  `refreshFavoriteCount()`를 호출해서 사이드바 배지를 재조회함.
+
+### `/partner/layout.tsx`가 `/partner/*` 전부를 감싸면 안 되는 두 예외
+
+`app/partner/layout.tsx`를 두면 Next.js는 기본적으로 `/partner/*` 전체에
+적용하는데, 그중 두 라우트는 사이드바가 있는 "마이페이지"가 아님:
+- `/partner/[id]` — 소상공인에게 보이는 **공개** 업체 상세 페이지
+- `/partner/dashboard/deals/[id]/invoice` — 인쇄 전용 명세서(자체
+  풀블리드 레이아웃, 사이드바/헤더 다 없어야 함)
+
+파일을 라우트 그룹으로 물리적으로 옮기는 대신(참조 경로가 많아 위험도가
+큼), `layout.tsx` 안에서 `usePathname()`으로 판별해서 이 두 경우엔
+`children`을 그대로 통과시킴(세션 체크도 안 함):
+```ts
+const MYPAGE_SEGMENTS = new Set(['dashboard', 'profile', 'account', 'ledger'])
+const INVOICE_PATTERN = /^\/partner\/dashboard\/deals\/[^/]+\/invoice$/
+function isMyPageRoute(pathname: string): boolean {
+  if (INVOICE_PATTERN.test(pathname)) return false
+  const seg = pathname.split('/')[2]
+  return MYPAGE_SEGMENTS.has(seg)
+}
+```
+`/my-page/*`는 이런 예외가 없어서(하위에 공개 페이지나 인쇄 전용 페이지가
+없음) `app/my-page/layout.tsx`는 예외 없이 전체를 감쌈.
+
+### "← 뒤로가기" 링크 제거
+
+사이드바가 항상 보이므로 불필요해진 뒤로가기 링크를 제거함:
+- `components/AccountSettingsForm.tsx`의 `backHref`/`backLabel` props를
+  **선택 사항**으로 바꿈(안 넘기면 링크 자체를 안 그림) - `/admin/account`는
+  여전히 넘겨서(그쪽은 이번 작업 범위 밖, 관리자 사이드바는 이미 실제
+  라우트라 문제가 없었음) 기존 그대로 동작하고, `/partner/account`·
+  `/my-page/account`만 넘기지 않도록 바꿈.
+- `/partner/profile`, `/partner/ledger`, `/my-page/profile`도 각자 갖고
+  있던 "← 마이페이지로"/"← 공급업체 마이페이지로" 링크와 "공급업체
+  마이페이지"/"마이페이지" eyebrow 라벨을 제거(레이아웃이 이미 그 맥락을
+  사이드바로 보여주므로 중복).
+
+### 그 외 링크 정리
+
+- `app/notifications/page.tsx`의 `targetHref()` - `/partner/dashboard#requests`
+  → `/partner/dashboard`, `/partner/dashboard#deals` → `/partner/dashboard/deals`,
+  `/my-page#history` → `/my-page/history`로 갱신.
+- `components/MobileTabBar.tsx`의 `isMyPage` 판정 - 기존엔
+  `pathname.startsWith('/partner/dashboard')`만 체크해서 `/partner/profile`·
+  `/partner/account`·`/partner/ledger`에 있을 때 하단 탭바의 "마이페이지"
+  아이콘이 활성 표시되지 않는 사소한 기존 버그가 있었음(라우트가 이미
+  분리돼 있었으므로 이번 리팩터와 무관하게 원래 있던 문제). 이번에
+  `/partner/profile`·`/partner/account`·`/partner/ledger`도 조건에 추가해서
+  같이 고침 - `/admin/*`는 범위 밖이라 그대로 둠(`/admin/dashboard`만 체크,
+  `/admin/members` 등에선 여전히 비활성 표시).
+
+### 실제로 검증한 것 (puppeteer-core, 두 계정)
+
+- test4@email.com(공급업체) 7개 라우트 전부 방문 - 사이드바 노출, 정확한
+  메뉴가 활성 표시, 배지 숫자(진행 중인 거래 "1") 정상 표시.
+- `/partner/dashboard/settlement`에서 새로고침 → 활성 메뉴 "정산" 그대로
+  유지(라우트 기반이라 자동, 별도 상태 저장 불필요).
+- `/partner/dashboard/deals/[id]/invoice`(실제 명세서 링크로 진입) - 사이드바
+  **없음** 확인(레이아웃 예외 처리 정상 동작).
+- test01@test.com(소상공인) 6개 라우트 전부 방문 - 사이드바 노출, 활성
+  표시, 찜한 업체 배지 정상 표시.
+- `/search`에서 실제 공개 업체 링크(`/partner/[id]`)로 진입 - 사이드바
+  **없음** 확인.
+- 모바일(390px) - 두 계정 모두 사이드바 `position: static`으로 정상
+  전환(콘텐츠 위에 쌓이는 기존 모바일 레이아웃 그대로), 하단 탭바 정상
+  노출.
+- 데스크톱(1400px) - `.responsive-sidebar-divider`가 여전히
+  `position: sticky; top: 88px`로 계산됨(이전 작업에서 만든 sticky CSS가
+  라우트 분리 후에도 그대로 작동).
+
+### 이번에 건드리지 않은 것
+
+- `deal_line_items`/`quote_requests`/`settlements` 등 조회 쿼리 로직 자체는
+  그대로 옮기기만 함(필터 조건 변경 없음) - 딱 한 곳, `/partner/dashboard/
+  settlement`을 만들 때 처음에 `deals!inner(...).eq('deals.partner_id',
+  partner.id)`처럼 명시적 필터를 넣으려다, 원본 코드가 애초에 필터 없이
+  RLS에만 의존하고 있었다는 걸 뒤늦게 확인하고 원복함 - **원본 쿼리의
+  필터 유무까지 그대로 보존**하는 걸 원칙으로 삼았음.
+- 각 페이지의 데이터 로딩 로직 자체(고유 로딩/에러 상태, 세션 재확인
+  코드 등)는 페이지별로 계속 독립적으로 둠 - 레이아웃의 context는
+  `partner`/`buyerProfile` id 정도만 내려주고, 나머지는 각 페이지가 예전
+  그대로 자기 몫만 조회함(리스크를 낮추기 위해 데이터 로딩까지
+  통합하지는 않음).
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
 - ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시

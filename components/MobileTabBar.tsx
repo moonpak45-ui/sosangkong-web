@@ -56,7 +56,13 @@ export default function MobileTabBar() {
   const isSearch = pathname.startsWith('/search')
   const isQuote = pathname.startsWith('/quote-request')
   const isNotifications = pathname.startsWith('/notifications')
-  const isMyPage = pathname.startsWith('/my-page') || pathname.startsWith('/partner/dashboard') || pathname.startsWith('/admin/dashboard')
+  const isMyPage =
+    pathname.startsWith('/my-page') ||
+    pathname.startsWith('/partner/dashboard') ||
+    pathname.startsWith('/partner/profile') ||
+    pathname.startsWith('/partner/account') ||
+    pathname.startsWith('/partner/ledger') ||
+    pathname.startsWith('/admin/dashboard')
 
   return (
     <nav className="mobile-tabbar" style={styles.bar} aria-label="모바일 하단 탭바">

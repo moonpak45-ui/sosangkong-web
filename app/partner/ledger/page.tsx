@@ -172,22 +172,16 @@ export default function PartnerLedgerPage() {
   const monthSummaries = Array.from(monthMap.values()).sort((a, b) => (a.month < b.month ? 1 : -1))
 
   return (
-    <div style={{ background: colors.paper }}>
-      <div style={styles.wrap}>
-        <a href="/partner/dashboard" style={styles.backLink}>
-          ← 공급업체 마이페이지로
-        </a>
+    <div>
+      <div style={styles.pageHead}>
+        <h1 style={styles.h1}>매출·재고 현황</h1>
+        <p style={styles.headP}>
+          {partnerName}의 월별·일자별 매출, 외상잔액, 재고 현황입니다. (매입 기록은 이 단계에서는 지원하지
+          않아요 — 거래전표는 판매 건만 기록됩니다.)
+        </p>
+      </div>
 
-        <div style={styles.pageHead}>
-          <div style={styles.eyebrow}>공급업체 마이페이지</div>
-          <h1 style={styles.h1}>매출·재고 현황</h1>
-          <p style={styles.headP}>
-            {partnerName}의 월별·일자별 매출, 외상잔액, 재고 현황입니다. (매입 기록은 이 단계에서는 지원하지
-            않아요 — 거래전표는 판매 건만 기록됩니다.)
-          </p>
-        </div>
-
-        <div className="partner-stats-grid" style={styles.statsGrid}>
+      <div className="partner-stats-grid" style={styles.statsGrid}>
           <div style={styles.statCard}>
             <div style={styles.statLabel}>이번 달 매출 합계</div>
             <div style={styles.statValue}>{thisMonthTotal.toLocaleString('ko-KR')}원</div>
@@ -344,7 +338,6 @@ export default function PartnerLedgerPage() {
             </table>
           </div>
         )}
-      </div>
     </div>
   )
 }
@@ -366,10 +359,7 @@ const colors = {
 }
 
 const styles: { [k: string]: React.CSSProperties } = {
-  wrap: { maxWidth: 1180, margin: '0 auto', padding: '0 32px' },
-  backLink: { display: 'inline-block', marginTop: 26, fontSize: 13, color: colors.muted, textDecoration: 'none' },
-  pageHead: { padding: '18px 0 6px' },
-  eyebrow: { fontSize: 13, color: colors.navy, fontWeight: 700, marginBottom: 8 },
+  pageHead: { padding: '0 0 6px' },
   h1: { fontSize: 23, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, margin: 0 },
   headP: { marginTop: 8, color: colors.muted, fontSize: 14 },
   sectionTitle: { fontSize: 17, marginBottom: 12, marginTop: 8, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep },

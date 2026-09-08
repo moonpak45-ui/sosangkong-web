@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 type Props = {
-  backHref: string
-  backLabel: string
+  // 둘 다 선택 사항 - 페이지가 상시 노출되는 사이드바 안에 있으면(공급업체/
+  // 소상공인/관리자 마이페이지 전부 해당) 뒤로가기 링크가 중복이라 안 넘기면 됨.
+  backHref?: string
+  backLabel?: string
 }
 
 const MIN_PASSWORD_LENGTH = 6
@@ -76,11 +78,12 @@ export default function AccountSettingsForm({ backHref, backLabel }: Props) {
   }
 
   return (
-    <div style={{ background: colors.paper }}>
-      <div style={styles.wrap}>
-        <a href={backHref} style={styles.backLink}>
-          ← {backLabel}
-        </a>
+    <div style={styles.wrap}>
+        {backHref && (
+          <a href={backHref} style={styles.backLink}>
+            ← {backLabel}
+          </a>
+        )}
 
         <div style={styles.pageHead}>
           <div style={styles.eyebrow}>계정 설정</div>
@@ -132,7 +135,6 @@ export default function AccountSettingsForm({ backHref, backLabel }: Props) {
             {saving ? '변경 중...' : '변경하기'}
           </button>
         </div>
-      </div>
     </div>
   )
 }
@@ -152,9 +154,9 @@ const colors = {
 }
 
 const styles: { [k: string]: React.CSSProperties } = {
-  wrap: { maxWidth: 640, margin: '0 auto', padding: '0 32px' },
-  backLink: { display: 'inline-block', marginTop: 26, fontSize: 13, color: colors.muted, textDecoration: 'none' },
-  pageHead: { padding: '18px 0 6px' },
+  wrap: { maxWidth: 640, margin: '0 auto' },
+  backLink: { display: 'inline-block', marginBottom: 10, fontSize: 13, color: colors.muted, textDecoration: 'none' },
+  pageHead: { padding: '0 0 6px' },
   eyebrow: { fontSize: 13, color: colors.navy, fontWeight: 700, marginBottom: 8 },
   h1: { fontSize: 23, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, margin: 0 },
   headP: { marginTop: 8, color: colors.muted, fontSize: 14 },
