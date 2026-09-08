@@ -153,8 +153,8 @@ export default function DealInvoicePage() {
 
     return (
       <div style={styles.half}>
-          <div className="invoice-sheet-head" style={styles.sheetHead}>
-            <h1 className="invoice-title" style={styles.title}>거래명세서</h1>
+          <div style={styles.sheetHead}>
+            <h1 style={styles.title}>거래명세서</h1>
             <div style={styles.subtitle}>{subtitle}</div>
           </div>
 
@@ -266,7 +266,7 @@ export default function DealInvoicePage() {
                     <td style={styles.itemTd}>{li ? Number(li.unit_price).toLocaleString('ko-KR') : ''}</td>
                     <td style={styles.itemTd}>{li ? Number(li.amount).toLocaleString('ko-KR') : ''}</td>
                     <td style={styles.itemTd}>{li?.is_credit ? '외상' : ''}</td>
-                    <td style={{ ...styles.itemTd, textAlign: 'left', fontSize: 6.5, color: colors.muted }}>
+                    <td style={{ ...styles.itemTd, textAlign: 'left', color: colors.muted }}>
                       {idx === 0 ? '정산 내역은 소상공 마이페이지에서 확인 가능합니다.' : ''}
                     </td>
                   </tr>
@@ -315,7 +315,7 @@ export default function DealInvoicePage() {
   }
 
   return (
-    <div style={{ background: colors.paper, minHeight: '100vh' }}>
+    <div style={{ background: colors.paper }}>
       <div className="invoice-no-print" style={styles.toolbar}>
         <a href="/partner/dashboard" style={styles.backLink}>
           ← 공급업체 마이페이지로
@@ -326,12 +326,14 @@ export default function DealInvoicePage() {
       </div>
 
       {/* A4 1장에 위(공급자용)/아래(공급받는자용) 절반씩 - 절취선(점선)으로
-          구분. 화면 미리보기도 같은 압축 스타일을 그대로 써서 인쇄 결과와
-          비율이 비슷하게 보임(별도 화면용/인쇄용 스타일 분기 없음, 단
-          바깥 카드 여백·제목 크기만 print에서 더 줄임 - globals.css 참고). */}
-      <div className="invoice-page-sheet" style={styles.pageSheet}>
+          구분. page-break 없음(1페이지 안에 다 넣는 구조). 화면 미리보기와
+          인쇄 결과가 항상 같아야 하므로, 아래 모든 스타일(폰트/padding/
+          컨테이너 폭)은 화면·인쇄 공용 - 별도 @media print 오버라이드 없음
+          (globals.css 참고). 컨테이너 폭도 인쇄 가능 영역 폭(194mm)에 맞춰
+          화면에서 보이는 줄바꿈이 인쇄에서도 그대로 재현되도록 함. */}
+      <div style={styles.pageSheet}>
         {renderCopy('supplier', deal)}
-        <div className="invoice-cut-line" style={styles.cutLine} />
+        <div style={styles.cutLine} />
         {renderCopy('receiver', deal)}
       </div>
     </div>
@@ -377,77 +379,77 @@ const styles: { [k: string]: React.CSSProperties } = {
     cursor: 'pointer',
   },
   pageSheet: {
-    maxWidth: 800,
-    margin: '20px auto 40px',
+    width: '100%',
+    maxWidth: '194mm',
+    margin: '10px auto',
     background: colors.white,
     border: `1px solid ${colors.line}`,
-    borderRadius: 4,
-    padding: '14px 20px',
-    boxShadow: '0 8px 30px rgba(10,30,61,0.08)',
+    borderRadius: 3,
+    padding: '3mm 4mm',
   },
   half: {},
-  cutLine: { borderTop: '1px dashed #999', margin: '10px 0', height: 0 },
-  sheetHead: { textAlign: 'center', marginBottom: 3 },
-  title: { fontSize: 15, fontFamily: "'Noto Serif KR', serif", fontWeight: 700, color: colors.deep, margin: 0, letterSpacing: 3 },
-  subtitle: { fontSize: 8, color: colors.muted, marginTop: 1 },
+  cutLine: { borderTop: '1px dashed #999', margin: '4mm 0', height: 0 },
+  sheetHead: { textAlign: 'center', marginBottom: 4, marginTop: 0 },
+  title: { fontSize: 14, fontFamily: "'Noto Serif KR', serif", fontWeight: 700, color: colors.deep, margin: 0, letterSpacing: 2 },
+  subtitle: { fontSize: 9, color: colors.muted, margin: '2px 0 0' },
   docNoRow: {
     display: 'flex',
     justifyContent: 'space-between',
     fontSize: 7.5,
     color: colors.muted,
-    margin: '4px 0',
+    margin: '3px 0',
     paddingBottom: 2,
     borderBottom: `1px solid ${colors.line}`,
   },
-  partiesGrid: { marginBottom: 4 },
+  partiesGrid: { marginBottom: 3 },
   infoTable: { width: '100%', borderCollapse: 'collapse', border: `1px solid ${colors.navy}` },
   infoTh: {
     border: `1px solid ${colors.navy}`,
     background: colors.paper2,
-    fontSize: 7,
+    fontSize: 8,
+    color: colors.navy,
+    fontWeight: 700,
+    padding: '1px 4px',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+    lineHeight: 1.15,
+  },
+  infoTd: { border: `1px solid ${colors.navy}`, fontSize: 8, padding: '1px 4px', textAlign: 'center', lineHeight: 1.15 },
+  itemTable: { width: '100%', borderCollapse: 'collapse', marginBottom: 3, border: `1px solid ${colors.navy}` },
+  itemTh: {
+    border: `1px solid ${colors.navy}`,
+    background: colors.paper2,
+    fontSize: 8,
     color: colors.navy,
     fontWeight: 700,
     padding: '1px 3px',
     textAlign: 'center',
     whiteSpace: 'nowrap',
-    lineHeight: 1.2,
+    lineHeight: 1.1,
   },
-  infoTd: { border: `1px solid ${colors.navy}`, fontSize: 7, padding: '1px 3px', textAlign: 'center', lineHeight: 1.2 },
-  itemTable: { width: '100%', borderCollapse: 'collapse', marginBottom: 3, border: `1px solid ${colors.navy}` },
-  itemTh: {
-    border: `1px solid ${colors.navy}`,
-    background: colors.paper2,
-    fontSize: 7.5,
-    color: colors.navy,
-    fontWeight: 700,
-    padding: '1.5px 2px',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-    lineHeight: 1.15,
-  },
-  itemTd: { border: `1px solid ${colors.navy}`, fontSize: 7.5, padding: '1.5px 2px', textAlign: 'center', lineHeight: 1.15 },
+  itemTd: { border: `1px solid ${colors.navy}`, fontSize: 7, padding: '1px 3px', textAlign: 'center', lineHeight: 1.1 },
   itemTdTotal: {
     border: `1px solid ${colors.navy}`,
-    fontSize: 7.5,
-    padding: '1.5px 2px',
+    fontSize: 7,
+    padding: '1px 3px',
     textAlign: 'center',
     fontWeight: 700,
     background: colors.paper2,
-    lineHeight: 1.15,
+    lineHeight: 1.1,
   },
   summaryTable: { width: '100%', borderCollapse: 'collapse', border: `1px solid ${colors.navy}` },
   summaryTh: {
     border: `1px solid ${colors.navy}`,
     background: colors.paper2,
-    fontSize: 7.5,
+    fontSize: 8,
     color: colors.navy,
     fontWeight: 700,
     padding: '2px 5px',
     textAlign: 'center',
     width: '18%',
-    lineHeight: 1.2,
+    lineHeight: 1.15,
   },
-  summaryTd: { border: `1px solid ${colors.navy}`, fontSize: 8, padding: '2px 5px', textAlign: 'right', lineHeight: 1.2 },
+  summaryTd: { border: `1px solid ${colors.navy}`, fontSize: 8, padding: '2px 5px', textAlign: 'right', lineHeight: 1.15 },
   btnPrimary: {
     background: colors.amber,
     color: colors.deep,

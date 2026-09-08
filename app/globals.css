@@ -234,33 +234,15 @@ body {
 
 /* 공급자용/공급받는자용 두 장을 A4 1장 안에 위/아래로 함께 넣음(절취선
    .invoice-cut-line으로 구분, page-break 없음 - 항상 1페이지 출력).
-   표/정보박스/정산요약 폰트·padding은 화면·인쇄 공용으로 이미 컴포넌트
-   inline style에서 작게 잡혀 있음(half-page 안에 15행 품목표가 들어가야
-   하므로 화면에서도 같은 압축 스타일을 씀). 여기서는 인쇄 시에만 카드
-   장식(여백/테두리/그림자)과 제목 크기를 한 번 더 줄여서 실제 인쇄 가능
-   영역을 최대한 확보함 - 이 두 가지만 화면/인쇄가 다름. */
-@media print {
-  .invoice-page-sheet {
-    max-width: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-  }
-  .invoice-title {
-    font-size: 12px !important;
-    letter-spacing: 1px !important;
-  }
-  .invoice-sheet-head {
-    margin-bottom: 1px !important;
-  }
-  .invoice-cut-line {
-    margin: 6px 0 !important;
-  }
-}
+   폰트·padding·여백은 전부 컴포넌트 inline style 한 곳에만 있고, 화면용/
+   인쇄용으로 값을 분기하지 않음(화면에 보이는 그대로가 인쇄 결과여야
+   한다는 요구사항 - 예전엔 인쇄 시에만 카드 여백·제목 크기를 한 번 더
+   줄이는 @media print 오버라이드가 있었는데, 이 분기 자체가 화면
+   미리보기와 실제 인쇄 결과가 달라 보이는 원인이 될 수 있어 전부 제거함.
+   컨테이너 폭도 인쇄 가능 영역 폭(210mm - 8mm*2 = 194mm)에 맞춰서, 줄바꿈
+   위치가 화면/인쇄에서 달라지지 않도록 함). */
 
 @page {
-  size: A4;
+  size: A4 portrait;
   margin: 8mm;
 }
