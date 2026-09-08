@@ -167,9 +167,19 @@ export default function DealInvoicePage() {
             <span>NO. {docNo}</span>
           </div>
 
+          {/* .responsive-two-col(공용 유틸)을 쓰지 않음 - 그 클래스는 768px
+              미만에서 1열로 접히는데, 실제 인쇄 시(마진을 진짜로 뺀 인쇄
+              가능 폭)는 186mm(약 703px)로 항상 768px보다 좁아서 이 페이지가
+              매번 "모바일" 취급되어 정보박스 2개가 나란히가 아니라 위아래로
+              쌓이고, 그만큼 세로 길이가 늘어나 실제 인쇄에서만(헤드리스
+              page.pdf()에 margin 옵션 없이 호출했을 때는 여백이 0으로
+              처리되어 인쇄 가능 폭이 A4 전체 폭(794px)이 되는 바람에 이
+              문제가 가려져 있었음) 2페이지로 넘치는 회귀의 실제 원인이었음.
+              이 표는 화면 크기와 무관하게 항상 인쇄용 고정 레이아웃이라
+              반응형 유틸을 쓸 이유가 없어서, 뷰포트 폭과 무관하게 항상
+              2열을 유지하는 별도 인라인 grid로 바꿈. */}
           <div
-            className="responsive-two-col"
-            style={{ ...styles.partiesGrid, ['--rtc-gap' as string]: '4px' } as React.CSSProperties}
+            style={{ ...styles.partiesGrid, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}
           >
             <table style={styles.infoTable}>
               <tbody>
