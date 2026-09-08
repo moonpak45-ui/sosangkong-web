@@ -116,7 +116,10 @@ export default function AdminCategoriesPage() {
       <div style={styles.sectionTitle}>카테고리 관리</div>
       <div style={styles.sectionSub}>거래 카테고리와 카테고리별 속성 정의를 관리하세요.</div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 24, alignItems: 'start' }}>
+      <div
+        className="responsive-two-col"
+        style={{ alignItems: 'start', ['--rtc-cols' as string]: '300px 1fr', ['--rtc-gap' as string]: '24px' } as React.CSSProperties}
+      >
         <div>
           <div style={styles.card}>
             <div style={{ fontSize: 13, fontWeight: 700, color: colors.deep, marginBottom: 12 }}>

@@ -20,6 +20,14 @@ type ItemRow = {
 
 const PAYMENT_METHODS = ['계좌이체', '현금', '월말 정산']
 
+function todayDateString() {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function QuoteRequestInner() {
   const searchParams = useSearchParams()
   const partnerIds = (searchParams.get('partner_ids') || '').split(',').filter(Boolean)
@@ -276,7 +284,10 @@ function QuoteRequestInner() {
           </p>
         </div>
 
-        <div style={styles.layout}>
+        <div
+          className="responsive-two-col"
+          style={{ ...styles.layout, ['--rtc-cols' as string]: '1fr 300px', ['--rtc-gap' as string]: '32px' } as React.CSSProperties}
+        >
           <div>
             {/* 선택된 업체 */}
             <div style={styles.card}>
@@ -317,12 +328,13 @@ function QuoteRequestInner() {
                 필요한 품목과 수량을 입력하세요. 업체별 재고에 따라 견적 금액이 달라질 수 있습니다.
               </div>
               {items.map((item, i) => (
-                <div key={i} style={styles.itemRow}>
+                <div key={i} className="quote-item-row" style={styles.itemRow}>
                   <input
                     type="text"
                     placeholder="품목명 (예: 냉동 흰살생선)"
                     value={item.name}
                     onChange={(e) => updateItem(i, 'name', e.target.value)}
+                    className="quote-item-name"
                     style={styles.itemInput}
                   />
                   <input
@@ -330,6 +342,7 @@ function QuoteRequestInner() {
                     placeholder="수량"
                     value={item.qty}
                     onChange={(e) => updateItem(i, 'qty', e.target.value)}
+                    className="quote-item-qty"
                     style={styles.itemInput}
                   />
                   <input
@@ -337,10 +350,12 @@ function QuoteRequestInner() {
                     placeholder="단위"
                     value={item.unit}
                     onChange={(e) => updateItem(i, 'unit', e.target.value)}
+                    className="quote-item-unit"
                     style={styles.itemInput}
                   />
                   <button
                     type="button"
+                    className="quote-item-del"
                     style={styles.itemDel}
                     onClick={() => removeItemRow(i)}
                     disabled={items.length === 1}
@@ -361,9 +376,9 @@ function QuoteRequestInner() {
                 <div style={styles.field}>
                   <label style={styles.label}>희망 배송일</label>
                   <input
-                    type="text"
+                    type="date"
                     style={styles.input}
-                    placeholder="예) 2026.09.09 (화) 오전"
+                    min={todayDateString()}
                     value={desiredDate}
                     onChange={(e) => setDesiredDate(e.target.value)}
                   />
@@ -477,7 +492,7 @@ const styles: { [k: string]: React.CSSProperties } = {
   eyebrow: { fontSize: 13, color: colors.navy, fontWeight: 700, marginBottom: 8 },
   h1: { fontSize: 23, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, margin: 0 },
   headP: { marginTop: 8, color: colors.muted, fontSize: 14 },
-  layout: { display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32, paddingBottom: 90, alignItems: 'start' },
+  layout: { paddingBottom: 90, alignItems: 'start' },
   card: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: 26, marginBottom: 16 },
   cardH3: { fontSize: 16, marginBottom: 4, fontFamily: "'Noto Serif KR', serif", color: colors.deep },
   cardH4: { fontSize: 14, marginBottom: 14, fontFamily: "'Noto Serif KR', serif", color: colors.deep },
@@ -489,8 +504,8 @@ const styles: { [k: string]: React.CSSProperties } = {
   selMatch: { marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: colors.good, whiteSpace: 'nowrap' },
   selRemove: { width: 22, height: 22, borderRadius: '50%', border: `1px solid ${colors.line}`, background: colors.white, color: colors.muted, fontSize: 13, lineHeight: 1, cursor: 'pointer', flexShrink: 0 },
   selAdd: { display: 'block', textAlign: 'center', fontSize: 13, fontWeight: 700, color: colors.navy, padding: '12px 0 2px', borderTop: `1px dashed ${colors.line}`, marginTop: 6, cursor: 'pointer', textDecoration: 'none' },
-  itemRow: { display: 'grid', gridTemplateColumns: '1.6fr 0.7fr 0.7fr 32px', gap: 10, marginBottom: 10, alignItems: 'center' },
-  itemInput: { border: `1px solid ${colors.line}`, borderRadius: 6, padding: '10px 11px', fontSize: 13.5, background: colors.paper2, width: '100%' },
+  itemRow: { marginBottom: 10, alignItems: 'center' },
+  itemInput: { border: `1px solid ${colors.line}`, borderRadius: 6, padding: '10px 11px', fontSize: 13.5, background: colors.paper2, width: '100%', minWidth: 0 },
   itemDel: { width: 32, height: 32, borderRadius: 6, border: `1px solid ${colors.line}`, background: colors.white, color: colors.muted, cursor: 'pointer', fontSize: 14 },
   itemAdd: { fontSize: 13, fontWeight: 700, color: colors.navy, cursor: 'pointer', padding: '2px 0', display: 'inline-block' },
   fieldRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },

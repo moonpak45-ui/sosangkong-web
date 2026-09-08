@@ -72,8 +72,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div style={{ background: colors.paper }}>
       <div style={styles.wrap}>
-        <div style={styles.pageLayout}>
-          <div style={styles.sideMenu}>
+        <div
+          className="responsive-two-col"
+          style={{ ...styles.pageLayout, ['--rtc-cols' as string]: '210px 1fr', ['--rtc-gap' as string]: '36px' } as React.CSSProperties}
+        >
+          <div className="responsive-sidebar-divider" style={styles.sideMenu}>
             <div style={styles.brand}>관리자 콘솔</div>
             {NAV_ITEMS.map((item) => (
               <a

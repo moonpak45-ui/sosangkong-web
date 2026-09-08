@@ -208,8 +208,11 @@ export default function MyPage() {
   return (
     <div style={{ background: colors.paper }}>
       <div style={styles.wrap}>
-        <div style={styles.pageLayout}>
-          <div style={styles.sideMenu}>
+        <div
+          className="responsive-two-col"
+          style={{ ...styles.pageLayout, ['--rtc-cols' as string]: '230px 1fr', ['--rtc-gap' as string]: '36px' } as React.CSSProperties}
+        >
+          <div className="responsive-sidebar-divider" style={styles.sideMenu}>
             <div style={styles.bizCard}>
               <div style={styles.bizName}>{buyerProfile!.business_name}</div>
               <div style={styles.bizMeta}>
@@ -516,7 +519,7 @@ const colors = {
 
 const styles: { [k: string]: React.CSSProperties } = {
   wrap: { maxWidth: 1140, margin: '0 auto', padding: '0 32px' },
-  pageLayout: { display: 'grid', gridTemplateColumns: '230px 1fr', gap: 36, padding: '36px 0 90px' },
+  pageLayout: { padding: '36px 0 90px' },
   sideMenu: { borderRight: `1px solid ${colors.line}`, paddingRight: 20 },
   bizCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: 18, marginBottom: 20 },
   bizName: { fontSize: 15, fontWeight: 700 },

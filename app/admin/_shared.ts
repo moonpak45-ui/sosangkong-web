@@ -16,7 +16,7 @@ export const colors = {
 
 export const styles: { [k: string]: React.CSSProperties } = {
   wrap: { maxWidth: 1180, margin: '0 auto', padding: '0 32px' },
-  pageLayout: { display: 'grid', gridTemplateColumns: '210px 1fr', gap: 36, padding: '36px 0 90px' },
+  pageLayout: { padding: '36px 0 90px' },
   sideMenu: { borderRight: `1px solid ${colors.line}`, paddingRight: 20 },
   brand: { fontSize: 13, fontWeight: 700, color: colors.navy, marginBottom: 16, letterSpacing: 0.2 },
   menuItem: { display: 'block', padding: '10px 8px', fontSize: 14, color: colors.muted, fontWeight: 600, borderRadius: 6, textDecoration: 'none', marginBottom: 2 },

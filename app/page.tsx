@@ -61,6 +61,21 @@ export default function HomePage() {
           </div>
         </div>
 
+        <section className="cat-nav">
+          <div className="wrap cat-row">
+            {['냉동·수산', '축산', '식자재', '공산품', '배송 파트너', '전국 권역별'].map((label) => (
+              <a className="cat-item" href="/search" key={label}>
+                <div className="cat-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="8" stroke="#065A82" strokeWidth="1.6" />
+                  </svg>
+                </div>
+                <span>{label}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+
         <div className="stat-strip">
           <div className="wrap">
             <div className="stat-cell">
@@ -82,21 +97,6 @@ export default function HomePage() {
           </div>
         </div>
       </header>
-
-      <section className="cat-nav">
-        <div className="wrap cat-row">
-          {['냉동·수산', '축산', '식자재', '공산품', '배송 파트너', '전국 권역별'].map((label) => (
-            <a className="cat-item" href="/search" key={label}>
-              <div className="cat-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="8" stroke="#065A82" strokeWidth="1.6" />
-                </svg>
-              </div>
-              <span>{label}</span>
-            </a>
-          ))}
-        </div>
-      </section>
 
       <div className="ad-band">
         <div className="wrap">
@@ -477,8 +477,8 @@ const homeCss = `
   .stat-cell:last-child{border-right:none;}
   .stat-num{ font-family:'Noto Serif KR',serif;font-size:26px;font-weight:700;color:var(--amber); }
   .stat-label{ font-size:12.8px;color:#9FC3D8;margin-top:4px; }
-  .cat-nav{ background:var(--white);border-bottom:1px solid var(--line); }
-  .cat-row{ display:flex;justify-content:space-between;padding:22px 0;gap:8px; }
+  .cat-nav{ margin:8px 0 40px; }
+  .cat-row{ display:flex;justify-content:space-between;gap:8px; background:var(--white);border-radius:14px;padding:26px 20px; box-shadow:0 16px 40px rgba(5,20,40,0.25); }
   .cat-item{ display:flex;flex-direction:column;align-items:center;gap:9px;flex:1;padding:6px 4px;border-radius:8px; text-decoration:none; }
   .cat-item:hover{background:var(--paper2);}
   .cat-icon{ width:46px;height:46px;border-radius:50%;background:var(--paper2); display:flex;align-items:center;justify-content:center; }
@@ -570,5 +570,14 @@ const homeCss = `
     .cat-item{flex:0 0 30%;}
     .stat-strip .wrap{grid-template-columns:repeat(2,1fr);}
     .stat-cell:nth-child(2){border-right:none;}
+  }
+  @media (max-width:640px){
+    .cat-row{ display:grid;grid-template-columns:repeat(4,1fr);gap:18px 6px;padding:22px 14px; }
+    .cat-item{padding:2px;}
+    .cat-icon{width:44px;height:44px;}
+    .cat-item span{font-size:12px;}
+  }
+  @media (max-width:380px){
+    .cat-row{grid-template-columns:repeat(2,1fr);}
   }
 `
