@@ -330,6 +330,9 @@ export default function PartnerDashboardPage() {
             <a href="/partner/profile" style={styles.menuItem}>
               프로필 · 배송조건 관리
             </a>
+            <a href="/partner/account" style={styles.menuItem}>
+              계정 설정
+            </a>
           </div>
 
           <div>

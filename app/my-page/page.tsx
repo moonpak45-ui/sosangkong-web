@@ -244,6 +244,9 @@ export default function MyPage() {
             <a href="/my-page/profile" style={styles.menuItem}>
               사업장 정보 수정
             </a>
+            <a href="/my-page/account" style={styles.menuItem}>
+              계정 설정
+            </a>
           </div>
 
           <div>
