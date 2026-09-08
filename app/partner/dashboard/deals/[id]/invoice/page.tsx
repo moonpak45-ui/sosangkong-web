@@ -145,7 +145,13 @@ export default function DealInvoicePage() {
   const docNo = deal.id.slice(0, 8).toUpperCase()
   const dealDate = formatDate(deal.confirmed_at)
 
-  function renderCopy(variant: Variant) {
+  // deal을 클로저로 참조하지 않고 파라미터로 받음: 위 "if (!deal) return"의
+  // null 좁히기는 이 바깥 함수 스코프에만 적용되고, 중첩 함수 안에서는
+  // deal이 다시 DealDetail | null로 보여 TS가 "possibly null" 에러를 냄
+  // (Vercel 빌드에서 실제로 발생함, 로컬 dev 서버는 이 타입체크를 안 함).
+  // 파라미터로 명시적으로 전달하면 그 스코프 안에서는 확정적으로
+  // DealDetail 타입이라 이 문제가 생기지 않음.
+  function renderCopy(variant: Variant, deal: DealDetail) {
     const subtitle = variant === 'receiver' ? '(공급받는자용)' : '(공급자용)'
     const screenHidden = screenView !== variant
 
@@ -364,8 +370,8 @@ export default function DealInvoicePage() {
       </div>
 
       <div data-print-target={printTarget}>
-        {renderCopy('receiver')}
-        {renderCopy('supplier')}
+        {renderCopy('receiver', deal)}
+        {renderCopy('supplier', deal)}
       </div>
     </div>
   )
