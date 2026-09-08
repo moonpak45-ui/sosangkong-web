@@ -27,11 +27,13 @@ function SearchPageInner() {
   const searchParams = useSearchParams()
 
   const initialCategory = searchParams.get('category') || ''
-  const initialRegion = searchParams.get('region') || searchParams.get('q') || ''
+  const initialRegion = searchParams.get('region') || ''
+  const initialKeyword = searchParams.get('q') || ''
 
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryInput, setCategoryInput] = useState(initialCategory)
   const [regionInput, setRegionInput] = useState(initialRegion)
+  const [keyword] = useState(initialKeyword)
 
   const [results, setResults] = useState<PartnerRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,7 +68,7 @@ function SearchPageInner() {
   }, [])
 
   // 검색 실행
-  async function runSearch(category: string, region: string) {
+  async function runSearch(category: string, region: string, keywordText: string) {
     setLoading(true)
 
     let query = supabase
@@ -76,6 +78,10 @@ function SearchPageInner() {
 
     if (region.trim()) {
       query = query.ilike('region', `%${region.trim()}%`)
+    }
+
+    if (keywordText.trim()) {
+      query = query.ilike('name', `%${keywordText.trim()}%`)
     }
 
     // 카테고리가 선택된 경우, partner_categories 매핑을 통해 필터링
@@ -123,7 +129,7 @@ function SearchPageInner() {
   }
 
   useEffect(() => {
-    runSearch(initialCategory, initialRegion)
+    runSearch(initialCategory, initialRegion, initialKeyword)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -132,8 +138,9 @@ function SearchPageInner() {
     const params = new URLSearchParams()
     if (categoryInput) params.set('category', categoryInput)
     if (regionInput) params.set('region', regionInput)
+    if (keyword) params.set('q', keyword)
     router.push(`/search?${params.toString()}`)
-    runSearch(categoryInput, regionInput)
+    runSearch(categoryInput, regionInput, keyword)
   }
 
   const visibleResults = results
@@ -147,7 +154,7 @@ function SearchPageInner() {
     <div style={{ background: colors.paper, minHeight: '70vh' }}>
       <div style={styles.searchBarWrap}>
         <div style={styles.wrap}>
-          <form onSubmit={handleSearchSubmit} style={styles.searchBar}>
+          <form onSubmit={handleSearchSubmit} className="search-bar-grid" style={styles.searchBar}>
             <div style={styles.sbField}>
               <label style={styles.sbLabel}>카테고리</label>
               <select
@@ -184,7 +191,7 @@ function SearchPageInner() {
         <div style={styles.resultSummary}>
           <div>
             <h1 style={styles.h1}>
-              {categoryInput || '전체 카테고리'} {regionInput && `· ${regionInput}`} 검색결과
+              {[keyword, categoryInput, regionInput].filter(Boolean).join(' · ') || '전체 카테고리'} 검색결과
             </h1>
             <div style={styles.rSub}>
               조건에 맞는 업체 <b style={{ color: colors.navy }}>{visibleResults.length}곳</b>을 찾았어요
@@ -192,9 +199,12 @@ function SearchPageInner() {
           </div>
         </div>
 
-        <div style={styles.layout}>
+        <div
+          className="responsive-two-col"
+          style={{ ...styles.layout, ['--rtc-cols' as string]: '230px 1fr', ['--rtc-gap' as string]: '28px' } as React.CSSProperties}
+        >
           {/* 필터 사이드바 */}
-          <div style={styles.filterPanel}>
+          <div className="search-filter-panel" style={styles.filterPanel}>
             <div style={styles.filterGroup}>
               <div style={styles.filterTitle}>신뢰도</div>
               <label style={styles.checkRow}>
@@ -247,7 +257,7 @@ function SearchPageInner() {
 
             {!loading &&
               visibleResults.map((p) => (
-                <div key={p.id} style={styles.resultCard}>
+                <div key={p.id} className="search-result-card" style={styles.resultCard}>
                   <input
                     type="checkbox"
                     checked={selectedIds.has(p.id)}
@@ -333,16 +343,13 @@ const styles: { [k: string]: React.CSSProperties } = {
     background: colors.white,
     borderRadius: 10,
     padding: '16px 18px',
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr auto',
-    gap: 12,
     alignItems: 'end',
     boxShadow: '0 14px 30px rgba(5,20,40,0.25)',
   },
-  sbField: { display: 'flex', flexDirection: 'column', gap: 4 },
+  sbField: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   sbLabel: { fontSize: 10.5, color: colors.muted, fontWeight: 700 },
-  sbSelect: { border: 'none', background: 'none', fontSize: 14, color: colors.ink, fontWeight: 600, padding: 0 },
-  sbInput: { border: 'none', background: 'none', fontSize: 14, color: colors.ink, fontWeight: 600, padding: 0 },
+  sbSelect: { border: 'none', background: 'none', fontSize: 14, color: colors.ink, fontWeight: 600, padding: 0, minWidth: 0, width: '100%' },
+  sbInput: { border: 'none', background: 'none', fontSize: 14, color: colors.ink, fontWeight: 600, padding: 0, minWidth: 0, width: '100%' },
   sbBtn: {
     background: colors.amber,
     color: colors.deep,
@@ -357,19 +364,17 @@ const styles: { [k: string]: React.CSSProperties } = {
   resultSummary: { padding: '20px 0 4px' },
   h1: { fontSize: 19, color: colors.deep },
   rSub: { fontSize: 12.8, color: colors.muted, marginTop: 6 },
-  layout: { display: 'grid', gridTemplateColumns: '230px 1fr', gap: 28, padding: '22px 0 90px', alignItems: 'start' },
+  layout: { padding: '22px 0 90px', alignItems: 'start' },
   filterPanel: {
     background: colors.white,
     border: `1px solid ${colors.line}`,
     borderRadius: 10,
     padding: 20,
-    position: 'sticky',
-    top: 20,
   },
   filterGroup: { paddingBottom: 18, marginBottom: 18, borderBottom: `1px solid ${colors.paper2}` },
   filterTitle: { fontSize: 13.5, fontWeight: 700, marginBottom: 12 },
   checkRow: { display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.3, color: colors.ink, cursor: 'pointer' },
-  listToolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  listToolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', rowGap: 10 },
   sortSelect: {
     border: `1px solid ${colors.line}`,
     borderRadius: 7,
@@ -384,9 +389,6 @@ const styles: { [k: string]: React.CSSProperties } = {
     borderRadius: 10,
     padding: '20px 22px',
     marginBottom: 14,
-    display: 'grid',
-    gridTemplateColumns: 'auto auto 1fr auto auto',
-    gap: 20,
     alignItems: 'center',
   },
   rcIcon: {
