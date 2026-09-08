@@ -114,7 +114,7 @@ export default function Header() {
           </svg>
         </button>
 
-        <nav style={styles.nav}>
+        <nav className="header-nav" style={styles.nav}>
           {session ? (
             <>
               <a href="/notifications" style={styles.bellLink} aria-label="알림함">

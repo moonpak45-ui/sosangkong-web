@@ -72,6 +72,17 @@ body {
     gap: 12px !important;
     padding-left: 16px !important;
     padding-right: 16px !important;
+    flex-wrap: wrap;
+  }
+  /* Logged-in nav (bell + role link + logout) doesn't fit next to the logo
+     and search toggle on one row once a role's label is long enough (e.g.
+     "공급업체 마이페이지"). margin-left:auto (not a forced flex-basis:100%)
+     keeps it right-aligned whether flex-wrap keeps it on line 1 (short
+     labels like "마이페이지") or drops it to its own line 2 (long labels) -
+     it only wraps when it genuinely doesn't fit, instead of every role
+     always paying for two rows. */
+  .header-nav {
+    margin-left: auto;
   }
 }
 
@@ -160,6 +171,20 @@ body {
 @media (max-width: 640px) {
   .mobile-tabbar {
     display: flex;
+  }
+}
+
+/* /partner/dashboard: 정산 요약 카드 4개 (다음 정산 예정액 / 이번 달 확정 거래액 /
+   이번 달 수수료 합계 / 누적 정산 완료액). Bare repeat(4, 1fr) forces each card to
+   its label's content-based min-width, pushing the page wider than the
+   viewport on mobile instead of wrapping - same class of bug as
+   .responsive-two-col above. */
+.partner-stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 640px) {
+  .partner-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

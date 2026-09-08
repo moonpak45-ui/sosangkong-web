@@ -302,8 +302,11 @@ export default function PartnerDashboardPage() {
   return (
     <div style={{ background: colors.paper }}>
       <div style={styles.wrap}>
-        <div style={styles.pageLayout}>
-          <div style={styles.sideMenu}>
+        <div
+          className="responsive-two-col"
+          style={{ ...styles.pageLayout, ['--rtc-cols' as string]: '230px 1fr', ['--rtc-gap' as string]: '36px' } as React.CSSProperties}
+        >
+          <div className="responsive-sidebar-divider" style={styles.sideMenu}>
             <div style={styles.bizCard}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <span style={styles.bizName}>{partner!.name}</span>
@@ -512,7 +515,7 @@ export default function PartnerDashboardPage() {
             </div>
             <div style={styles.sectionSub}>거래 확정 시 자동으로 생성된 정산 내역입니다.</div>
 
-            <div style={styles.statsGrid}>
+            <div className="partner-stats-grid" style={styles.statsGrid}>
               <div style={styles.statCard}>
                 <div style={styles.statLabel}>다음 정산 예정액</div>
                 <div style={styles.statValue}>{nextSettlementAmount.toLocaleString('ko-KR')}원</div>
@@ -603,7 +606,7 @@ const colors = {
 
 const styles: { [k: string]: React.CSSProperties } = {
   wrap: { maxWidth: 1180, margin: '0 auto', padding: '0 32px' },
-  pageLayout: { display: 'grid', gridTemplateColumns: '230px 1fr', gap: 36, padding: '36px 0 90px' },
+  pageLayout: { padding: '36px 0 90px' },
   sideMenu: { borderRight: `1px solid ${colors.line}`, paddingRight: 20 },
   bizCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: 18, marginBottom: 20 },
   bizName: { fontSize: 15, fontWeight: 700 },
@@ -641,7 +644,7 @@ const styles: { [k: string]: React.CSSProperties } = {
   th: { background: colors.paper2, fontSize: 12.5, color: colors.muted, fontWeight: 700, padding: '12px 16px', textAlign: 'left' },
   td: { padding: '14px 16px', fontSize: 13.5, borderTop: `1px solid ${colors.paper2}` },
   htag: { fontSize: 11.5, fontWeight: 700, padding: '4px 9px', borderRadius: 12 },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 },
+  statsGrid: { display: 'grid', gap: 14, marginBottom: 22 },
   statCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: '18px 20px' },
   statLabel: { fontSize: 12, color: colors.muted, fontWeight: 600, marginBottom: 8 },
   statValue: { fontSize: 19, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep },
