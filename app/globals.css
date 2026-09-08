@@ -232,16 +232,35 @@ body {
   }
 }
 
-/* 공급자용/공급받는자용 두 장을 항상 DOM에 함께 두고, 화면에서도 그대로
-   세로로 나열해서 보여줌. 인쇄 시에는 두 장 사이에 강제 페이지 분리를 줘서
-   버튼 1번으로 A4 2매가 항상 함께 출력되도록 함. */
+/* 공급자용/공급받는자용 두 장을 A4 1장 안에 위/아래로 함께 넣음(절취선
+   .invoice-cut-line으로 구분, page-break 없음 - 항상 1페이지 출력).
+   표/정보박스/정산요약 폰트·padding은 화면·인쇄 공용으로 이미 컴포넌트
+   inline style에서 작게 잡혀 있음(half-page 안에 15행 품목표가 들어가야
+   하므로 화면에서도 같은 압축 스타일을 씀). 여기서는 인쇄 시에만 카드
+   장식(여백/테두리/그림자)과 제목 크기를 한 번 더 줄여서 실제 인쇄 가능
+   영역을 최대한 확보함 - 이 두 가지만 화면/인쇄가 다름. */
 @media print {
-  .invoice-page-break {
-    page-break-after: always;
+  .invoice-page-sheet {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  .invoice-title {
+    font-size: 12px !important;
+    letter-spacing: 1px !important;
+  }
+  .invoice-sheet-head {
+    margin-bottom: 1px !important;
+  }
+  .invoice-cut-line {
+    margin: 6px 0 !important;
   }
 }
 
 @page {
   size: A4;
-  margin: 15mm;
+  margin: 8mm;
 }

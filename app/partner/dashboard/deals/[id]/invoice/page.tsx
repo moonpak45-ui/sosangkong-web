@@ -150,15 +150,11 @@ export default function DealInvoicePage() {
   // 그 스코프 안에서는 확정적으로 DealDetail 타입이라 문제가 생기지 않음.
   function renderCopy(variant: Variant, deal: DealDetail) {
     const subtitle = variant === 'receiver' ? '(공급받는자용)' : '(공급자용)'
-    // 인쇄 시 1페이지=공급자용, 2페이지=공급받는자용이 되도록, 먼저 나오는
-    // 공급자용 사본에만 page-break-after를 줌(globals.css 참고).
-    const className = variant === 'supplier' ? 'invoice-page-break' : undefined
 
     return (
-      <div className={className}>
-        <div style={styles.sheet}>
-          <div style={styles.sheetHead}>
-            <h1 style={styles.title}>거래명세서</h1>
+      <div style={styles.half}>
+          <div className="invoice-sheet-head" style={styles.sheetHead}>
+            <h1 className="invoice-title" style={styles.title}>거래명세서</h1>
             <div style={styles.subtitle}>{subtitle}</div>
           </div>
 
@@ -169,7 +165,7 @@ export default function DealInvoicePage() {
 
           <div
             className="responsive-two-col"
-            style={{ ...styles.partiesGrid, ['--rtc-gap' as string]: '12px' } as React.CSSProperties}
+            style={{ ...styles.partiesGrid, ['--rtc-gap' as string]: '4px' } as React.CSSProperties}
           >
             <table style={styles.infoTable}>
               <tbody>
@@ -270,7 +266,7 @@ export default function DealInvoicePage() {
                     <td style={styles.itemTd}>{li ? Number(li.unit_price).toLocaleString('ko-KR') : ''}</td>
                     <td style={styles.itemTd}>{li ? Number(li.amount).toLocaleString('ko-KR') : ''}</td>
                     <td style={styles.itemTd}>{li?.is_credit ? '외상' : ''}</td>
-                    <td style={{ ...styles.itemTd, textAlign: 'left', fontSize: 10, color: colors.muted }}>
+                    <td style={{ ...styles.itemTd, textAlign: 'left', fontSize: 6.5, color: colors.muted }}>
                       {idx === 0 ? '정산 내역은 소상공 마이페이지에서 확인 가능합니다.' : ''}
                     </td>
                   </tr>
@@ -314,7 +310,6 @@ export default function DealInvoicePage() {
               </tr>
             </tbody>
           </table>
-        </div>
       </div>
     )
   }
@@ -330,11 +325,15 @@ export default function DealInvoicePage() {
         </button>
       </div>
 
-      {/* 인쇄 시 항상 2페이지: 1페이지 공급자용, 2페이지 공급받는자용
-          (page-break는 renderCopy 안에서 공급자용 쪽에 붙임). 화면에서도
-          같은 순서로 둘 다 세로로 보여줌 - 인쇄 결과와 미리보기가 일치. */}
-      {renderCopy('supplier', deal)}
-      {renderCopy('receiver', deal)}
+      {/* A4 1장에 위(공급자용)/아래(공급받는자용) 절반씩 - 절취선(점선)으로
+          구분. 화면 미리보기도 같은 압축 스타일을 그대로 써서 인쇄 결과와
+          비율이 비슷하게 보임(별도 화면용/인쇄용 스타일 분기 없음, 단
+          바깥 카드 여백·제목 크기만 print에서 더 줄임 - globals.css 참고). */}
+      <div className="invoice-page-sheet" style={styles.pageSheet}>
+        {renderCopy('supplier', deal)}
+        <div className="invoice-cut-line" style={styles.cutLine} />
+        {renderCopy('receiver', deal)}
+      </div>
     </div>
   )
 }
@@ -377,72 +376,78 @@ const styles: { [k: string]: React.CSSProperties } = {
     fontWeight: 700,
     cursor: 'pointer',
   },
-  sheet: {
+  pageSheet: {
     maxWidth: 800,
     margin: '20px auto 40px',
     background: colors.white,
     border: `1px solid ${colors.line}`,
     borderRadius: 4,
-    padding: '36px 40px',
+    padding: '14px 20px',
     boxShadow: '0 8px 30px rgba(10,30,61,0.08)',
   },
-  sheetHead: { textAlign: 'center', marginBottom: 6 },
-  title: { fontSize: 24, fontFamily: "'Noto Serif KR', serif", fontWeight: 700, color: colors.deep, margin: 0, letterSpacing: 6 },
-  subtitle: { fontSize: 12.5, color: colors.muted, marginTop: 4 },
+  half: {},
+  cutLine: { borderTop: '1px dashed #999', margin: '10px 0', height: 0 },
+  sheetHead: { textAlign: 'center', marginBottom: 3 },
+  title: { fontSize: 15, fontFamily: "'Noto Serif KR', serif", fontWeight: 700, color: colors.deep, margin: 0, letterSpacing: 3 },
+  subtitle: { fontSize: 8, color: colors.muted, marginTop: 1 },
   docNoRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontSize: 12,
+    fontSize: 7.5,
     color: colors.muted,
-    margin: '16px 0 14px',
-    paddingBottom: 8,
+    margin: '4px 0',
+    paddingBottom: 2,
     borderBottom: `1px solid ${colors.line}`,
   },
-  partiesGrid: { marginBottom: 16 },
-  infoTable: { width: '100%', borderCollapse: 'collapse', border: `1.5px solid ${colors.navy}` },
+  partiesGrid: { marginBottom: 4 },
+  infoTable: { width: '100%', borderCollapse: 'collapse', border: `1px solid ${colors.navy}` },
   infoTh: {
     border: `1px solid ${colors.navy}`,
     background: colors.paper2,
-    fontSize: 11.5,
+    fontSize: 7,
     color: colors.navy,
     fontWeight: 700,
-    padding: '6px 8px',
+    padding: '1px 3px',
     textAlign: 'center',
     whiteSpace: 'nowrap',
+    lineHeight: 1.2,
   },
-  infoTd: { border: `1px solid ${colors.navy}`, fontSize: 12, padding: '6px 8px', textAlign: 'center' },
-  itemTable: { width: '100%', borderCollapse: 'collapse', marginBottom: 14, border: `1.5px solid ${colors.navy}` },
+  infoTd: { border: `1px solid ${colors.navy}`, fontSize: 7, padding: '1px 3px', textAlign: 'center', lineHeight: 1.2 },
+  itemTable: { width: '100%', borderCollapse: 'collapse', marginBottom: 3, border: `1px solid ${colors.navy}` },
   itemTh: {
     border: `1px solid ${colors.navy}`,
     background: colors.paper2,
-    fontSize: 11,
+    fontSize: 7.5,
     color: colors.navy,
     fontWeight: 700,
-    padding: '7px 6px',
+    padding: '1.5px 2px',
     textAlign: 'center',
     whiteSpace: 'nowrap',
+    lineHeight: 1.15,
   },
-  itemTd: { border: `1px solid ${colors.navy}`, fontSize: 11.5, padding: '6px 6px', textAlign: 'center' },
+  itemTd: { border: `1px solid ${colors.navy}`, fontSize: 7.5, padding: '1.5px 2px', textAlign: 'center', lineHeight: 1.15 },
   itemTdTotal: {
     border: `1px solid ${colors.navy}`,
-    fontSize: 11.5,
-    padding: '6px 6px',
+    fontSize: 7.5,
+    padding: '1.5px 2px',
     textAlign: 'center',
     fontWeight: 700,
     background: colors.paper2,
+    lineHeight: 1.15,
   },
-  summaryTable: { width: '100%', borderCollapse: 'collapse', border: `1.5px solid ${colors.navy}` },
+  summaryTable: { width: '100%', borderCollapse: 'collapse', border: `1px solid ${colors.navy}` },
   summaryTh: {
     border: `1px solid ${colors.navy}`,
     background: colors.paper2,
-    fontSize: 12,
+    fontSize: 7.5,
     color: colors.navy,
     fontWeight: 700,
-    padding: '9px 10px',
+    padding: '2px 5px',
     textAlign: 'center',
     width: '18%',
+    lineHeight: 1.2,
   },
-  summaryTd: { border: `1px solid ${colors.navy}`, fontSize: 13, padding: '9px 10px', textAlign: 'right' },
+  summaryTd: { border: `1px solid ${colors.navy}`, fontSize: 8, padding: '2px 5px', textAlign: 'right', lineHeight: 1.2 },
   btnPrimary: {
     background: colors.amber,
     color: colors.deep,

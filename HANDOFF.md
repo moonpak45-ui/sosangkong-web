@@ -216,32 +216,51 @@ fallback합니다(이 앱 전체에서 쓰는 관례).
 양식에 맞춰 완전히 다시 만들었습니다. 이전 버전 코드는 남아있지 않고
 완전히 대체됨.
 
-**공급자용/공급받는자용 두 장, 인쇄 버튼 1개로 항상 2매 출력 (v3에서 단순화)**
+**공급자용/공급받는자용 두 장, 인쇄 버튼 1개로 A4 "1장" 안에 위/아래로
+출력 (v4에서 재작업)**
 
-최초 v2는 화면 토글 + 인쇄 3버튼("공급받는자용 인쇄"/"공급자용 인쇄"/
-"둘 다 인쇄") 구조였는데, 사용성 문제로 v3에서 다음처럼 단순화함:
+v2(화면 토글 + 인쇄 3버튼)를 v3에서 "버튼 1개, 항상 2페이지"로 단순화했다가,
+v4에서 다시 "버튼 1개, 항상 A4 1페이지(위=공급자용/아래=공급받는자용,
+점선 절취선으로 구분)"로 바꿈 — 인쇄용지를 반으로 잘라 각자 보관하는
+현장 워크플로우에 맞춘 요청.
 
-- 두 "사본"(`renderCopy('supplier' | 'receiver', deal)`)을 항상 DOM에
-  순서대로(공급자용 → 공급받는자용) 렌더링 — 화면에도 둘 다 세로로 나열되어
-  보이고(토글 없음), 인쇄도 항상 둘 다 나감. 데이터는 완전히 동일하고
-  부제(`(공급자용)`/`(공급받는자용)`)만 다름.
-- 버튼은 "인쇄하기" 1개, `onClick={() => window.print()}`뿐 — state 조작
-  없음(어차피 항상 둘 다 렌더링/인쇄되므로 클릭 전 준비 단계가 불필요해짐).
-- 공급자용 사본의 래퍼에 `.invoice-page-break` 클래스만 붙이고, CSS는
-  `app/globals.css`에 다음 한 줄로 축소(예전의 `.screen-hidden`/
-  `data-print-target`/`.invoice-copy-*` 조건부 표시 로직은 전부 제거):
-  ```css
-  @media print {
-    .invoice-page-break { page-break-after: always; }
-  }
-  ```
-  이제 화면 미리보기와 인쇄 결과가 항상 일치함(예전엔 화면에 보이는 사본과
-  인쇄되는 사본이 버튼 선택에 따라 달라질 수 있었음).
-- **주의**: `page-break-after: always`가 실제 프린터/PDF 출력에서 정확히
-  A4 2매로 나뉘는지는 Playwright의 `emulateMedia({ media: 'print' })` +
-  `getComputedStyle`로는 CSS 규칙이 계산되는 것까지만 확인 가능하고, 실제
-  페이지네이션(진짜 인쇄물/PDF)은 헤드리스 브라우저로 검증 불가 — 코드 상
-  올바른 CSS가 적용됨을 확인한 수준.
+- 두 "사본"(`renderCopy('supplier' | 'receiver', deal)`)을 여전히 항상 DOM에
+  순서대로(공급자용 → 공급받는자용) 렌더링하지만, 이제 `page.pageSheet`
+  카드 하나 안에 `.invoice-cut-line`(점선 `border-top`) 하나만 사이에 두고
+  이어붙임 - `page-break`류 CSS 전혀 없음(예전 v3의 `.invoice-page-break`도
+  제거됨). 버튼은 여전히 "인쇄하기" 1개, `onClick={() => window.print()}`뿐.
+- **A4 1장 안에 두 사본을 다 넣기 위해 표/정보박스/정산요약을 큰 폭으로
+  압축**함. 화면 미리보기도 같은 스타일을 그대로 쓰므로(표 폰트·padding에
+  print 전용 분기 없음) 미리보기가 실제 인쇄 결과와 거의 동일하게 보임.
+  대략적인 폰트 크기: 품목 표 7.5px(셀 padding 1.5px/2px), 정보박스
+  7px(padding 1px/3px), 정산요약 7.5~8px(padding 2px/5px), 제목("거래명세서")
+  15px(화면) / 12px(인쇄, `.invoice-title`에 `@media print` 오버라이드).
+- `@page` 여백을 `15mm → 8mm`로 줄임(`app/globals.css`).
+- **화면/인쇄 공용 vs 인쇄 전용 스타일을 분리한 지점**: 표·정보박스·정산요약
+  폰트/padding은 컴포넌트 inline style에 직접 압축 값을 넣어 화면·인쇄
+  공용으로 씀(그래야 미리보기가 인쇄와 비슷해짐). 반면 카드 바깥 장식
+  (`pageSheet`의 margin/padding/border/box-shadow)과 제목 크기만은 화면에서
+  보기 좋은 값을 쓰고, `app/globals.css`의 `@media print`에서
+  `.invoice-page-sheet`/`.invoice-title`/`.invoice-sheet-head`/
+  `.invoice-cut-line` 클래스에 `!important`로 한 번 더 줄임 - 이 프로젝트의
+  기존 관례(inline style이 항상 이기므로, 매체별로 달라져야 하는 값만
+  inline에서 빼고 클래스+미디어쿼리로 처리)를 그대로 따름.
+- **실제로 A4 1장에 들어가는지 검증한 방법**: 이 프로젝트엔 Playwright 같은
+  브라우저 자동화 도구가 기본 설치돼 있지 않아서, 이번엔 `npm install
+  --no-save puppeteer-core`로 이미 설치돼 있던 로컬 Chrome을 CDP로 직접
+  띄워 실제 로그인(test4@email.com) → `/partner/dashboard/deals/
+  37dbc5d5-.../invoice` 접속 → `page.emulateMediaType('print')` +
+  `page.pdf({ preferCSSPageSize: true })`로 **실제 인쇄 렌더링 PDF를
+  생성**해서 확인함(단순 `getComputedStyle` 확인보다 한 단계 더 신뢰도
+  높은 검증 - 실제 페이지네이션 엔진을 탄 결과). PDF의 `/Pages` 트리
+  `/Count` 값이 1임을 코드로 재확인, `Read` 툴로 PDF 내용도 직접
+  눈으로 확인함 - 품목 3개 실데이터 + 15행까지 빈 행 패딩 + 합계 행까지
+  전부 한 페이지(위: 공급자용, 아래: 공급받는자용, 점선 구분) 안에 정상
+  출력됨. 측정된 사본 1개 높이는 인쇄 모드 기준 약 100mm로, 사용 가능한
+  절반 영역(약 140.5mm, `(297-2*8)/2`)에 여유(약 40mm)를 남기고 들어감 -
+  실제 품목이 더 많거나 이름이 길어져도 어느 정도 여유가 있음. 검증에 쓴
+  puppeteer-core는 확인 후 다시 제거함(`package.json`에 반영 안 됨, 앱
+  런타임 의존성 아님).
 
 **정보 박스**: 공급자/공급받는자 각각 `<table>`(사업자번호/상호·성명/주소/
 연락처, 공급받는자는 성명·담당자·연락처까지) 형태로, 남색(`colors.navy`)
@@ -298,9 +317,10 @@ contact_name`(유일하게 있는 이름 필드)을 그대로 사용 — 스펙�
 `@media print`로 `header`/`footer`/`.mobile-tabbar`/`.invoice-no-print`를
 전역으로 숨김(Header/Footer/MobileTabBar가 루트 레이아웃에서 모든 페이지에
 렌더링되기 때문 — 페이지 단위로 숨기는 방법이 마땅치 않아 전역 규칙으로
-처리함. 인쇄 대상이 늘어나면 재검토 필요). `@page { size: A4; margin:
-15mm; }`로 용지 규격 고정. 위에서 설명한 `.screen-hidden`/`.invoice-copy`
-규칙도 같은 블록에 있음.
+처리함. 인쇄 대상이 늘어나면 재검토 필요). `@page { size: A4; margin: 8mm; }`
+로 용지 규격·여백 고정(v4에서 15mm → 8mm로 축소, 위 v4 섹션 참고). 위에서
+설명한 `.invoice-page-sheet`/`.invoice-title`/`.invoice-sheet-head`/
+`.invoice-cut-line`의 `@media print` 오버라이드 규칙도 같은 블록에 있음.
 
 ### 이번 단계에서 하지 않은 것 (스펙에서 명시적으로 제외됨)
 
