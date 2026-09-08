@@ -630,13 +630,12 @@ admins/page.tsx`의 `createAdmin()`): 이 프로젝트는 service role key가
 대신 `identities: []`인 가짜 user를 돌려주는 경우 포함) "이미 가입된
 이메일이거나 계정 생성에 실패했습니다" 에러로 처리함.
 
-**⚠ 알아두면 좋은 기존 구멍(이번에 만든 건 아니고, 이번 작업 중 발견함)**:
-`users_insert_own` 정책(`with check (id = auth.uid())`)은 `role` 값 자체를
-검증하지 않음 - 즉 이론적으로는 아무나 회원가입 시 자기 `users` 행의
-`role`을 `'admin'`으로 직접 보내도 RLS가 막지 못함(지금까지 실제로 이
-경로로 악용된 적은 없어 보이지만, `role` 컬럼에 check 제약이나 트리거로
-"본인이 스스로 admin이 될 수 없다"를 강제하는 게 더 안전함 - 이번 작업
-범위 밖이라 손대지 않았고, 여기 기록만 남김).
+**⚠ → 이후 수정 완료.** `users_insert_own` 정책이 `role` 값을 전혀
+검증하지 않아서 회원가입 시 아무나 자기 `users` 행의 `role`을
+`'admin'`으로 직접 보낼 수 있는 구멍이 있었음(위 문단에서 발견 당시엔
+"기록만 남김, 손대지 않음"으로 남겨뒀었음). 바로 다음 요청으로 막음 -
+자세한 내용은 아래 "users 회원가입 자가등록 role 스푸핑 구멍 수정"
+섹션 참고.
 
 **실제 로그인으로 검증한 것** (test3@test.com=super_admin,
 subadmin-test@test.com=sub_admin, 둘 다 위 표 참고):
@@ -654,12 +653,53 @@ subadmin-test@test.com=sub_admin, 둘 다 위 표 참고):
 - super_admin의 "중급으로"/"최고로" 역할 전환 버튼도 실제로 admin_role이
   바뀌는 것까지 확인(테스트 후 sub_admin으로 원복해둠).
 
+## users 회원가입 자가등록 role 스푸핑 구멍 수정
+
+"관리자 콘솔 3건" 작업 중 발견하고 기록만 해뒀던 구멍("다음에 할 만한
+것"에 있었음)을 바로 다음 요청으로 막음. 두 차례 마이그레이션이 필요했음
+- 원인이 한 겹 더 있었기 때문.
+
+**1차 시도 (`20260908140000_fix_users_insert_own_role_check.sql`)**:
+`users_insert_own` 정책의 `with check`를 `id = auth.uid()`에서
+`id = auth.uid() and role in ('buyer', 'partner')`로 강화. 실행 직후
+REST API로 직접 재현 테스트했더니 **여전히 role:'admin' self-insert가
+뚫림**(201 성공) - 정책을 고쳤는데도 왜 뚫리는지 바로 알 수 없어서,
+사용자에게 `pg_policy` 시스템 카탈로그를 직접 조회해달라고 요청함
+(Claude는 service role key가 없어 `information_schema`/`pg_policy`를
+직접 조회할 수 없음 - 이 프로젝트에서 반복되는 제약).
+
+**진짜 원인**: 사용자가 `pg_policy` 조회 결과를 보고 찾아냄 - `users`
+테이블에 이 리포의 어떤 마이그레이션 파일에도 기록되지 않은, 한글 이름의
+**중복 INSERT 정책 `"본인 회원 정보 등록"`**이 남아 있었고, 그
+`with_check`가 `auth.uid() = id`뿐이라 role을 전혀 검증하지 않았음. RLS는
+같은 커맨드에 여러 PERMISSIVE 정책이 있으면 그중 하나만 통과해도 되므로
+(OR 결합), `users_insert_own`을 아무리 강화해도 이 정책이 계속 무제한으로
+통과시켜줬던 것. 이 정책의 존재는 `20260907050000`/`20260908130000` 등
+기존 마이그레이션 작성 당시 완전히 놓쳤던 것 - "이 리포의 마이그레이션
+파일 = 실제 DB 스키마의 100% 정확한 기록이 아님"이라는 문서 맨 위 경고가
+**컬럼뿐 아니라 정책(policy)에도 똑같이 적용된다**는 걸 보여준 사례.
+
+**2차 수정 (`20260908150000_drop_duplicate_users_insert_policy.sql`)**:
+`drop policy if exists "본인 회원 정보 등록" on users;` 한 줄로 그 중복
+정책을 제거. 같은 기능(본인 id로 self-insert)은 이미 `users_insert_own`이
+role 검증까지 포함해서 수행하므로 기능 손실 없음.
+
+**검증**: REST API 직접 호출로 4가지 시나리오 확인 -
+role:'admin' self-insert → **403 차단**(수정 전엔 201로 뚫렸었음),
+role:'buyer'/'partner' self-insert → 정상 201, 남의 id로 insert 시도 →
+403 차단. 추가로 실제 화면(`/login`의 회원가입 탭)에서 소상공인 회원가입을
+끝까지 진행해서 가입 후 정상 로그인 상태(마이페이지/로그아웃 헤더)까지
+되는 것도 확인 - 기존 정상 가입 플로우에 영향 없음.
+
+**교훈**: `pg_policy`(또는 `information_schema`) 직접 조회는 Claude가
+서비스 키 없이는 못 하는 영역이지만, 사용자가 Supabase 대시보드에서
+대신 조회해주면 이런 "리포에 기록되지 않은 상태" 문제를 훨씬 빨리 찾을 수
+있음 - RLS 정책이 기대대로 동작하지 않을 때는 추측으로 정책을 계속
+고치기보다 이 방법을 먼저 써볼 것.
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
 - ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
   선택/월별 필터링 같은 `/partner/ledger` 사용성 개선
 - 카카오 알림톡 발송 연동 (유료 addon, 매출 발생 이후 예정)
 - `category_attribute_defs` 실제 스키마에 맞춘 관리 UI (보류 중)
-- `users_insert_own` 정책에 `role` 값 검증 추가 - 지금은 회원가입 시
-  누구나 자기 `role`을 `'admin'`으로 직접 보낼 수 있는 구멍이 있음(위
-  "관리자 콘솔 3건" 섹션 참고, 이번 작업 범위 밖이라 손 안 댐)
