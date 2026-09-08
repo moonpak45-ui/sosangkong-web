@@ -18,6 +18,14 @@ export default function AdminCategoriesPage() {
   const [addingCategory, setAddingCategory] = useState(false)
   const [categoryError, setCategoryError] = useState('')
 
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState('')
+
   const [newAttrName, setNewAttrName] = useState('')
   const [newAttrRequired, setNewAttrRequired] = useState(false)
   const [addingAttr, setAddingAttr] = useState(false)
@@ -64,7 +72,9 @@ export default function AdminCategoriesPage() {
     setAddingCategory(true)
     const { data, error } = await supabase
       .from('categories')
-      .insert({ name: newCategoryName.trim() })
+      // group_type은 관리자 화면에 별도 입력이 없고, 지금까지 등록된 카테고리가
+      // 전부 'goods_supply'라 그 값을 그대로 씀.
+      .insert({ name: newCategoryName.trim(), group_type: 'goods_supply' })
       .select('id, name')
       .single()
     setAddingCategory(false)
@@ -77,6 +87,66 @@ export default function AdminCategoriesPage() {
     setCategories((prev) => [...prev, data as CategoryRow].sort((a, b) => a.name.localeCompare(b.name)))
     setNewCategoryName('')
     setSelectedId(data.id)
+  }
+
+  function startEditCategory(c: CategoryRow) {
+    setEditingId(c.id)
+    setEditingName(c.name)
+    setEditError('')
+  }
+
+  function cancelEditCategory() {
+    setEditingId(null)
+    setEditingName('')
+    setEditError('')
+  }
+
+  async function saveEditCategory(id: string) {
+    setEditError('')
+    if (!editingName.trim()) {
+      setEditError('카테고리명을 입력해주세요.')
+      return
+    }
+
+    setSavingEdit(true)
+    const { error } = await supabase.from('categories').update({ name: editingName.trim() }).eq('id', id)
+    setSavingEdit(false)
+
+    if (error) {
+      setEditError('수정 중 오류가 발생했습니다: ' + error.message)
+      return
+    }
+
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, name: editingName.trim() } : c)).sort((a, b) => a.name.localeCompare(b.name))
+    )
+    setEditingId(null)
+    setEditingName('')
+  }
+
+  async function deleteCategory(id: string) {
+    if (!window.confirm('정말 이 카테고리를 삭제하시겠습니까? 삭제 후에는 되돌릴 수 없습니다.')) return
+
+    setDeleteError('')
+    setDeletingId(id)
+    const { error } = await supabase.from('categories').delete().eq('id', id)
+    setDeletingId(null)
+
+    if (error) {
+      // 23503 = foreign_key_violation: 이미 partner_categories/quote_requests 등에서
+      // 참조 중인 카테고리라 DB가 삭제를 막은 경우
+      if (error.code === '23503') {
+        setDeleteError('사용 중인 카테고리는 삭제할 수 없습니다. 이미 등록된 업체나 견적요청이 있어요.')
+      } else {
+        setDeleteError('삭제 중 오류가 발생했습니다: ' + error.message)
+      }
+      return
+    }
+
+    setCategories((prev) => prev.filter((c) => c.id !== id))
+    if (selectedId === id) {
+      setSelectedId(null)
+    }
   }
 
   async function addAttributeDef() {
@@ -125,28 +195,82 @@ export default function AdminCategoriesPage() {
             <div style={{ fontSize: 13, fontWeight: 700, color: colors.deep, marginBottom: 12 }}>
               카테고리 ({categories.length})
             </div>
+            {(editError || deleteError) && (
+              <div style={{ ...styles.errorBox, marginBottom: 10 }}>{editError || deleteError}</div>
+            )}
             {categories.length === 0 ? (
               <p style={{ fontSize: 13, color: colors.muted }}>등록된 카테고리가 없어요.</p>
             ) : (
               <div>
-                {categories.map((c) => (
-                  <div
-                    key={c.id}
-                    onClick={() => setSelectedId(c.id)}
-                    style={{
-                      padding: '9px 10px',
-                      borderRadius: 6,
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      marginBottom: 2,
-                      color: c.id === selectedId ? colors.deep : colors.muted,
-                      background: c.id === selectedId ? colors.paper2 : 'transparent',
-                    }}
-                  >
-                    {c.name}
-                  </div>
-                ))}
+                {categories.map((c) =>
+                  editingId === c.id ? (
+                    <div key={c.id} style={{ display: 'flex', gap: 6, padding: '4px 0', marginBottom: 2 }}>
+                      <input
+                        type="text"
+                        style={{ ...styles.input, padding: '6px 8px', fontSize: 13 }}
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        autoFocus
+                      />
+                      <button
+                        style={{ ...styles.btn, ...styles.btnPrimarySmall, padding: '6px 10px' }}
+                        onClick={() => saveEditCategory(c.id)}
+                        disabled={savingEdit}
+                      >
+                        저장
+                      </button>
+                      <button
+                        style={{ ...styles.btn, ...styles.btnOutlineSmall, padding: '6px 10px' }}
+                        onClick={cancelEditCategory}
+                        disabled={savingEdit}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      key={c.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 6,
+                        padding: '9px 10px',
+                        borderRadius: 6,
+                        marginBottom: 2,
+                        background: c.id === selectedId ? colors.paper2 : 'transparent',
+                      }}
+                    >
+                      <span
+                        onClick={() => setSelectedId(c.id)}
+                        style={{
+                          fontSize: 13.5,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          color: c.id === selectedId ? colors.deep : colors.muted,
+                          flex: 1,
+                        }}
+                      >
+                        {c.name}
+                      </span>
+                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                        <button
+                          style={{ ...styles.btn, ...styles.btnOutlineSmall, padding: '4px 8px', fontSize: 11.5 }}
+                          onClick={() => startEditCategory(c)}
+                        >
+                          수정
+                        </button>
+                        <button
+                          style={{ ...styles.btn, ...styles.btnDangerSmall, padding: '4px 8px', fontSize: 11.5 }}
+                          disabled={deletingId === c.id}
+                          onClick={() => deleteCategory(c.id)}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>
