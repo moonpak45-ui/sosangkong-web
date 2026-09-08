@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 
 type AccountType = 'buyer' | 'supplier'
+type Category = { id: string; name: string }
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,8 +24,33 @@ export default function LoginPage() {
   const [mainItems, setMainItems] = useState('')
   const [agreed, setAgreed] = useState(false)
 
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<string>>(new Set())
+
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  useEffect(() => {
+    supabase
+      .from('categories')
+      .select('id, name')
+      .order('name', { ascending: true })
+      .then(({ data }) => {
+        if (data) setCategories(data as Category[])
+      })
+  }, [])
+
+  function toggleCategory(id: string) {
+    setSelectedCategoryIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -47,6 +73,10 @@ export default function LoginPage() {
 
     if (!bizName.trim()) {
       setErrorMsg(accountType === 'buyer' ? '사업장명을 입력해주세요.' : '업체명을 입력해주세요.')
+      return
+    }
+    if (accountType === 'supplier' && selectedCategoryIds.size === 0) {
+      setErrorMsg('취급 카테고리를 최소 1개 선택해주세요.')
       return
     }
     if (!agreed) {
@@ -95,15 +125,28 @@ export default function LoginPage() {
         return
       }
     } else {
-      const { error } = await supabase.from('partners').insert({
-        user_id: userId,
-        name: bizName,
-        biz_reg_no: bizRegNo,
-        description: mainItems,
-      })
-      if (error) {
+      const { data: partnerRow, error } = await supabase
+        .from('partners')
+        .insert({
+          user_id: userId,
+          name: bizName,
+          biz_reg_no: bizRegNo,
+          description: mainItems,
+        })
+        .select('id')
+        .single()
+      if (error || !partnerRow) {
         setLoading(false)
-        setErrorMsg('업체 정보 저장 중 오류: ' + error.message)
+        setErrorMsg('업체 정보 저장 중 오류: ' + (error?.message || ''))
+        return
+      }
+
+      const { error: catError } = await supabase
+        .from('partner_categories')
+        .insert([...selectedCategoryIds].map((category_id) => ({ partner_id: partnerRow.id, category_id })))
+      if (catError) {
+        setLoading(false)
+        setErrorMsg('취급 카테고리 저장 중 오류: ' + catError.message)
         return
       }
     }
@@ -275,6 +318,27 @@ export default function LoginPage() {
                       onChange={(e) => setMainItems(e.target.value)}
                     />
                   </div>
+                  <div style={styles.field}>
+                    <label style={styles.label}>취급 카테고리 *</label>
+                    {categories.length === 0 ? (
+                      <p style={{ fontSize: 12.5, color: colors.muted }}>카테고리 목록을 불러오는 중...</p>
+                    ) : (
+                      <div style={styles.chipGroup}>
+                        {categories.map((c) => {
+                          const selected = selectedCategoryIds.has(c.id)
+                          return (
+                            <div
+                              key={c.id}
+                              onClick={() => toggleCategory(c.id)}
+                              style={{ ...styles.chip, ...(selected ? styles.chipSelected : {}) }}
+                            >
+                              {c.name}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -420,6 +484,18 @@ const styles: { [k: string]: React.CSSProperties } = {
   typeCardSel: { borderColor: colors.navy, background: colors.paper2 },
   typeTitle: { fontSize: 13.8, fontWeight: 700, color: colors.ink },
   typeSub: { fontSize: 11.5, color: colors.muted, marginTop: 4 },
+  chipGroup: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  chip: {
+    border: `1px solid ${colors.line}`,
+    borderRadius: 20,
+    padding: '8px 14px',
+    fontSize: 12.5,
+    fontWeight: 600,
+    color: colors.ink,
+    cursor: 'pointer',
+    background: colors.white,
+  },
+  chipSelected: { background: colors.deep, color: colors.white, borderColor: colors.deep },
   termsRow: { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: colors.muted, margin: '16px 0 4px' },
   link: { color: colors.navy, fontWeight: 600 },
   errorBox: {
