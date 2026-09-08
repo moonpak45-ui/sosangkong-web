@@ -151,8 +151,8 @@ export default function DealInvoicePage() {
   function renderCopy(variant: Variant, deal: DealDetail) {
     const subtitle = variant === 'receiver' ? '(공급받는자용)' : '(공급자용)'
     // 점선 구분선은 별도 엘리먼트가 아니라 위쪽(공급자용) 블록의
-    // border-bottom으로 둠 - 그래야 두 블록이 wrapper 높이(281mm)를 정확히
-    // 절반씩(140.5mm) 차지할 때 그 경계선 자체가 항상 정중앙에 옴.
+    // border-bottom으로 둠 - 그래야 두 블록이 wrapper 높이(273mm)를 정확히
+    // 절반씩(136.5mm) 차지할 때 그 경계선 자체가 항상 정중앙에 옴.
     const halfStyle = variant === 'supplier' ? { ...styles.half, ...styles.halfDivider } : styles.half
 
     return (
@@ -333,13 +333,16 @@ export default function DealInvoicePage() {
           구분. page-break 없음(1페이지 안에 다 넣는 구조). 화면 미리보기와
           인쇄 결과가 항상 같아야 하므로, 아래 모든 스타일(폰트/padding/
           컨테이너 폭)은 화면·인쇄 공용 - 별도 @media print 오버라이드 없음
-          (globals.css 참고). 컨테이너 폭도 인쇄 가능 영역 폭(194mm)에 맞춰
+          (globals.css 참고). 컨테이너 폭도 인쇄 가능 영역 폭(186mm)에 맞춰
           화면에서 보이는 줄바꿈이 인쇄에서도 그대로 재현되도록 함.
 
-          wrapper 자체를 인쇄 가능 영역 높이(297mm - 8mm*2 = 281mm)로 고정하고
-          flex-column으로 두 블록을 각각 정확히 절반(140.5mm)씩 채움 - 콘텐츠
-          실제 높이(~93mm)와 무관하게 항상 절반 지점에 점선이 오도록 함(내용은
-          블록 상단에 붙고 남는 공간은 블록 하단에 남음, 억지로 늘리지 않음). */}
+          wrapper 자체를 인쇄 가능 영역 높이(297mm - 12mm*2 = 273mm)로 고정하고
+          flex-column으로 두 블록을 각각 정확히 절반(136.5mm)씩 채움 - 콘텐츠
+          실제 높이와 무관하게 항상 절반 지점에 점선이 오도록 함(내용은 블록
+          상단에 붙고 남는 공간은 블록 하단에 남음, 억지로 늘리지 않음).
+          @page margin은 8mm→12mm로 상향됨(실물 프린터 하드웨어 최소 여백이
+          8mm보다 큰 경우 CSS 여백을 무시하고 자체 최소값을 강제해 콘텐츠가
+          2페이지로 넘치는 문제가 실제로 있었음 - HANDOFF.md 참고). */}
       <div style={styles.pageSheet}>
         {renderCopy('supplier', deal)}
         {renderCopy('receiver', deal)}
@@ -387,12 +390,14 @@ const styles: { [k: string]: React.CSSProperties } = {
     cursor: 'pointer',
   },
   pageSheet: {
-    // 높이가 인쇄 가능 영역(281mm)과 정확히 같으므로, 위아래 margin을 조금이라도
-    // 주면 그만큼 넘쳐서 빈 2페이지가 추가로 생김(실제로 겪은 문제) - 그래서
-    // 세로 margin은 0, 좌우만 auto로 가운데 정렬.
+    // 높이가 인쇄 가능 영역(297mm - @page margin*2)과 정확히 같으므로, 위아래
+    // margin을 조금이라도 주면 그만큼 넘쳐서 빈 2페이지가 추가로 생김(실제로
+    // 겪은 문제) - 그래서 세로 margin은 0, 좌우만 auto로 가운데 정렬.
+    // @page margin이 8mm→12mm로 바뀌면서(globals.css 참고) 273mm/186mm로
+    // 재계산됨.
     width: '100%',
-    maxWidth: '194mm',
-    height: '281mm',
+    maxWidth: '186mm',
+    height: '273mm',
     margin: '0 auto',
     background: colors.white,
     padding: '0 4mm',
@@ -401,7 +406,7 @@ const styles: { [k: string]: React.CSSProperties } = {
     boxSizing: 'border-box',
   },
   half: {
-    height: '140.5mm',
+    height: '136.5mm',
     flex: '0 0 auto',
     boxSizing: 'border-box',
     position: 'relative',
