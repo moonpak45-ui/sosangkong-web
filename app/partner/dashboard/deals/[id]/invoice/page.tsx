@@ -281,7 +281,7 @@ export default function DealInvoicePage() {
                     <td style={styles.itemTd}>{li ? Number(li.amount).toLocaleString('ko-KR') : ''}</td>
                     <td style={styles.itemTd}>{li?.is_credit ? '외상' : ''}</td>
                     <td style={{ ...styles.itemTd, textAlign: 'left', color: colors.muted }}>
-                      {idx === 0 ? '정산 내역은 소상공 마이페이지에서 확인 가능합니다.' : ''}
+                      {idx === 0 ? '정산 내역은 소상공닷컴 마이페이지에서 확인 가능합니다.' : ''}
                     </td>
                   </tr>
                 ))}

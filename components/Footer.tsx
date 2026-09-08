@@ -2,7 +2,7 @@ export default function Footer() {
   return (
     <footer style={styles.footer}>
       <div style={styles.inner}>
-        <div style={styles.logo}>소상공</div>
+        <img src="/brand/logo-full.png" alt="sosangKong 소상공닷컴" style={styles.logoImg} />
         <p style={styles.line}>
           소상공인과 공급업체를 연결하는 B2B 거래처 매칭 플랫폼
         </p>
@@ -13,7 +13,7 @@ export default function Footer() {
           <span style={styles.dot}>·</span>
           <a href="/partner-landing" style={styles.link}>공급업체 등록 안내</a>
         </div>
-        <p style={styles.copyright}>© {new Date().getFullYear()} 소상공. All rights reserved.</p>
+        <p style={styles.copyright}>© {new Date().getFullYear()} 소상공닷컴. All rights reserved.</p>
       </div>
     </footer>
   )
@@ -38,11 +38,11 @@ const styles: { [k: string]: React.CSSProperties } = {
     padding: '36px 24px 44px',
     textAlign: 'center',
   },
-  logo: {
-    fontWeight: 700,
-    fontSize: 16,
-    color: colors.deep,
-    marginBottom: 8,
+  logoImg: {
+    height: 58,
+    width: 'auto',
+    display: 'block',
+    margin: '0 auto 10px',
   },
   line: {
     fontSize: 13,

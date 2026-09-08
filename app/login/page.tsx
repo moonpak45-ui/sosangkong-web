@@ -173,12 +173,8 @@ function LoginPageInner() {
   return (
     <div style={styles.page}>
       <div style={styles.top}>
-        <a href="/" style={styles.logo}>
-          <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
-            <path d="M2 18C5 15 8 15 11 18C14 21 17 21 20 18C21.5 16.5 23 16.5 24 18" stroke="#F2A93B" strokeWidth="2" strokeLinecap="round" />
-            <path d="M2 12C5 9 8 9 11 12C14 15 17 15 20 12C21.5 10.5 23 10.5 24 12" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-          </svg>
-          소상공
+        <a href="/" style={styles.logo} aria-label="소상공닷컴 홈">
+          <img src="/brand/logo-lockup-white.png" alt="sosangKong 소상공닷컴" style={{ height: 30, width: 'auto', display: 'block' }} />
         </a>
       </div>
 
@@ -414,10 +410,7 @@ const styles: { [k: string]: React.CSSProperties } = {
   logo: {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
     color: colors.white,
-    fontWeight: 700,
-    fontSize: 19,
     width: 'fit-content',
     textDecoration: 'none',
   },

@@ -15,8 +15,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "소상공 - 소상공인과 공급업체를 잇는 거래처 매칭 플랫폼",
-  description: "소상공인과 공급업체를 연결하는 B2B 거래처 매칭 플랫폼, 소상공",
+  title: "소상공닷컴 - 소상공인과 공급업체를 잇는 거래처 매칭 플랫폼",
+  description: "소상공인과 공급업체를 연결하는 B2B 거래처 매칭 플랫폼, 소상공닷컴",
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "소상공닷컴",
+    description: "소상공인과 공급업체를 잇는 거래처 매칭 플랫폼",
+    images: ["/brand/logo-full.png"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

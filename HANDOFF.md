@@ -967,6 +967,62 @@ production에서 파트너 계정으로 로그인된 채 헤더에 "공급업체
   계정으로 로그인되어 있어요. 공급업체로 새로 가입하려면...") 정상 표시.
 - 하단 배너 "공급업체 무료 등록"도 히어로 버튼과 동일하게 동작 확인.
 
+## 로고 교체 (sosangKong / 소상공닷컴 브랜드 적용)
+
+기존엔 헤더/푸터/로그인 화면 전부 인라인 SVG(물결 두 줄) + "소상공" 텍스트로
+된 임시 로고였음. 사용자가 제공한 실제 브랜드 에셋(`소상공 로고 교체 요청/
+public/`, PC Downloads 폴더)과 적용 가이드(`LOGO_APPLY.md`)를 그대로 따라
+전면 교체함. 서비스명 표기도 이번을 계기로 "소상공" → "소상공닷컴"으로
+정리(로고 자체가 "sosangKong | 소상공닷컴" 가로형이라 텍스트 표기와 맞춤).
+
+### 에셋
+
+`public/brand/`에 로고 6종(가로형/세로형 각 기본·흰색, 워드마크, K 심볼
+마크, 앱 스플래시) + `public/` 바로 아래 favicon 2종·앱 아이콘 2종·
+apple-touch-icon 신규 추가. 전부 배경 제거된 PNG(원본 벡터는 아직 없음 —
+LOGO_APPLY.md 8번 항목 그대로, 나중에 SVG/AI 원본이 생기면 그걸로
+교체하는 게 좋음, 지금은 헤더 로고가 2065×472라 레티나까지는 문제 없음).
+
+### 적용한 곳
+
+- `components/Header.tsx` — 로고 영역을 `logo-lockup.png`로 교체.
+  `isMobileHeader` 상태를 그대로 활용해 모바일에서 24px/데스크톱 28px로
+  높이만 다르게(레이아웃 로직은 안 건드림).
+- `components/Footer.tsx` — `logo-full.png`(세로 조합형)로 교체, 카피라이트
+  문구 "© {year} 소상공" → "© {year} 소상공닷컴".
+- `app/login/page.tsx` — 배경이 짙은 남색(#0A1E3D)이라 흰색 버전
+  `logo-lockup-white.png` 적용.
+- `app/layout.tsx` — `metadata`에 `icons`(favicon 32/16, apple-touch-icon)·
+  `manifest`·`openGraph`(로고 이미지 포함) 추가, title/description을
+  "소상공닷컴"으로 갱신. 기존 `app/favicon.ico`는 삭제(안 지우면 Next
+  기본 파비콘이 새 `public/favicon-*.png`보다 우선 적용됨).
+- `public/manifest.webmanifest` 신규 생성 — PWA 아이콘(192/512, maskable
+  포함) + 배경·테마 색상(#0A1E3D).
+- `app/partner/dashboard/deals/[id]/invoice/page.tsx` — 명세서 안내
+  문구 "정산 내역은 소상공 마이페이지에서..." → "...소상공닷컴 마이페이지..."
+
+로고를 전부 `<img>` 태그로 넣음(`next/image` 아님) — 이 프로젝트가 지금까지
+어디서도 `next/image`를 쓴 적이 없어서 기존 관례를 그대로 따름(LOGO_APPLY.md
+가이드도 `<img>` 기준으로 작성돼 있었음). ESLint의 `no-img-element` 경고가
+뜨지만 에러는 아니고, 프로젝트 전체 컨벤션과 일치하므로 그대로 둠. 헤더/
+로그인 로고를 감싸는 `<a href="/">`에 대한 `no-html-link-for-pages` 경고는
+이번에 새로 생긴 게 아니라 이 두 파일에 원래부터 있던 것(로고 안쪽 내용만
+교체, `<a>` 자체는 안 건드림) — 참고로 남겨둠, 이번 작업 범위 밖.
+
+### 검증
+
+`npx tsc --noEmit` 통과 확인. `next build`는 이 리포를 device_bash로 여는
+격리 리눅스 VM에 npm 레지스트리 접근이 막혀 있어 로컬에서 직접 돌리지
+못했고(swc 바이너리 다운로드 시점에 `EAI_AGAIN`), 사용자가 실제 컴퓨터의
+터미널에서 `npm run dev`로 화면(헤더/푸터/로그인 로고, 파비콘, 탭 제목)을
+직접 확인한 뒤 커밋을 요청함.
+
+### 이번에 하지 않은 것
+
+- 원본 벡터(SVG/AI)로 교체 — LOGO_APPLY.md 8번, 원본이 생기면 다음에.
+- iOS 웹앱 스플래시 `<link rel="apple-touch-startup-image">` 추가 —
+  가이드에 "필요하면"으로 돼 있는 선택 항목이라 스킵.
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
 - ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시

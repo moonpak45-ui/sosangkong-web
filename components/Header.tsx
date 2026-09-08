@@ -77,12 +77,12 @@ export default function Header() {
   return (
     <header style={styles.header}>
       <div className="header-inner" style={styles.inner}>
-        <a href="/" style={styles.logo}>
-          <svg width="22" height="22" viewBox="0 0 26 26" fill="none">
-            <path d="M2 18C5 15 8 15 11 18C14 21 17 21 20 18C21.5 16.5 23 16.5 24 18" stroke="#F2A93B" strokeWidth="2" strokeLinecap="round" />
-            <path d="M2 12C5 9 8 9 11 12C14 15 17 15 20 12C21.5 10.5 23 10.5 24 12" stroke="#065A82" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-          </svg>
-          소상공
+        <a href="/" style={styles.logo} aria-label="소상공닷컴 홈">
+          <img
+            src="/brand/logo-lockup.png"
+            alt="sosangKong 소상공닷컴"
+            style={{ ...styles.logoImg, height: isMobileHeader ? 24 : 28 }}
+          />
         </a>
 
         {!isMobileHeader && (
@@ -205,12 +205,13 @@ const styles: { [k: string]: React.CSSProperties } = {
   logo: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    fontWeight: 700,
-    fontSize: 18,
-    color: colors.deep,
     textDecoration: 'none',
     flexShrink: 0,
+  },
+  logoImg: {
+    height: 28,
+    width: 'auto',
+    display: 'block',
   },
   searchForm: {
     flex: 1,
