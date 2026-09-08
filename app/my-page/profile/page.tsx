@@ -10,6 +10,7 @@ type BuyerProfileFields = {
   region: string
   address: string
   contact_name: string
+  phone: string
 }
 
 const EMPTY_FORM: BuyerProfileFields = {
@@ -19,6 +20,7 @@ const EMPTY_FORM: BuyerProfileFields = {
   region: '',
   address: '',
   contact_name: '',
+  phone: '',
 }
 
 const FIELD_LABELS: Record<keyof BuyerProfileFields, string> = {
@@ -28,6 +30,7 @@ const FIELD_LABELS: Record<keyof BuyerProfileFields, string> = {
   region: '지역',
   contact_name: '담당자명',
   address: '주소',
+  phone: '연락처',
 }
 
 const FIELD_PARTICLE: Record<keyof BuyerProfileFields, string> = {
@@ -37,6 +40,7 @@ const FIELD_PARTICLE: Record<keyof BuyerProfileFields, string> = {
   region: '을',
   contact_name: '을',
   address: '를',
+  phone: '를',
 }
 
 const REQUIRED_FIELDS: (keyof BuyerProfileFields)[] = [
@@ -81,7 +85,7 @@ export default function BuyerProfileEditPage() {
 
       const { data: profile } = await supabase
         .from('buyer_profiles')
-        .select('id, business_name, biz_reg_no, industry, region, address, contact_name')
+        .select('id, business_name, biz_reg_no, industry, region, address, contact_name, phone')
         .eq('user_id', authSession.user.id)
         .maybeSingle()
 
@@ -99,6 +103,7 @@ export default function BuyerProfileEditPage() {
         region: profile.region || '',
         address: profile.address || '',
         contact_name: profile.contact_name || '',
+        phone: profile.phone || '',
       })
       setLoading(false)
     }
@@ -132,6 +137,7 @@ export default function BuyerProfileEditPage() {
         region: form.region.trim(),
         address: form.address.trim(),
         contact_name: form.contact_name.trim(),
+        phone: form.phone.trim() || null,
       })
       .eq('id', profileId)
     setSaving(false)
@@ -246,6 +252,16 @@ export default function BuyerProfileEditPage() {
               value={form.address}
               onChange={(e) => update('address', e.target.value)}
               placeholder="사업장 주소"
+            />
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>연락처</label>
+            <input
+              style={styles.input}
+              value={form.phone}
+              onChange={(e) => update('phone', e.target.value)}
+              placeholder="예) 010-1234-5678"
             />
           </div>
 

@@ -194,21 +194,20 @@ partner 본인만 select. `stock_levels`는 초기 등록용 insert만 partner �
 - test01(buyer), test4(partner) 둘 다 같은 거래의 명세서에 접근 가능함을
   확인, 세션 없는 익명 요청은 거부됨(권한 없음 안내 문구)을 확인함.
 
-### 스키마 갭 하나 발견: "연락처" 컬럼이 아예 없음
+### "연락처" 컬럼 — 3단계에서는 없었지만 이후 추가됨
 
-스펙은 공급자/공급받는자 양쪽에 "연락처"를 표시하라고 되어 있지만,
-`partners`/`buyer_profiles` 어디에도 전화번호류 컬럼이 없습니다(둘 다 실제
-컬럼을 전수 확인함 — `partners`는 `id/user_id/name/biz_reg_no/region/
-description/status/verified_badge/rating_avg/review_count/created_at`,
-`buyer_profiles`는 `id/user_id/business_name/biz_reg_no/industry/region/
-address/contact_name/created_at`뿐). 그래서:
+3단계 작업 당시엔 `partners`/`buyer_profiles` 어디에도 전화번호류 컬럼이
+없어서 공급받는자 쪽은 `contact_name`(담당자 이름)으로 대신 표시하고
+공급자 쪽은 `-`로 표시했습니다. 이후 `20260909120000_add_phone_columns.sql`
+로 두 테이블에 `phone text`(nullable, 기존 행 있어 NOT NULL 강제 안 함)를
+추가하고:
 
-- 공급받는자 쪽은 그나마 있는 `buyer_profiles.contact_name`(담당자 이름)을
-  "연락처(담당자)"로 대신 표시.
-- 공급자 쪽은 대응되는 컬럼이 전혀 없어 "연락처" 행 자체는 두되 값은 `-`로
-  표시(기존 앱 전체에서 값 없을 때 쓰는 관례를 그대로 따름).
-- 전화번호를 실제로 받으려면 `partners`/`buyer_profiles`에 컬럼을 추가하고
-  각자 프로필 화면에 입력 필드를 만들어야 함(다음 단계 후보).
+- `/partner/profile`, `/my-page/profile`에 "연락처" 입력 필드 추가(둘 다
+  선택 입력 — 필수 필드 목록에는 넣지 않음).
+- 명세서(`/partner/dashboard/deals/[id]/invoice`)의 공급자/공급받는자 블록을
+  실제 `phone` 값으로 교체. 값이 없으면 여전히 `-` 표시. 공급받는자 쪽은
+  이제 "담당자"(`contact_name`)와 "연락처"(`phone`)를 별도 행으로 분리해서
+  보여줌(전엔 담당자명을 연락처 자리에 임시로 끼워 넣었던 것을 정리).
 
 ### 화면
 
@@ -244,7 +243,5 @@ size: A4; margin: 15mm; }`로 용지 규격 고정. Playwright의
 
 - ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
   선택/월별 필터링 같은 `/partner/ledger` 사용성 개선
-- `partners`/`buyer_profiles`에 실제 연락처(전화번호) 컬럼 추가 — 지금은
-  명세서에 표시할 데이터 자체가 없음
 - 카카오 알림톡 발송 연동 (유료 addon, 매출 발생 이후 예정)
 - `category_attribute_defs` 실제 스키마에 맞춘 관리 UI (보류 중)

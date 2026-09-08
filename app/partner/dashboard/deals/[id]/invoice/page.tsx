@@ -18,13 +18,14 @@ type DealDetail = {
   id: string
   amount: number
   confirmed_at: string
-  partners: { id: string; name: string; biz_reg_no: string | null; region: string | null } | null
+  partners: { id: string; name: string; biz_reg_no: string | null; region: string | null; phone: string | null } | null
   buyer_profiles: {
     id: string
     business_name: string
     biz_reg_no: string | null
     address: string | null
     contact_name: string | null
+    phone: string | null
     user_id: string
   } | null
 }
@@ -57,8 +58,8 @@ export default function DealInvoicePage() {
         .from('deals')
         .select(
           `id, amount, confirmed_at,
-           partners ( id, name, biz_reg_no, region ),
-           buyer_profiles ( id, business_name, biz_reg_no, address, contact_name, user_id )`
+           partners ( id, name, biz_reg_no, region, phone ),
+           buyer_profiles ( id, business_name, biz_reg_no, address, contact_name, phone, user_id )`
         )
         .eq('id', dealId)
         .maybeSingle()
@@ -146,7 +147,7 @@ export default function DealInvoicePage() {
             </div>
             <div style={styles.partyRow}>
               <span style={styles.partyKey}>연락처</span>
-              <span>-</span>
+              <span>{deal.partners?.phone || '-'}</span>
             </div>
           </div>
           <div style={styles.partyBox}>
@@ -160,8 +161,12 @@ export default function DealInvoicePage() {
               <span>{deal.buyer_profiles?.address || '-'}</span>
             </div>
             <div style={styles.partyRow}>
-              <span style={styles.partyKey}>연락처(담당자)</span>
+              <span style={styles.partyKey}>담당자</span>
               <span>{deal.buyer_profiles?.contact_name || '-'}</span>
+            </div>
+            <div style={styles.partyRow}>
+              <span style={styles.partyKey}>연락처</span>
+              <span>{deal.buyer_profiles?.phone || '-'}</span>
             </div>
           </div>
         </div>

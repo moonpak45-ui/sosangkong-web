@@ -8,6 +8,7 @@ type PartnerFields = {
   biz_reg_no: string
   region: string
   description: string
+  phone: string
 }
 
 const EMPTY_FORM: PartnerFields = {
@@ -15,6 +16,7 @@ const EMPTY_FORM: PartnerFields = {
   biz_reg_no: '',
   region: '',
   description: '',
+  phone: '',
 }
 
 type CategoryRow = { id: string; name: string }
@@ -62,7 +64,7 @@ export default function PartnerProfileEditPage() {
 
       const { data: partner } = await supabase
         .from('partners')
-        .select('id, name, biz_reg_no, region, description')
+        .select('id, name, biz_reg_no, region, description, phone')
         .eq('user_id', authSession.user.id)
         .maybeSingle()
 
@@ -78,6 +80,7 @@ export default function PartnerProfileEditPage() {
         biz_reg_no: partner.biz_reg_no || '',
         region: partner.region || '',
         description: partner.description || '',
+        phone: partner.phone || '',
       })
 
       const [{ data: categoryRows }, { data: partnerCategoryRows }, { data: stockRows }] = await Promise.all([
@@ -144,6 +147,7 @@ export default function PartnerProfileEditPage() {
         biz_reg_no: form.biz_reg_no.trim() || null,
         region: form.region.trim() || null,
         description: form.description.trim() || null,
+        phone: form.phone.trim() || null,
       })
       .eq('id', partnerId)
 
@@ -303,6 +307,16 @@ export default function PartnerProfileEditPage() {
                 placeholder="예) 서울 마포구"
               />
             </div>
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>연락처</label>
+            <input
+              style={styles.input}
+              value={form.phone}
+              onChange={(e) => update('phone', e.target.value)}
+              placeholder="예) 02-1234-5678"
+            />
           </div>
 
           <div style={styles.field}>
