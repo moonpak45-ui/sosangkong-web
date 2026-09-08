@@ -232,6 +232,27 @@ body {
   }
 }
 
+/* 공급받는자용/공급자용 두 장을 항상 DOM에 함께 두고, 화면에서는 토글로
+   하나만 보여주다가(.screen-hidden) 인쇄 시에는 data-print-target 값에
+   맞춰 한쪽만, 또는 "둘 다"면 두 쪽 다 인쇄되도록 함. */
+.screen-hidden {
+  display: none;
+}
+@media print {
+  .invoice-copy {
+    display: block !important;
+  }
+  [data-print-target='receiver'] .invoice-copy-supplier {
+    display: none !important;
+  }
+  [data-print-target='supplier'] .invoice-copy-receiver {
+    display: none !important;
+  }
+  .invoice-copy-supplier {
+    page-break-before: always;
+  }
+}
+
 @page {
   size: A4;
   margin: 15mm;

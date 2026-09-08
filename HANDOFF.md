@@ -194,45 +194,107 @@ partner 본인만 select. `stock_levels`는 초기 등록용 insert만 partner �
 - test01(buyer), test4(partner) 둘 다 같은 거래의 명세서에 접근 가능함을
   확인, 세션 없는 익명 요청은 거부됨(권한 없음 안내 문구)을 확인함.
 
-### "연락처" 컬럼 — 3단계에서는 없었지만 이후 추가됨
+### "연락처"/"주소" 컬럼 — 처음엔 없었지만 이후 추가됨
 
-3단계 작업 당시엔 `partners`/`buyer_profiles` 어디에도 전화번호류 컬럼이
-없어서 공급받는자 쪽은 `contact_name`(담당자 이름)으로 대신 표시하고
-공급자 쪽은 `-`로 표시했습니다. 이후 `20260909120000_add_phone_columns.sql`
-로 두 테이블에 `phone text`(nullable, 기존 행 있어 NOT NULL 강제 안 함)를
-추가하고:
+3단계 최초 작업 당시엔 `partners`/`buyer_profiles` 어디에도 전화번호류
+컬럼이 없어서 임시로 담당자 이름을 연락처 자리에 넣거나 `-`로 표시했습니다.
+이후 두 마이그레이션으로 실제 데이터를 채웠습니다:
 
-- `/partner/profile`, `/my-page/profile`에 "연락처" 입력 필드 추가(둘 다
-  선택 입력 — 필수 필드 목록에는 넣지 않음).
-- 명세서(`/partner/dashboard/deals/[id]/invoice`)의 공급자/공급받는자 블록을
-  실제 `phone` 값으로 교체. 값이 없으면 여전히 `-` 표시. 공급받는자 쪽은
-  이제 "담당자"(`contact_name`)와 "연락처"(`phone`)를 별도 행으로 분리해서
-  보여줌(전엔 담당자명을 연락처 자리에 임시로 끼워 넣었던 것을 정리).
+- `20260909120000_add_phone_columns.sql` — `partners.phone`,
+  `buyer_profiles.phone` (둘 다 nullable) 추가, `/partner/profile`·
+  `/my-page/profile`에 "연락처" 입력 필드 추가.
+- `20260911000000_add_partners_address.sql` — `partners.address`(nullable)
+  추가. `buyer_profiles.address`는 이미 있었음(확인 완료).
+  `/partner/profile`에 "주소" 입력 필드 추가.
 
-### 화면
+지금은 명세서에 실제 연락처/주소 값이 표시되고, 값이 비어 있으면 `-`로
+fallback합니다(이 앱 전체에서 쓰는 관례).
 
-- 상단 툴바(`.invoice-no-print` 클래스 — 인쇄 시 숨김): 뒤로가기 링크 +
-  "인쇄하기" 버튼(`window.print()`).
-- A4 미리보기 카드: 제목/발행일자·거래일자 → 공급자/공급받는자 2단
-  (`.responsive-two-col` 재사용, 새 CSS 없음) → 품목 테이블(품목명/수량/
-  단위/단가/금액/비고=외상여부) → 합계금액·외상잔액(해당 partner+buyer
-  쌍의 `ar_balances.balance`, 없으면 0원) → 서명란 2단(공급자 확인/인수자
-  확인, 마찬가지로 `.responsive-two-col` 재사용).
-- 진입점: `/partner/dashboard` "진행 중인 거래" 표에 "명세서 인쇄" 링크 열
-  추가.
+### 표준 거래명세서 양식으로 전면 재작업 (v2)
+
+최초 버전(공급자/공급받는자 요약 박스 + 단순 품목 표)을 표준 거래명세표
+양식에 맞춰 완전히 다시 만들었습니다. 이전 버전 코드는 남아있지 않고
+완전히 대체됨.
+
+**공급받는자용/공급자용 두 장 + 화면 토글 + 인쇄 3버튼**
+
+두 "사본"(`renderCopy('receiver' | 'supplier')`)을 항상 DOM에 함께
+렌더링합니다. 데이터는 완전히 동일하고 부제(`(공급받는자용)`/`(공급자용)`)만
+다릅니다.
+
+- 화면: 상단 토글 버튼으로 둘 중 하나만 보임(`.screen-hidden` 클래스, 순수
+  화면용 — React state `screenView`로 제어).
+- 인쇄: "공급받는자용 인쇄"/"공급자용 인쇄"/"둘 다 인쇄" 3개 버튼이 각각
+  `printTarget` state를 `receiver`/`supplier`/`both`로 설정한 뒤
+  `window.print()`를 호출합니다. `data-print-target` 속성 + `@media print`
+  CSS(`app/globals.css`)가 인쇄 시 어느 사본을 보여줄지 결정 — 화면에서
+  어느 쪽을 보고 있었는지와 무관하게 클릭한 버튼대로 인쇄됩니다. "둘 다
+  인쇄"는 공급자용 사본에 `page-break-before: always`를 줘서 2페이지로
+  분리.
+  ```css
+  .screen-hidden { display: none; }
+  @media print {
+    .invoice-copy { display: block !important; }
+    [data-print-target='receiver'] .invoice-copy-supplier { display: none !important; }
+    [data-print-target='supplier'] .invoice-copy-receiver { display: none !important; }
+    .invoice-copy-supplier { page-break-before: always; }
+  }
+  ```
+  Playwright로 버튼 클릭 → `page.emulateMedia({ media: 'print' })` →
+  `getComputedStyle`로 세 가지 조합(receiver/supplier/both) 전부 의도한
+  대로 `display`가 나오는 것까지 확인함.
+
+**정보 박스**: 공급자/공급받는자 각각 `<table>`(사업자번호/상호·성명/주소/
+연락처, 공급받는자는 성명·담당자·연락처까지) 형태로, 남색(`colors.navy`)
+테두리를 씀. 2단 배치는 `.responsive-two-col` 재사용. 공급자는 담당자
+이름에 대응하는 컬럼이 없어(`partners`에 그런 필드 없음) "성명"에
+`partners.name`(상호와 동일)을 그대로 다시 보여줌 — 스펙이 명시한
+fallback. 공급받는자는 "성명"과 "담당자" 두 행 모두 `buyer_profiles.
+contact_name`(유일하게 있는 이름 필드)을 그대로 사용 — 스펙이 두 라벨을
+요구했지만 스키마엔 값이 하나뿐이라 값을 중복 표시함.
+
+**거래일자-NO**: `deals`에는 `created_at`이 따로 없고(`confirmed_at`만
+있음 — 실제 컬럼 확인함, 이 앱에서는 거래 확정 시점이 곧 생성 시점이라
+동일하게 취급) `confirmed_at`을 거래일자로 씀. NO는 `deal.id`의 앞 8자리를
+대문자로.
+
+**품목 테이블**: 순번/품명 및 규격/BOX/EA/총수량/단가/금액/비고/참고사항
+9열. `unit`이 `box` 또는 `박스`를 포함하면(대소문자 무관) BOX 컬럼에,
+그 외엔 EA 컬럼에 수량을 넣고 총수량엔 항상 `quantity`를 그대로 표시.
+비고엔 `is_credit`이면 "외상". 참고사항은 스펙 그대로 **첫 행에만**
+"정산 내역은 소상공 마이페이지에서 확인 가능합니다."(별도 계좌 정보가
+없어 이 안내로 대체 — 스펙 지시). 빈 행 없이 실제 품목 수만큼만 렌더링.
+합계 행에 BOX/EA/총수량/금액 합계.
+
+**정산 요약**: 전미수금/총미수금/금일입금/금일매출액/총합계를 계산합니다.
+`ar_balances.balance`는 파트너-소상공인 쌍의 **누적** 외상잔액이라(여러
+거래에 걸쳐 쌓임) 스펙이 제안한 "간단한 쪽"(트리거 스냅샷 컬럼 대신 역산)
+으로 구현:
+- `creditTotal` = 이번 거래 라인 중 `is_credit=true`인 것들의 amount 합
+- `cashTotal`(금일입금) = `is_credit=false`인 것들의 amount 합
+- `전미수금` = 현재 `ar_balances.balance` − `creditTotal` (이번 거래가
+  반영하기 전 잔액을 역산)
+- `총미수금` = 현재 `ar_balances.balance` 그대로
+- `금일매출액` = `creditTotal + cashTotal`
+- `총합계` = `전미수금 + 금일매출액` (스펙이 준 공식 그대로 — 외상/현금
+  구분과 무관하게 "이 거래 전체 가치 + 이전 잔액"을 보여주는 용도로, 다음
+  달로 넘어갈 실제 외상잔액은 `총미수금` 쪽이 정확한 값)
+- `인수자`는 빈 서명란
+
+실제 데이터(전미수금 0원 + 금일매출액 115,000원 = 총합계 115,000원)로
+계산이 맞는 것까지 확인함.
+
+**진입점**: `/partner/dashboard` "진행 중인 거래" 표의 "명세서 인쇄" 링크는
+그대로 유지(변경 없음).
 
 ### 인쇄 CSS (`app/globals.css` 맨 아래)
 
 `@media print`로 `header`/`footer`/`.mobile-tabbar`/`.invoice-no-print`를
-전역으로 숨김(이 사이트의 모든 페이지에 적용되는 규칙 — Header/Footer/
-MobileTabBar는 루트 레이아웃이 모든 페이지에 렌더링하므로 페이지 단위로
-숨기는 방법이 마땅치 않아 전역 규칙으로 처리함. 지금은 인쇄가 필요한
-페이지가 이 명세서뿐이라 문제 없지만, 나중에 인쇄 대상 페이지가 늘어나면
-이 규칙이 의도치 않게 다른 인쇄 화면에도 적용된다는 점 참고). `@page {
-size: A4; margin: 15mm; }`로 용지 규격 고정. Playwright의
-`page.emulateMedia({ media: 'print' })`로 header/footer/tabbar/toolbar가
-전부 `display: none`이 되는 것까지 확인함(실제 프린터 출력물 자체를 확인한
-건 아님 — CSS 규칙이 올바르게 걸리는지까지만 검증).
+전역으로 숨김(Header/Footer/MobileTabBar가 루트 레이아웃에서 모든 페이지에
+렌더링되기 때문 — 페이지 단위로 숨기는 방법이 마땅치 않아 전역 규칙으로
+처리함. 인쇄 대상이 늘어나면 재검토 필요). `@page { size: A4; margin:
+15mm; }`로 용지 규격 고정. 위에서 설명한 `.screen-hidden`/`.invoice-copy`
+규칙도 같은 블록에 있음.
 
 ### 이번 단계에서 하지 않은 것 (스펙에서 명시적으로 제외됨)
 
