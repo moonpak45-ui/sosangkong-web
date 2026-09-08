@@ -150,9 +150,13 @@ export default function DealInvoicePage() {
   // 그 스코프 안에서는 확정적으로 DealDetail 타입이라 문제가 생기지 않음.
   function renderCopy(variant: Variant, deal: DealDetail) {
     const subtitle = variant === 'receiver' ? '(공급받는자용)' : '(공급자용)'
+    // 점선 구분선은 별도 엘리먼트가 아니라 위쪽(공급자용) 블록의
+    // border-bottom으로 둠 - 그래야 두 블록이 wrapper 높이(281mm)를 정확히
+    // 절반씩(140.5mm) 차지할 때 그 경계선 자체가 항상 정중앙에 옴.
+    const halfStyle = variant === 'supplier' ? { ...styles.half, ...styles.halfDivider } : styles.half
 
     return (
-      <div style={styles.half}>
+      <div style={halfStyle}>
           <div style={styles.sheetHead}>
             <h1 style={styles.title}>거래명세서</h1>
             <div style={styles.subtitle}>{subtitle}</div>
@@ -330,10 +334,14 @@ export default function DealInvoicePage() {
           인쇄 결과가 항상 같아야 하므로, 아래 모든 스타일(폰트/padding/
           컨테이너 폭)은 화면·인쇄 공용 - 별도 @media print 오버라이드 없음
           (globals.css 참고). 컨테이너 폭도 인쇄 가능 영역 폭(194mm)에 맞춰
-          화면에서 보이는 줄바꿈이 인쇄에서도 그대로 재현되도록 함. */}
+          화면에서 보이는 줄바꿈이 인쇄에서도 그대로 재현되도록 함.
+
+          wrapper 자체를 인쇄 가능 영역 높이(297mm - 8mm*2 = 281mm)로 고정하고
+          flex-column으로 두 블록을 각각 정확히 절반(140.5mm)씩 채움 - 콘텐츠
+          실제 높이(~93mm)와 무관하게 항상 절반 지점에 점선이 오도록 함(내용은
+          블록 상단에 붙고 남는 공간은 블록 하단에 남음, 억지로 늘리지 않음). */}
       <div style={styles.pageSheet}>
         {renderCopy('supplier', deal)}
-        <div style={styles.cutLine} />
         {renderCopy('receiver', deal)}
       </div>
     </div>
@@ -379,16 +387,26 @@ const styles: { [k: string]: React.CSSProperties } = {
     cursor: 'pointer',
   },
   pageSheet: {
+    // 높이가 인쇄 가능 영역(281mm)과 정확히 같으므로, 위아래 margin을 조금이라도
+    // 주면 그만큼 넘쳐서 빈 2페이지가 추가로 생김(실제로 겪은 문제) - 그래서
+    // 세로 margin은 0, 좌우만 auto로 가운데 정렬.
     width: '100%',
     maxWidth: '194mm',
-    margin: '10px auto',
+    height: '281mm',
+    margin: '0 auto',
     background: colors.white,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 3,
-    padding: '3mm 4mm',
+    padding: '0 4mm',
+    display: 'flex',
+    flexDirection: 'column',
+    boxSizing: 'border-box',
   },
-  half: {},
-  cutLine: { borderTop: '1px dashed #999', margin: '4mm 0', height: 0 },
+  half: {
+    height: '140.5mm',
+    flex: '0 0 auto',
+    boxSizing: 'border-box',
+    position: 'relative',
+  },
+  halfDivider: { borderBottom: '1px dashed #999' },
   sheetHead: { textAlign: 'center', marginBottom: 4, marginTop: 0 },
   title: { fontSize: 14, fontFamily: "'Noto Serif KR', serif", fontWeight: 700, color: colors.deep, margin: 0, letterSpacing: 2 },
   subtitle: { fontSize: 9, color: colors.muted, margin: '2px 0 0' },
