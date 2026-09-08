@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
-import { colors, styles, formatDate, won, DEAL_STATUS_LABEL, REQUEST_STATUS_LABEL, statusBadgeStyle } from '../_shared'
+import {
+  colors,
+  styles,
+  formatDate,
+  won,
+  DEAL_STATUS_LABEL,
+  REQUEST_STATUS_LABEL,
+  DISPUTE_STATUS_LABEL,
+  statusBadgeStyle,
+} from '../_shared'
 
 type QuoteRequestRow = {
   id: string
@@ -26,7 +35,7 @@ type AdminDealRow = {
 type DisputeRow = {
   id: string
   status: string
-  reason: string | null
+  description: string | null
   created_at: string
   deals: {
     id: string
@@ -41,6 +50,8 @@ export default function AdminDealsPage() {
   const [requests, setRequests] = useState<QuoteRequestRow[]>([])
   const [deals, setDeals] = useState<AdminDealRow[]>([])
   const [disputes, setDisputes] = useState<DisputeRow[]>([])
+  const [updatingDisputeId, setUpdatingDisputeId] = useState<string | null>(null)
+  const [disputeActionError, setDisputeActionError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -65,7 +76,7 @@ export default function AdminDealsPage() {
         supabase
           .from('disputes')
           .select(
-            `id, status, reason, created_at,
+            `id, status, description, created_at,
              deals ( id, buyer_profiles ( business_name ), partners ( name ) )`
           )
           .order('created_at', { ascending: false }),
@@ -79,6 +90,35 @@ export default function AdminDealsPage() {
 
     load()
   }, [])
+
+  async function updateDisputeStatus(id: string, newStatus: 'resolved' | 'rejected') {
+    const label = newStatus === 'resolved' ? '해결' : '반려'
+    if (!window.confirm(`정말 이 분쟁을 ${label} 처리하시겠습니까?`)) return
+
+    setDisputeActionError('')
+    setUpdatingDisputeId(id)
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    const { error } = await supabase
+      .from('disputes')
+      .update({
+        status: newStatus,
+        resolved_at: new Date().toISOString(),
+        resolved_by: session?.user.id ?? null,
+      })
+      .eq('id', id)
+
+    setUpdatingDisputeId(null)
+
+    if (error) {
+      setDisputeActionError('분쟁 처리 중 오류가 발생했습니다: ' + error.message)
+      return
+    }
+    setDisputes((prev) => prev.map((d) => (d.id === id ? { ...d, status: newStatus } : d)))
+  }
 
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: colors.muted }}>불러오는 중...</div>
@@ -209,32 +249,58 @@ export default function AdminDealsPage() {
             <p style={{ fontSize: 13.5, color: colors.muted }}>거래 중 분쟁이 접수되면 이곳에서 확인할 수 있어요.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={styles.historyTable}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>접수일</th>
-                  <th style={styles.th}>소상공인</th>
-                  <th style={styles.th}>공급업체</th>
-                  <th style={styles.th}>사유</th>
-                  <th style={styles.th}>상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {disputes.map((d) => (
-                  <tr key={d.id}>
-                    <td style={styles.td}>{formatDate(d.created_at)}</td>
-                    <td style={styles.td}>{d.deals?.buyer_profiles?.business_name || '-'}</td>
-                    <td style={styles.td}>{d.deals?.partners?.name || '-'}</td>
-                    <td style={styles.td}>{d.reason || '-'}</td>
-                    <td style={styles.td}>
-                      <span style={{ ...styles.htag, ...statusBadgeStyle(d.status) }}>{d.status}</span>
-                    </td>
+          <>
+            {disputeActionError && <div style={{ ...styles.errorBox, marginBottom: 16 }}>{disputeActionError}</div>}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={styles.historyTable}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>접수일</th>
+                    <th style={styles.th}>소상공인</th>
+                    <th style={styles.th}>공급업체</th>
+                    <th style={styles.th}>사유</th>
+                    <th style={styles.th}>상태</th>
+                    <th style={styles.th}></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {disputes.map((d) => (
+                    <tr key={d.id}>
+                      <td style={styles.td}>{formatDate(d.created_at)}</td>
+                      <td style={styles.td}>{d.deals?.buyer_profiles?.business_name || '-'}</td>
+                      <td style={styles.td}>{d.deals?.partners?.name || '-'}</td>
+                      <td style={styles.td}>{d.description || '-'}</td>
+                      <td style={styles.td}>
+                        <span style={{ ...styles.htag, ...statusBadgeStyle(d.status) }}>
+                          {DISPUTE_STATUS_LABEL[d.status] || d.status}
+                        </span>
+                      </td>
+                      <td style={styles.td}>
+                        {(d.status === 'received' || d.status === 'reviewing') && (
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button
+                              style={{ ...styles.btn, ...styles.btnPrimarySmall }}
+                              disabled={updatingDisputeId === d.id}
+                              onClick={() => updateDisputeStatus(d.id, 'resolved')}
+                            >
+                              해결
+                            </button>
+                            <button
+                              style={{ ...styles.btn, ...styles.btnDangerSmall }}
+                              disabled={updatingDisputeId === d.id}
+                              onClick={() => updateDisputeStatus(d.id, 'rejected')}
+                            >
+                              반려
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ))}
     </div>
   )

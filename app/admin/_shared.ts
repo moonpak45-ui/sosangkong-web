@@ -64,11 +64,18 @@ export const REQUEST_STATUS_LABEL: Record<string, string> = {
   closed: '확정 완료',
 }
 
+export const DISPUTE_STATUS_LABEL: Record<string, string> = {
+  received: '접수됨',
+  reviewing: '검토중',
+  resolved: '해결됨',
+  rejected: '반려됨',
+}
+
 export function statusBadgeStyle(status: string): React.CSSProperties {
-  if (status === 'completed' || status === 'approved' || status === 'closed') {
+  if (status === 'completed' || status === 'approved' || status === 'closed' || status === 'resolved') {
     return { background: colors.goodBg, color: colors.good }
   }
-  if (status === 'disputed' || status === 'suspended') {
+  if (status === 'disputed' || status === 'suspended' || status === 'rejected') {
     return { background: colors.warnBg, color: colors.warn }
   }
   return { background: '#E7EEF5', color: colors.navy }
