@@ -58,7 +58,8 @@ constraint`)를 이용해 실제 컬럼을 하나씩 알아낼 수 있습니다(
 - 관리자 콘솔: 분쟁·클레임 해결/반려 처리, 소상공인 계정 활성/정지(+정지 시
   견적요청 차단), 카테고리 수정/삭제(사용 중 카테고리는 FK로 삭제 차단)
 - 마이페이지/파트너 대시보드 공용 "계정 설정"(이메일 조회, 비밀번호 변경)
-- **재고관리북(ledgerbook) 1단계** (이번 작업, 아래 상세)
+- 재고관리북(ledgerbook) 1단계 — 거래전표/외상잔액/재고, 파트너 전용
+- **재고관리북(ledgerbook) 2단계** (이번 작업, 아래 상세) — 소상공인 조회 화면
 
 ## 재고관리북(ledgerbook) 1단계
 
@@ -115,7 +116,7 @@ partner 본인만 select. `stock_levels`는 초기 등록용 insert만 partner �
 - 세금계산서 발행 연동
 - AI 요약 리포트
 - 다중 사용자 권한
-- 소상공인(buyer) 쪽 UI (자기 외상잔액 조회 등) — 지금은 파트너만 볼 수 있음
+- 소상공인(buyer) 쪽 UI (자기 외상잔액 조회 등) — **2단계에서 완료됨, 아래 참고**
 - `category_attribute_defs` 관리 UI (별도 사안, 위 스키마 불일치 섹션 참고)
 
 ### 추가로 알아둘 것 (스펙엔 없지만 구현하며 발견한 것)
@@ -130,8 +131,39 @@ partner 본인만 select. `stock_levels`는 초기 등록용 insert만 partner �
 - 거래전표 등록 폼은 진행 중(`in_progress`)인 거래만 선택 가능하게 필터링했습니다
   (완료/분쟁 상태 거래에는 전표를 못 붙임 — 필요하면 범위 넓히는 걸 논의).
 
+## 재고관리북(ledgerbook) 2단계 — 소상공인(buyer) 조회 화면
+
+새 테이블 없음. 1단계 테이블에 buyer용 RLS만 추가하고 기존 마이페이지 메뉴
+2곳을 확장.
+
+### RLS (`supabase/migrations/20260910000000_ledgerbook_phase2_buyer_rls.sql`)
+
+- `ar_balances`: `buyer_id = auth.uid()`인 행을 select 허용하는 정책
+  (`ar_balances_select_buyer`)을 추가.
+- `deal_line_items`: **변경 없음** — 1단계의 `deal_line_items_select_participant`
+  정책이 이미 "그 거래의 buyer 또는 partner"를 허용하고 있어서, 별도 정책 추가
+  없이 소상공인이 이미 자신의 거래전표를 조회할 수 있었습니다(작업 전 test01
+  계정으로 실제 확인함).
+- `stock_levels`: 스펙대로 buyer용 정책을 의도적으로 추가하지 않음 — 공급업체
+  재고는 소상공인에게 노출되지 않습니다(실제로 빈 배열이 오는 것까지 확인).
+
+### 화면 (새 메뉴 없음 — 기존 `/my-page` 메뉴 2곳만 확장)
+
+- **"현재 거래처"** 카드: `ar_balances`를 `buyer_id = auth.uid()`로 조회해
+  거래처별 잔액을 매핑(주의: `buyer_profiles.id`가 아니라 세션의
+  `auth.users.id`로 조회해야 함 — 1단계와 같은 id 공간 문제). 잔액이 0보다 크면
+  업체명 옆에 주황색 "미결제 OO원" 배지, 0이면 배지 자체를 렌더링하지 않음.
+- **"거래 이력"** 표: 품목 셀(`itemsSummary` 텍스트)을 클릭하면 그 거래의
+  `deal_line_items`를 지연 로딩(최초 클릭 시 1회 fetch, 이후 캐시)해서 바로
+  아래에 품목명/수량/단가/금액/구분(외상·즉시결제 배지) 표를 펼쳐서 보여줌.
+  한 번에 하나의 거래만 펼쳐지도록(`expandedDealId` 단일 상태) 구현. 결제/정산
+  액션 버튼 없음 — 순수 조회.
+
+실제 계정(test01)으로 미결제 배지 노출·품목 드릴다운·`stock_levels` 여전히
+비노출까지 라이브 데이터로 검증함.
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
-- ledgerbook 2단계: buyer 쪽 UI(자기 외상잔액 조회), 재고 수량 직접 조정,
-  매입 추적
+- ledgerbook 3단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
+  선택/월별 필터링 같은 `/partner/ledger` 사용성 개선
 - `category_attribute_defs` 실제 스키마에 맞춘 관리 UI (보류 중)

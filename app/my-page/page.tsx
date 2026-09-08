@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 
 type DealItem = { name: string; qty?: string; unit?: string }
@@ -25,6 +25,16 @@ type PartnerSummary = {
   partner: DealPartner
   dealCount: number
   lastDealAt: string
+}
+
+type LineItemRow = {
+  id: string
+  item_name: string
+  quantity: number
+  unit: string
+  unit_price: number
+  amount: number
+  is_credit: boolean
 }
 
 type BuyerProfile = {
@@ -106,6 +116,10 @@ export default function MyPage() {
   const [reviewedDealIds, setReviewedDealIds] = useState<Set<string>>(new Set())
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [arBalanceByPartner, setArBalanceByPartner] = useState<Record<string, number>>({})
+  const [expandedDealId, setExpandedDealId] = useState<string | null>(null)
+  const [lineItemsByDeal, setLineItemsByDeal] = useState<Record<string, LineItemRow[]>>({})
+  const [lineItemsLoading, setLineItemsLoading] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -131,7 +145,7 @@ export default function MyPage() {
       }
       setBuyerProfile(profile)
 
-      const [{ data: dealRows }, { data: requestRows }, { data: favoriteRows }, { data: reviewRows }] =
+      const [{ data: dealRows }, { data: requestRows }, { data: favoriteRows }, { data: reviewRows }, { data: arRows }] =
         await Promise.all([
           supabase
             .from('deals')
@@ -156,12 +170,22 @@ export default function MyPage() {
             .eq('buyer_id', profile.id)
             .order('created_at', { ascending: false }),
           supabase.from('reviews').select('deal_id').eq('buyer_id', profile.id),
+          // ar_balances.buyer_id는 buyer_profiles.id가 아니라 auth.users.id라
+          // profile.id가 아닌 authSession.user.id로 조회해야 함
+          supabase.from('ar_balances').select('partner_id, balance').eq('buyer_id', authSession.user.id),
         ])
 
       setDeals((dealRows || []) as unknown as DealRow[])
       setQuoteRequests((requestRows || []) as unknown as QuoteRequestRow[])
       setFavorites((favoriteRows || []) as unknown as FavoriteRow[])
       setReviewedDealIds(new Set((reviewRows || []).map((r) => r.deal_id as string)))
+
+      const balanceMap: Record<string, number> = {}
+      ;(arRows || []).forEach((r) => {
+        balanceMap[r.partner_id as string] = Number(r.balance)
+      })
+      setArBalanceByPartner(balanceMap)
+
       setLoading(false)
     }
 
@@ -174,6 +198,25 @@ export default function MyPage() {
     setRemovingId(null)
     if (!error) {
       setFavorites((prev) => prev.filter((f) => f.id !== favoriteId))
+    }
+  }
+
+  async function toggleDealExpand(dealId: string) {
+    if (expandedDealId === dealId) {
+      setExpandedDealId(null)
+      return
+    }
+    setExpandedDealId(dealId)
+
+    if (!lineItemsByDeal[dealId]) {
+      setLineItemsLoading(dealId)
+      const { data } = await supabase
+        .from('deal_line_items')
+        .select('id, item_name, quantity, unit, unit_price, amount, is_credit')
+        .eq('deal_id', dealId)
+        .order('created_at', { ascending: true })
+      setLineItemsByDeal((prev) => ({ ...prev, [dealId]: (data || []) as LineItemRow[] }))
+      setLineItemsLoading(null)
     }
   }
 
@@ -276,7 +319,14 @@ export default function MyPage() {
                         </svg>
                       </div>
                       <div>
-                        <div style={styles.acName}>{partner.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={styles.acName}>{partner.name}</div>
+                          {Number(arBalanceByPartner[partner.id] || 0) > 0 && (
+                            <span style={styles.arBadge}>
+                              미결제 {Number(arBalanceByPartner[partner.id]).toLocaleString('ko-KR')}원
+                            </span>
+                          )}
+                        </div>
                         <div style={styles.acMeta}>{partner.region || '지역 정보 없음'}</div>
                       </div>
                       <div style={styles.acSince}>최근 거래일
@@ -451,36 +501,94 @@ export default function MyPage() {
                     {deals.map((row) => {
                       const canReview = row.status === 'completed' || row.status === 'in_progress'
                       const reviewed = reviewedDealIds.has(row.id)
+                      const expanded = expandedDealId === row.id
+                      const lineItems = lineItemsByDeal[row.id]
                       return (
-                        <tr key={row.id}>
-                          <td style={styles.td}>{formatDate(row.confirmed_at)}</td>
-                          <td style={styles.td}>{row.partners?.name || '-'}</td>
-                          <td style={styles.td}>{itemsSummary(row)}</td>
-                          <td style={styles.td}>{Number(row.amount).toLocaleString('ko-KR')}원</td>
-                          <td style={styles.td}>
-                            <span style={{ ...styles.htag, ...htagStyle(row.status) }}>
-                              {STATUS_LABEL[row.status]}
-                            </span>
-                          </td>
-                          <td style={styles.td}>
-                            {row.partners && (
-                              <a href={`/quote-request?partner_ids=${row.partners.id}`} style={styles.repeatLink}>
-                                재주문
-                              </a>
-                            )}
-                          </td>
-                          <td style={styles.td}>
-                            {reviewed ? (
-                              <a href={`/review/view?deal_id=${row.id}`} style={styles.repeatLink}>
-                                리뷰 완료
-                              </a>
-                            ) : canReview ? (
-                              <a href={`/review/write?deal_id=${row.id}`} style={styles.repeatLink}>
-                                리뷰 작성
-                              </a>
-                            ) : null}
-                          </td>
-                        </tr>
+                        <Fragment key={row.id}>
+                          <tr>
+                            <td style={styles.td}>{formatDate(row.confirmed_at)}</td>
+                            <td style={styles.td}>{row.partners?.name || '-'}</td>
+                            <td style={styles.td}>
+                              <span style={styles.itemsToggle} onClick={() => toggleDealExpand(row.id)}>
+                                {itemsSummary(row)} {expanded ? '▴' : '▾'}
+                              </span>
+                            </td>
+                            <td style={styles.td}>{Number(row.amount).toLocaleString('ko-KR')}원</td>
+                            <td style={styles.td}>
+                              <span style={{ ...styles.htag, ...htagStyle(row.status) }}>
+                                {STATUS_LABEL[row.status]}
+                              </span>
+                            </td>
+                            <td style={styles.td}>
+                              {row.partners && (
+                                <a href={`/quote-request?partner_ids=${row.partners.id}`} style={styles.repeatLink}>
+                                  재주문
+                                </a>
+                              )}
+                            </td>
+                            <td style={styles.td}>
+                              {reviewed ? (
+                                <a href={`/review/view?deal_id=${row.id}`} style={styles.repeatLink}>
+                                  리뷰 완료
+                                </a>
+                              ) : canReview ? (
+                                <a href={`/review/write?deal_id=${row.id}`} style={styles.repeatLink}>
+                                  리뷰 작성
+                                </a>
+                              ) : null}
+                            </td>
+                          </tr>
+                          {expanded && (
+                            <tr>
+                              <td style={styles.tdDetail} colSpan={7}>
+                                {lineItemsLoading === row.id ? (
+                                  <div style={{ padding: 12, color: colors.muted, fontSize: 12.5 }}>불러오는 중...</div>
+                                ) : !lineItems || lineItems.length === 0 ? (
+                                  <div style={{ padding: 12, color: colors.muted, fontSize: 12.5 }}>
+                                    등록된 거래전표가 없어요.
+                                  </div>
+                                ) : (
+                                  <table style={styles.detailTable}>
+                                    <thead>
+                                      <tr>
+                                        <th style={styles.detailTh}>품목명</th>
+                                        <th style={styles.detailTh}>수량</th>
+                                        <th style={styles.detailTh}>단가</th>
+                                        <th style={styles.detailTh}>금액</th>
+                                        <th style={styles.detailTh}>구분</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {lineItems.map((li) => (
+                                        <tr key={li.id}>
+                                          <td style={styles.detailTd}>{li.item_name}</td>
+                                          <td style={styles.detailTd}>
+                                            {Number(li.quantity).toLocaleString('ko-KR')}
+                                            {li.unit}
+                                          </td>
+                                          <td style={styles.detailTd}>{Number(li.unit_price).toLocaleString('ko-KR')}원</td>
+                                          <td style={styles.detailTd}>{Number(li.amount).toLocaleString('ko-KR')}원</td>
+                                          <td style={styles.detailTd}>
+                                            <span
+                                              style={{
+                                                ...styles.htag,
+                                                ...(li.is_credit
+                                                  ? { background: colors.warnBg, color: colors.warn }
+                                                  : { background: colors.goodBg, color: colors.good }),
+                                              }}
+                                            >
+                                              {li.is_credit ? '외상' : '즉시결제'}
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       )
                     })}
                   </tbody>
@@ -537,6 +645,7 @@ const styles: { [k: string]: React.CSSProperties } = {
   acTop: { display: 'flex', alignItems: 'center', gap: 12 },
   acIcon: { width: 40, height: 40, borderRadius: 9, background: colors.paper2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   acName: { fontSize: 14.5, fontWeight: 700, color: colors.ink, textDecoration: 'none' },
+  arBadge: { background: colors.warnBg, color: colors.warn, fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap' },
   acMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   acSince: { marginLeft: 'auto', fontSize: 11.5, color: colors.muted, textAlign: 'right' },
   acStats: { display: 'flex', gap: 14, margin: '14px 0', padding: '12px 0', borderTop: `1px dashed ${colors.line}`, borderBottom: `1px dashed ${colors.line}` },
@@ -556,6 +665,11 @@ const styles: { [k: string]: React.CSSProperties } = {
   th: { background: colors.paper2, fontSize: 12.5, color: colors.muted, fontWeight: 700, padding: '12px 16px', textAlign: 'left' },
   td: { padding: '14px 16px', fontSize: 13.5, borderTop: `1px solid ${colors.paper2}` },
   htag: { fontSize: 11.5, fontWeight: 700, padding: '4px 9px', borderRadius: 12 },
+  itemsToggle: { cursor: 'pointer', color: colors.navy, fontWeight: 600 },
+  tdDetail: { padding: '0 16px 16px', borderTop: 'none', background: colors.paper2 },
+  detailTable: { width: '100%', borderCollapse: 'collapse', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 8, overflow: 'hidden' },
+  detailTh: { background: colors.paper2, fontSize: 11.5, color: colors.muted, fontWeight: 700, padding: '9px 12px', textAlign: 'left' },
+  detailTd: { padding: '10px 12px', fontSize: 12.8, borderTop: `1px solid ${colors.paper2}` },
   repeatLink: { fontSize: 12.5, fontWeight: 700, color: colors.navy, cursor: 'pointer', textDecoration: 'none' },
   emptyState: { textAlign: 'center', padding: '50px 20px', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, marginBottom: 44 },
   adSlot: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: 24, textAlign: 'center', color: colors.muted, fontSize: 12, marginTop: 20 },
