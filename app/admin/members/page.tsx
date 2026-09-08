@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
-import { colors, styles, formatDate, PARTNER_STATUS_LABEL, statusBadgeStyle } from '../_shared'
+import { colors, styles, formatDate, PARTNER_STATUS_LABEL, BUYER_STATUS_LABEL, statusBadgeStyle } from '../_shared'
 
 type BuyerRow = {
   id: string
@@ -11,6 +11,7 @@ type BuyerRow = {
   industry: string | null
   region: string | null
   created_at: string
+  user_id: string
   users: { status: string | null } | null
   deals: { count: number }[] | null
 }
@@ -39,7 +40,7 @@ export default function AdminMembersPage() {
         supabase
           .from('buyer_profiles')
           .select(
-            `id, business_name, contact_name, industry, region, created_at,
+            `id, business_name, contact_name, industry, region, created_at, user_id,
              users ( status ),
              deals ( count )`
           )
@@ -69,6 +70,22 @@ export default function AdminMembersPage() {
       return
     }
     setPartners((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)))
+  }
+
+  async function updateBuyerStatus(userId: string, status: 'active' | 'suspended') {
+    const label = status === 'active' ? '활성화' : '정지'
+    if (!window.confirm(`정말 이 소상공인 계정을 ${label} 처리하시겠습니까?`)) return
+
+    setActionError('')
+    setUpdatingId(userId)
+    const { error } = await supabase.from('users').update({ status }).eq('id', userId)
+    setUpdatingId(null)
+
+    if (error) {
+      setActionError('상태 변경 중 오류가 발생했습니다: ' + error.message)
+      return
+    }
+    setBuyers((prev) => prev.map((b) => (b.user_id === userId ? { ...b, users: { status } } : b)))
   }
 
   if (loading) {
@@ -110,6 +127,7 @@ export default function AdminMembersPage() {
                   <th style={styles.th}>가입일</th>
                   <th style={styles.th}>누적거래건수</th>
                   <th style={styles.th}>상태</th>
+                  <th style={styles.th}></th>
                 </tr>
               </thead>
               <tbody>
@@ -125,10 +143,30 @@ export default function AdminMembersPage() {
                       <td style={styles.td}>{dealCount.toLocaleString('ko-KR')}건</td>
                       <td style={styles.td}>
                         {status ? (
-                          <span style={{ ...styles.htag, ...statusBadgeStyle(status) }}>{status}</span>
+                          <span style={{ ...styles.htag, ...statusBadgeStyle(status) }}>
+                            {BUYER_STATUS_LABEL[status] || status}
+                          </span>
                         ) : (
                           '-'
                         )}
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button
+                            style={{ ...styles.btn, ...styles.btnPrimarySmall }}
+                            disabled={updatingId === b.user_id || status === 'active'}
+                            onClick={() => updateBuyerStatus(b.user_id, 'active')}
+                          >
+                            활성
+                          </button>
+                          <button
+                            style={{ ...styles.btn, ...styles.btnDangerSmall }}
+                            disabled={updatingId === b.user_id || status === 'suspended'}
+                            onClick={() => updateBuyerStatus(b.user_id, 'suspended')}
+                          >
+                            정지
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )

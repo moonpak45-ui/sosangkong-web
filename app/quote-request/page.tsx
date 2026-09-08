@@ -37,6 +37,7 @@ function QuoteRequestInner() {
 
   const [session, setSession] = useState<{ userId: string } | null | undefined>(undefined)
   const [buyerProfileId, setBuyerProfileId] = useState<string | null>(null)
+  const [buyerStatus, setBuyerStatus] = useState<string | null>(null)
 
   const [selectedPartners, setSelectedPartners] = useState<SelectedPartner[]>([])
   const [categoryId, setCategoryId] = useState<string | null>(null)
@@ -65,13 +66,15 @@ function QuoteRequestInner() {
         setSession({ userId: authSession.user.id })
         const { data: buyerProfile } = await supabase
           .from('buyer_profiles')
-          .select('id, address')
+          .select('id, address, users ( status )')
           .eq('user_id', authSession.user.id)
           .maybeSingle()
 
         if (buyerProfile) {
           setBuyerProfileId(buyerProfile.id)
           if (buyerProfile.address) setDeliveryAddress(buyerProfile.address)
+          const userStatus = (buyerProfile.users as unknown as { status: string | null } | null)?.status ?? null
+          setBuyerStatus(userStatus)
         }
       } else {
         setSession(null)
@@ -164,6 +167,10 @@ function QuoteRequestInner() {
     }
     if (!buyerProfileId) {
       setSubmitError('구매자(소상공인) 계정으로 로그인해주세요.')
+      return
+    }
+    if (buyerStatus === 'suspended') {
+      setSubmitError('계정이 정지되어 견적요청을 보낼 수 없습니다. 문의사항은 고객센터로 연락해주세요.')
       return
     }
     if (!categoryId) {

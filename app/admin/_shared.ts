@@ -58,6 +58,11 @@ export const PARTNER_STATUS_LABEL: Record<string, string> = {
   suspended: '정지',
 }
 
+export const BUYER_STATUS_LABEL: Record<string, string> = {
+  active: '활성',
+  suspended: '정지',
+}
+
 export const REQUEST_STATUS_LABEL: Record<string, string> = {
   open: '회신 대기',
   matched: '회신 도착',
@@ -72,7 +77,7 @@ export const DISPUTE_STATUS_LABEL: Record<string, string> = {
 }
 
 export function statusBadgeStyle(status: string): React.CSSProperties {
-  if (status === 'completed' || status === 'approved' || status === 'closed' || status === 'resolved') {
+  if (status === 'completed' || status === 'approved' || status === 'closed' || status === 'resolved' || status === 'active') {
     return { background: colors.goodBg, color: colors.good }
   }
   if (status === 'disputed' || status === 'suspended' || status === 'rejected') {
