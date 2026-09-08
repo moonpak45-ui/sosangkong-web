@@ -19,6 +19,13 @@ const EMPTY_FORM: PartnerFields = {
 
 type CategoryRow = { id: string; name: string }
 
+type StockRow = {
+  id: string
+  item_name: string
+  quantity_on_hand: number
+  unit: string
+}
+
 export default function PartnerProfileEditPage() {
   const [session, setSession] = useState<{ userId: string } | null | undefined>(undefined)
   const [partnerId, setPartnerId] = useState<string | null>(null)
@@ -32,6 +39,13 @@ export default function PartnerProfileEditPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(false)
+
+  const [stockList, setStockList] = useState<StockRow[]>([])
+  const [stockItemName, setStockItemName] = useState('')
+  const [stockQty, setStockQty] = useState('')
+  const [stockUnit, setStockUnit] = useState('개')
+  const [addingStock, setAddingStock] = useState(false)
+  const [stockError, setStockError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -66,10 +80,17 @@ export default function PartnerProfileEditPage() {
         description: partner.description || '',
       })
 
-      const [{ data: categoryRows }, { data: partnerCategoryRows }] = await Promise.all([
+      const [{ data: categoryRows }, { data: partnerCategoryRows }, { data: stockRows }] = await Promise.all([
         supabase.from('categories').select('id, name').order('name', { ascending: true }),
         supabase.from('partner_categories').select('category_id').eq('partner_id', partner.id),
+        supabase
+          .from('stock_levels')
+          .select('id, item_name, quantity_on_hand, unit')
+          .eq('partner_id', partner.id)
+          .order('item_name', { ascending: true }),
       ])
+
+      setStockList((stockRows || []) as StockRow[])
 
       setCategories((categoryRows || []) as CategoryRow[])
       const currentIds = new Set((partnerCategoryRows || []).map((r) => r.category_id as string))
@@ -165,6 +186,49 @@ export default function PartnerProfileEditPage() {
     setOriginalCategoryIds(new Set(selectedCategoryIds))
     setSaved(true)
     window.scrollTo(0, 0)
+  }
+
+  async function addStock() {
+    setStockError('')
+
+    if (!stockItemName.trim()) {
+      setStockError('품목명을 입력해주세요.')
+      return
+    }
+    const qty = Number(stockQty)
+    if (!stockQty.trim() || Number.isNaN(qty) || qty < 0) {
+      setStockError('초기 수량을 올바르게 입력해주세요.')
+      return
+    }
+    if (!partnerId) return
+
+    setAddingStock(true)
+    const { data, error } = await supabase
+      .from('stock_levels')
+      .insert({
+        partner_id: partnerId,
+        item_name: stockItemName.trim(),
+        quantity_on_hand: qty,
+        unit: stockUnit.trim() || '개',
+      })
+      .select('id, item_name, quantity_on_hand, unit')
+      .single()
+    setAddingStock(false)
+
+    if (error || !data) {
+      // 23505 = unique_violation: 이미 같은 품목명으로 등록된 재고 행이 있음
+      if (error?.code === '23505') {
+        setStockError('이미 등록된 품목이에요. 다른 품목명을 입력해주세요.')
+      } else {
+        setStockError('재고 등록 중 오류가 발생했습니다: ' + (error?.message || ''))
+      }
+      return
+    }
+
+    setStockList((prev) => [...prev, data as StockRow].sort((a, b) => a.item_name.localeCompare(b.item_name)))
+    setStockItemName('')
+    setStockQty('')
+    setStockUnit('개')
   }
 
   if (loading) {
@@ -282,6 +346,79 @@ export default function PartnerProfileEditPage() {
             {saving ? '저장 중...' : '저장하기'}
           </button>
         </div>
+
+        <div style={styles.card}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: colors.deep, marginBottom: 4 }}>초기 재고 등록</div>
+          <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 16 }}>
+            여기서 미리 등록해둔 품목만 거래전표 등록 시 재고가 자동으로 차감돼요.
+          </p>
+
+          {stockList.length > 0 && (
+            <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>품목명</th>
+                    <th style={styles.th}>현재 재고</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stockList.map((s) => (
+                    <tr key={s.id}>
+                      <td style={styles.td}>{s.item_name}</td>
+                      <td style={styles.td}>
+                        {Number(s.quantity_on_hand).toLocaleString('ko-KR')}
+                        {s.unit}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {stockError && <div style={styles.errorBox}>{stockError}</div>}
+
+          <div style={styles.field}>
+            <label style={styles.label}>품목명</label>
+            <input
+              style={styles.input}
+              value={stockItemName}
+              onChange={(e) => setStockItemName(e.target.value)}
+              placeholder="예) 냉동 흰살생선"
+            />
+          </div>
+          <div style={styles.fieldRow}>
+            <div style={styles.field}>
+              <label style={styles.label}>초기 수량</label>
+              <input
+                type="number"
+                style={styles.input}
+                value={stockQty}
+                onChange={(e) => setStockQty(e.target.value)}
+                placeholder="예) 100"
+              />
+            </div>
+            <div style={styles.field}>
+              <label style={styles.label}>단위</label>
+              <input
+                style={styles.input}
+                value={stockUnit}
+                onChange={(e) => setStockUnit(e.target.value)}
+                placeholder="예) 박스"
+              />
+            </div>
+          </div>
+
+          <button
+            style={{ ...styles.btnPrimary, width: '100%', marginTop: 6 }}
+            onClick={addStock}
+            disabled={addingStock}
+            type="button"
+          >
+            {addingStock ? '등록 중...' : '재고 추가'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -351,6 +488,9 @@ const styles: { [k: string]: React.CSSProperties } = {
     background: colors.white,
   },
   chipSelected: { background: colors.deep, color: colors.white, borderColor: colors.deep },
+  table: { width: '100%', borderCollapse: 'collapse', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, overflow: 'hidden' },
+  th: { background: colors.paper2, fontSize: 12, color: colors.muted, fontWeight: 700, padding: '10px 14px', textAlign: 'left' },
+  td: { padding: '12px 14px', fontSize: 13.5, borderTop: `1px solid ${colors.paper2}` },
   successBox: {
     background: colors.goodBg,
     color: colors.good,
