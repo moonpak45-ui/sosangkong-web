@@ -1,24 +1,39 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 
 type AccountType = 'buyer' | 'supplier'
 type Category = { id: string; name: string }
 
 export default function LoginPage() {
+  // 메인페이지의 "소상공인으로 시작하기"/"공급업체로 등록하기" 버튼이
+  // ?view=signup&type=buyer|supplier로 딥링크함 - useSearchParams()를 쓰는
+  // 부분만 Suspense로 감싸야 정적 렌더링과 충돌 없음.
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
+  )
+}
+
+function LoginPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const initialView = searchParams.get('view') === 'signup' ? 'signup' : 'login'
+  const initialType = searchParams.get('type') === 'supplier' ? 'supplier' : 'buyer'
 
   // 로그인/회원가입 탭
-  const [view, setView] = useState<'login' | 'signup'>('login')
+  const [view, setView] = useState<'login' | 'signup'>(initialView)
 
   // 공통 입력값
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
   // 회원가입 전용 입력값
-  const [accountType, setAccountType] = useState<AccountType>('buyer')
+  const [accountType, setAccountType] = useState<AccountType>(initialType)
   const [bizName, setBizName] = useState('')
   const [bizRegNo, setBizRegNo] = useState('')
   const [mainItems, setMainItems] = useState('')

@@ -1,3 +1,5 @@
+import RoleAwareCta from '../components/RoleAwareCta'
+
 export default function HomePage() {
   return (
     <>
@@ -20,12 +22,12 @@ export default function HomePage() {
               거래처에 문제가 생기면 대체 업체도 바로 추천해드립니다.
             </p>
             <div className="hero-ctas">
-              <a className="btn btn-primary" href="/login">
+              <RoleAwareCta targetRole="buyer" className="btn btn-primary">
                 소상공인으로 시작하기
-              </a>
-              <a className="btn btn-ghost" href="/login">
+              </RoleAwareCta>
+              <RoleAwareCta targetRole="partner" className="btn btn-ghost">
                 공급업체로 등록하기
-              </a>
+              </RoleAwareCta>
             </div>
           </div>
 
@@ -334,9 +336,9 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-          <a className="btn btn-ghost" href="/login">
+          <RoleAwareCta targetRole="partner" className="btn btn-ghost">
             공급업체 무료 등록
-          </a>
+          </RoleAwareCta>
         </div>
       </section>
     </>
