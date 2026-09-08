@@ -11,6 +11,16 @@ export default function Header() {
   const [role, setRole] = useState<'buyer' | 'partner' | 'admin' | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [keyword, setKeyword] = useState('')
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [isMobileHeader, setIsMobileHeader] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)')
+    setIsMobileHeader(mq.matches)
+    const handleChange = (e: MediaQueryListEvent) => setIsMobileHeader(e.matches)
+    mq.addEventListener('change', handleChange)
+    return () => mq.removeEventListener('change', handleChange)
+  }, [])
 
   useEffect(() => {
     async function loadRole(userId: string) {
@@ -59,13 +69,14 @@ export default function Header() {
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (keyword.trim()) {
+      setMobileSearchOpen(false)
       router.push(`/search?q=${encodeURIComponent(keyword.trim())}`)
     }
   }
 
   return (
     <header style={styles.header}>
-      <div style={styles.inner}>
+      <div className="header-inner" style={styles.inner}>
         <a href="/" style={styles.logo}>
           <svg width="22" height="22" viewBox="0 0 26 26" fill="none">
             <path d="M2 18C5 15 8 15 11 18C14 21 17 21 20 18C21.5 16.5 23 16.5 24 18" stroke="#F2A93B" strokeWidth="2" strokeLinecap="round" />
@@ -74,18 +85,34 @@ export default function Header() {
           소상공
         </a>
 
-        <form onSubmit={handleSearchSubmit} style={styles.searchForm}>
-          <input
-            type="text"
-            placeholder="어떤 거래처를 찾으세요? (예: 냉동수산, 식자재)"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            style={styles.searchInput}
-          />
-          <button type="submit" style={styles.searchBtn}>
-            검색
-          </button>
-        </form>
+        {!isMobileHeader && (
+          <form onSubmit={handleSearchSubmit} className="header-search-form" style={styles.searchForm}>
+            <input
+              type="text"
+              placeholder="어떤 거래처를 찾으세요? (예: 냉동수산, 식자재)"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              className="header-search-input"
+              style={styles.searchInput}
+            />
+            <button type="submit" style={styles.searchBtn}>
+              검색
+            </button>
+          </form>
+        )}
+
+        <button
+          type="button"
+          className="header-search-toggle"
+          style={styles.searchToggleBtn}
+          aria-label="검색창 열기"
+          onClick={() => setMobileSearchOpen((v) => !v)}
+        >
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="7" stroke={colors.ink} strokeWidth="1.8" />
+            <path d="M20 20L16.5 16.5" stroke={colors.ink} strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
 
         <nav style={styles.nav}>
           {session ? (
@@ -128,6 +155,23 @@ export default function Header() {
           )}
         </nav>
       </div>
+
+      {mobileSearchOpen && (
+        <form onSubmit={handleSearchSubmit} className="header-search-mobile-row">
+          <input
+            type="text"
+            autoFocus
+            placeholder="어떤 거래처를 찾으세요? (예: 냉동수산, 식자재)"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            className="header-search-input"
+            style={styles.searchInput}
+          />
+          <button type="submit" style={styles.searchBtn}>
+            검색
+          </button>
+        </form>
+      )}
     </header>
   )
 }
@@ -182,6 +226,17 @@ const styles: { [k: string]: React.CSSProperties } = {
     fontSize: 13.5,
     color: colors.ink,
     background: colors.paper2,
+  },
+  searchToggleBtn: {
+    border: `1px solid ${colors.line}`,
+    borderRadius: 7,
+    background: colors.white,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    flexShrink: 0,
   },
   searchBtn: {
     border: 'none',

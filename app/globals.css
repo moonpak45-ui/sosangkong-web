@@ -23,4 +23,169 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  padding-bottom: 0;
+}
+@media (max-width: 640px) {
+  body {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ============================================================
+   Responsive layout fixes (mobile 360-430px)
+
+   This app styles almost everything via inline `style={}` objects, and an
+   inline style always wins over any CSS rule. So for the handful of
+   properties that need to change per viewport width, the component leaves
+   that property OUT of its inline style object and applies one of these
+   classes instead — that's the only way a real @media query can take
+   effect. Everything else keeps using the existing inline style objects
+   untouched.
+   ============================================================ */
+
+/* Header search bar: below 640px Header.tsx doesn't render the search form
+   at all (JS viewport check), replacing it with an icon button that reveals
+   a full-width search row underneath the header. */
+.header-search-form {
+  min-width: 0;
+}
+.header-search-input {
+  min-width: 0;
+  width: 100%;
+}
+.header-search-toggle {
+  display: none;
+}
+.header-search-mobile-row {
+  display: none;
+}
+@media (max-width: 640px) {
+  .header-search-toggle {
+    display: inline-flex;
+  }
+  .header-search-mobile-row {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 12px;
+  }
+  .header-inner {
+    gap: 12px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* Generic "fixed-width sidebar + flexible content" page layout
+   (my-page, partner dashboard, admin console, search results).
+   Desktop column widths/gaps are supplied per-usage via CSS custom
+   properties; below 768px it always collapses to a single column, so the
+   sidebar (first in DOM order) stacks above the main content. */
+.responsive-two-col {
+  display: grid;
+  grid-template-columns: var(--rtc-cols, 1fr 1fr);
+  gap: var(--rtc-gap, 24px);
+}
+@media (max-width: 768px) {
+  .responsive-two-col {
+    /* minmax(0, 1fr), not 1fr: a bare 1fr track still respects each grid
+       item's content-based min-width, so a wide child (e.g. a data table)
+       forces the track - and the whole page - wider than the viewport
+       instead of scrolling inside its own overflow-x:auto wrapper. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--rtc-gap-mobile, 20px);
+  }
+}
+
+/* Sidebar column inside a .responsive-two-col: swap the right-hand divider
+   for a bottom divider once it stacks above the main content on mobile. */
+@media (max-width: 768px) {
+  .responsive-sidebar-divider {
+    border-right: none !important;
+    border-bottom: 1px solid #d9e3ea;
+    padding-right: 0 !important;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+  }
+}
+
+/* /search: filter bar (category / region / submit). Height is always auto
+   (content-driven) — never fixed — so a stacked mobile layout can grow. */
+.search-bar-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  height: auto;
+}
+@media (max-width: 560px) {
+  .search-bar-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* /search: "신뢰도" filter card. Sticky only makes sense once it sits in a
+   narrow sidebar next to a much taller result list (>=769px, matching the
+   .responsive-two-col breakpoint) — below that it stacks above the results
+   in normal flow, so sticky positioning must be turned off or it pins to
+   the top of the viewport and overlaps the content scrolling beneath it. */
+.search-filter-panel {
+  position: static;
+}
+@media (min-width: 769px) {
+  .search-filter-panel {
+    position: sticky;
+    top: 20px;
+  }
+}
+
+/* /search: each result row (checkbox, icon, info, favorite, match/CTA) */
+.search-result-card {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  gap: 20px;
+  align-items: center;
+}
+@media (max-width: 640px) {
+  .search-result-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+/* Mobile bottom tab bar (components/MobileTabBar.tsx): native-app style
+   fixed nav, only shown <=640px. Kept hidden by default (desktop) since an
+   inline `display` on the component would always win over this media query. */
+.mobile-tabbar {
+  display: none;
+}
+@media (max-width: 640px) {
+  .mobile-tabbar {
+    display: flex;
+  }
+}
+
+/* /quote-request: 품목 입력 행 (품목명 / 수량 / 단위 / 삭제) */
+.quote-item-row {
+  display: grid;
+  grid-template-columns: 1.6fr 0.7fr 0.7fr 32px;
+  gap: 10px;
+  align-items: center;
+}
+@media (max-width: 480px) {
+  .quote-item-row {
+    grid-template-columns: 1fr 1fr 32px;
+    grid-template-areas: 'name name del' 'qty unit del';
+    row-gap: 8px;
+  }
+  .quote-item-row .quote-item-name {
+    grid-area: name;
+  }
+  .quote-item-row .quote-item-qty {
+    grid-area: qty;
+  }
+  .quote-item-row .quote-item-unit {
+    grid-area: unit;
+  }
+  .quote-item-row .quote-item-del {
+    grid-area: del;
+  }
 }
