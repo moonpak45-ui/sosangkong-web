@@ -36,8 +36,9 @@ type DealDetail = {
   } | null
 }
 
-type PrintTarget = 'receiver' | 'supplier' | 'both'
 type Variant = 'receiver' | 'supplier'
+
+const MIN_ITEM_ROWS = 15
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -61,8 +62,6 @@ export default function DealInvoicePage() {
   const [deal, setDeal] = useState<DealDetail | null>(null)
   const [lineItems, setLineItems] = useState<LineItemRow[]>([])
   const [arBalance, setArBalance] = useState(0)
-  const [screenView, setScreenView] = useState<Variant>('receiver')
-  const [printTarget, setPrintTarget] = useState<PrintTarget>('receiver')
 
   useEffect(() => {
     async function load() {
@@ -110,12 +109,6 @@ export default function DealInvoicePage() {
     load()
   }, [dealId])
 
-  function triggerPrint(target: PrintTarget) {
-    setPrintTarget(target)
-    // data-print-target 갱신이 DOM에 반영된 뒤 인쇄되도록 한 틱 미룸
-    setTimeout(() => window.print(), 50)
-  }
-
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: colors.muted }}>불러오는 중...</div>
   }
@@ -145,18 +138,24 @@ export default function DealInvoicePage() {
   const docNo = deal.id.slice(0, 8).toUpperCase()
   const dealDate = formatDate(deal.confirmed_at)
 
+  // 최소 15행 고정, 15개 넘으면 그만큼 늘림. 빈 칸은 null로 채워서
+  // 렌더링 시 순번만 있고 나머지는 공백인 행이 되도록 함.
+  const displayRowCount = Math.max(MIN_ITEM_ROWS, lineItems.length)
+  const displayRows: (LineItemRow | null)[] = Array.from({ length: displayRowCount }, (_, i) => lineItems[i] ?? null)
+
   // deal을 클로저로 참조하지 않고 파라미터로 받음: 위 "if (!deal) return"의
   // null 좁히기는 이 바깥 함수 스코프에만 적용되고, 중첩 함수 안에서는
   // deal이 다시 DealDetail | null로 보여 TS가 "possibly null" 에러를 냄
-  // (Vercel 빌드에서 실제로 발생함, 로컬 dev 서버는 이 타입체크를 안 함).
-  // 파라미터로 명시적으로 전달하면 그 스코프 안에서는 확정적으로
-  // DealDetail 타입이라 이 문제가 생기지 않음.
+  // (Vercel 빌드에서 실제로 발생했던 문제). 파라미터로 명시적으로 전달하면
+  // 그 스코프 안에서는 확정적으로 DealDetail 타입이라 문제가 생기지 않음.
   function renderCopy(variant: Variant, deal: DealDetail) {
     const subtitle = variant === 'receiver' ? '(공급받는자용)' : '(공급자용)'
-    const screenHidden = screenView !== variant
+    // 인쇄 시 1페이지=공급자용, 2페이지=공급받는자용이 되도록, 먼저 나오는
+    // 공급자용 사본에만 page-break-after를 줌(globals.css 참고).
+    const className = variant === 'supplier' ? 'invoice-page-break' : undefined
 
     return (
-      <div className={`invoice-copy invoice-copy-${variant}${screenHidden ? ' screen-hidden' : ''}`}>
+      <div className={className}>
         <div style={styles.sheet}>
           <div style={styles.sheetHead}>
             <h1 style={styles.title}>거래명세서</h1>
@@ -257,49 +256,39 @@ export default function DealInvoicePage() {
                 </tr>
               </thead>
               <tbody>
-                {lineItems.length === 0 ? (
-                  <tr>
-                    <td style={{ ...styles.itemTd, textAlign: 'center', color: colors.muted }} colSpan={9}>
-                      등록된 품목이 없어요.
+                {displayRows.map((li, idx) => (
+                  <tr key={li ? li.id : `empty-${idx}`}>
+                    <td style={styles.itemTd}>{idx + 1}</td>
+                    <td style={{ ...styles.itemTd, textAlign: 'left' }}>{li?.item_name || ''}</td>
+                    <td style={styles.itemTd}>
+                      {li && isBoxUnit(li.unit) ? Number(li.quantity).toLocaleString('ko-KR') : ''}
+                    </td>
+                    <td style={styles.itemTd}>
+                      {li && !isBoxUnit(li.unit) ? Number(li.quantity).toLocaleString('ko-KR') : ''}
+                    </td>
+                    <td style={styles.itemTd}>{li ? Number(li.quantity).toLocaleString('ko-KR') : ''}</td>
+                    <td style={styles.itemTd}>{li ? Number(li.unit_price).toLocaleString('ko-KR') : ''}</td>
+                    <td style={styles.itemTd}>{li ? Number(li.amount).toLocaleString('ko-KR') : ''}</td>
+                    <td style={styles.itemTd}>{li?.is_credit ? '외상' : ''}</td>
+                    <td style={{ ...styles.itemTd, textAlign: 'left', fontSize: 10, color: colors.muted }}>
+                      {idx === 0 ? '정산 내역은 소상공 마이페이지에서 확인 가능합니다.' : ''}
                     </td>
                   </tr>
-                ) : (
-                  lineItems.map((li, idx) => (
-                    <tr key={li.id}>
-                      <td style={styles.itemTd}>{idx + 1}</td>
-                      <td style={{ ...styles.itemTd, textAlign: 'left' }}>{li.item_name}</td>
-                      <td style={styles.itemTd}>
-                        {isBoxUnit(li.unit) ? Number(li.quantity).toLocaleString('ko-KR') : ''}
-                      </td>
-                      <td style={styles.itemTd}>
-                        {!isBoxUnit(li.unit) ? Number(li.quantity).toLocaleString('ko-KR') : ''}
-                      </td>
-                      <td style={styles.itemTd}>{Number(li.quantity).toLocaleString('ko-KR')}</td>
-                      <td style={styles.itemTd}>{Number(li.unit_price).toLocaleString('ko-KR')}</td>
-                      <td style={styles.itemTd}>{Number(li.amount).toLocaleString('ko-KR')}</td>
-                      <td style={styles.itemTd}>{li.is_credit ? '외상' : ''}</td>
-                      <td style={{ ...styles.itemTd, textAlign: 'left', fontSize: 10, color: colors.muted }}>
-                        {idx === 0 ? '정산 내역은 소상공 마이페이지에서 확인 가능합니다.' : ''}
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
-              {lineItems.length > 0 && (
-                <tfoot>
-                  <tr>
-                    <td style={styles.itemTdTotal} colSpan={2}>
-                      합계
-                    </td>
-                    <td style={styles.itemTdTotal}>{boxTotal.toLocaleString('ko-KR')}</td>
-                    <td style={styles.itemTdTotal}>{eaTotal.toLocaleString('ko-KR')}</td>
-                    <td style={styles.itemTdTotal}>{qtyTotal.toLocaleString('ko-KR')}</td>
-                    <td style={styles.itemTdTotal}></td>
-                    <td style={styles.itemTdTotal}>{totalAmount.toLocaleString('ko-KR')}</td>
-                    <td style={styles.itemTdTotal} colSpan={2}></td>
-                  </tr>
-                </tfoot>
-              )}
+              <tfoot>
+                <tr>
+                  <td style={styles.itemTdTotal} colSpan={2}>
+                    합계
+                  </td>
+                  <td style={styles.itemTdTotal}>{boxTotal.toLocaleString('ko-KR')}</td>
+                  <td style={styles.itemTdTotal}>{eaTotal.toLocaleString('ko-KR')}</td>
+                  <td style={styles.itemTdTotal}>{qtyTotal.toLocaleString('ko-KR')}</td>
+                  <td style={styles.itemTdTotal}></td>
+                  <td style={styles.itemTdTotal}>{totalAmount.toLocaleString('ko-KR')}</td>
+                  <td style={styles.itemTdTotal} colSpan={2}></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
 
@@ -336,43 +325,16 @@ export default function DealInvoicePage() {
         <a href="/partner/dashboard" style={styles.backLink}>
           ← 공급업체 마이페이지로
         </a>
-        <div style={styles.toolbarRight}>
-          <div style={styles.viewToggle}>
-            <button
-              type="button"
-              style={{ ...styles.toggleBtn, ...(screenView === 'receiver' ? styles.toggleBtnActive : {}) }}
-              onClick={() => setScreenView('receiver')}
-            >
-              공급받는자용
-            </button>
-            <button
-              type="button"
-              style={{ ...styles.toggleBtn, ...(screenView === 'supplier' ? styles.toggleBtnActive : {}) }}
-              onClick={() => setScreenView('supplier')}
-            >
-              공급자용
-            </button>
-          </div>
-          <button style={styles.printBtn} onClick={() => triggerPrint('receiver')} type="button">
-            공급받는자용 인쇄
-          </button>
-          <button style={styles.printBtn} onClick={() => triggerPrint('supplier')} type="button">
-            공급자용 인쇄
-          </button>
-          <button
-            style={{ ...styles.printBtn, ...styles.printBtnPrimary }}
-            onClick={() => triggerPrint('both')}
-            type="button"
-          >
-            둘 다 인쇄
-          </button>
-        </div>
+        <button style={styles.printBtn} onClick={() => window.print()} type="button">
+          인쇄하기
+        </button>
       </div>
 
-      <div data-print-target={printTarget}>
-        {renderCopy('receiver', deal)}
-        {renderCopy('supplier', deal)}
-      </div>
+      {/* 인쇄 시 항상 2페이지: 1페이지 공급자용, 2페이지 공급받는자용
+          (page-break는 renderCopy 안에서 공급자용 쪽에 붙임). 화면에서도
+          같은 순서로 둘 다 세로로 보여줌 - 인쇄 결과와 미리보기가 일치. */}
+      {renderCopy('supplier', deal)}
+      {renderCopy('receiver', deal)}
     </div>
   )
 }
@@ -405,12 +367,16 @@ const styles: { [k: string]: React.CSSProperties } = {
     gap: 12,
   },
   backLink: { fontSize: 13, color: colors.muted, textDecoration: 'none' },
-  toolbarRight: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  viewToggle: { display: 'flex', border: `1px solid ${colors.line}`, borderRadius: 6, overflow: 'hidden' },
-  toggleBtn: { border: 'none', background: colors.white, color: colors.muted, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' },
-  toggleBtnActive: { background: colors.navy, color: colors.white },
-  printBtn: { background: colors.white, color: colors.navy, border: `1px solid ${colors.navy}`, borderRadius: 6, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' },
-  printBtnPrimary: { background: colors.navy, color: colors.white },
+  printBtn: {
+    background: colors.navy,
+    color: colors.white,
+    border: 'none',
+    borderRadius: 6,
+    padding: '10px 20px',
+    fontSize: 13.5,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
   sheet: {
     maxWidth: 800,
     margin: '20px auto 40px',

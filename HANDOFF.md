@@ -216,33 +216,32 @@ fallback합니다(이 앱 전체에서 쓰는 관례).
 양식에 맞춰 완전히 다시 만들었습니다. 이전 버전 코드는 남아있지 않고
 완전히 대체됨.
 
-**공급받는자용/공급자용 두 장 + 화면 토글 + 인쇄 3버튼**
+**공급자용/공급받는자용 두 장, 인쇄 버튼 1개로 항상 2매 출력 (v3에서 단순화)**
 
-두 "사본"(`renderCopy('receiver' | 'supplier')`)을 항상 DOM에 함께
-렌더링합니다. 데이터는 완전히 동일하고 부제(`(공급받는자용)`/`(공급자용)`)만
-다릅니다.
+최초 v2는 화면 토글 + 인쇄 3버튼("공급받는자용 인쇄"/"공급자용 인쇄"/
+"둘 다 인쇄") 구조였는데, 사용성 문제로 v3에서 다음처럼 단순화함:
 
-- 화면: 상단 토글 버튼으로 둘 중 하나만 보임(`.screen-hidden` 클래스, 순수
-  화면용 — React state `screenView`로 제어).
-- 인쇄: "공급받는자용 인쇄"/"공급자용 인쇄"/"둘 다 인쇄" 3개 버튼이 각각
-  `printTarget` state를 `receiver`/`supplier`/`both`로 설정한 뒤
-  `window.print()`를 호출합니다. `data-print-target` 속성 + `@media print`
-  CSS(`app/globals.css`)가 인쇄 시 어느 사본을 보여줄지 결정 — 화면에서
-  어느 쪽을 보고 있었는지와 무관하게 클릭한 버튼대로 인쇄됩니다. "둘 다
-  인쇄"는 공급자용 사본에 `page-break-before: always`를 줘서 2페이지로
-  분리.
+- 두 "사본"(`renderCopy('supplier' | 'receiver', deal)`)을 항상 DOM에
+  순서대로(공급자용 → 공급받는자용) 렌더링 — 화면에도 둘 다 세로로 나열되어
+  보이고(토글 없음), 인쇄도 항상 둘 다 나감. 데이터는 완전히 동일하고
+  부제(`(공급자용)`/`(공급받는자용)`)만 다름.
+- 버튼은 "인쇄하기" 1개, `onClick={() => window.print()}`뿐 — state 조작
+  없음(어차피 항상 둘 다 렌더링/인쇄되므로 클릭 전 준비 단계가 불필요해짐).
+- 공급자용 사본의 래퍼에 `.invoice-page-break` 클래스만 붙이고, CSS는
+  `app/globals.css`에 다음 한 줄로 축소(예전의 `.screen-hidden`/
+  `data-print-target`/`.invoice-copy-*` 조건부 표시 로직은 전부 제거):
   ```css
-  .screen-hidden { display: none; }
   @media print {
-    .invoice-copy { display: block !important; }
-    [data-print-target='receiver'] .invoice-copy-supplier { display: none !important; }
-    [data-print-target='supplier'] .invoice-copy-receiver { display: none !important; }
-    .invoice-copy-supplier { page-break-before: always; }
+    .invoice-page-break { page-break-after: always; }
   }
   ```
-  Playwright로 버튼 클릭 → `page.emulateMedia({ media: 'print' })` →
-  `getComputedStyle`로 세 가지 조합(receiver/supplier/both) 전부 의도한
-  대로 `display`가 나오는 것까지 확인함.
+  이제 화면 미리보기와 인쇄 결과가 항상 일치함(예전엔 화면에 보이는 사본과
+  인쇄되는 사본이 버튼 선택에 따라 달라질 수 있었음).
+- **주의**: `page-break-after: always`가 실제 프린터/PDF 출력에서 정확히
+  A4 2매로 나뉘는지는 Playwright의 `emulateMedia({ media: 'print' })` +
+  `getComputedStyle`로는 CSS 규칙이 계산되는 것까지만 확인 가능하고, 실제
+  페이지네이션(진짜 인쇄물/PDF)은 헤드리스 브라우저로 검증 불가 — 코드 상
+  올바른 CSS가 적용됨을 확인한 수준.
 
 **정보 박스**: 공급자/공급받는자 각각 `<table>`(사업자번호/상호·성명/주소/
 연락처, 공급받는자는 성명·담당자·연락처까지) 형태로, 남색(`colors.navy`)
@@ -263,8 +262,15 @@ contact_name`(유일하게 있는 이름 필드)을 그대로 사용 — 스펙�
 그 외엔 EA 컬럼에 수량을 넣고 총수량엔 항상 `quantity`를 그대로 표시.
 비고엔 `is_credit`이면 "외상". 참고사항은 스펙 그대로 **첫 행에만**
 "정산 내역은 소상공 마이페이지에서 확인 가능합니다."(별도 계좌 정보가
-없어 이 안내로 대체 — 스펙 지시). 빈 행 없이 실제 품목 수만큼만 렌더링.
-합계 행에 BOX/EA/총수량/금액 합계.
+없어 이 안내로 대체 — 스펙 지시). 합계 행에 BOX/EA/총수량/금액 합계.
+
+**최소 15행 고정 (v3 추가)**: 실제 품목이 15개 미만이면 순번 1~15까지
+항상 표시 — 부족한 행은 순번 숫자만 있고 나머지 칸은 공백인 빈 행으로
+채움(`li ?? null`을 매핑해서 실데이터 행과 동일한 `styles.itemTd`를 그대로
+쓰므로 테두리·높이는 완전히 동일). 실제 품목이 15개를 넘으면 그만큼
+그대로 늘려서 전부 표시(데이터 누락 없음) — 행 수는
+`Math.max(15, lineItems.length)`로 계산. 합계 행은 `<tfoot>`이라 항상
+`<tbody>`의 모든 행(빈 행 포함/15행 초과 포함) 다음에 위치.
 
 **정산 요약**: 전미수금/총미수금/금일입금/금일매출액/총합계를 계산합니다.
 `ar_balances.balance`는 파트너-소상공인 쌍의 **누적** 외상잔액이라(여러
