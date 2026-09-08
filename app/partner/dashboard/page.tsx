@@ -588,6 +588,7 @@ export default function PartnerDashboardPage() {
                       <th style={styles.th}>품목</th>
                       <th style={styles.th}>거래액</th>
                       <th style={styles.th}>상태</th>
+                      <th style={styles.th}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -601,6 +602,11 @@ export default function PartnerDashboardPage() {
                           <span style={{ ...styles.htag, ...dealStatusStyle(row.status) }}>
                             {DEAL_STATUS_LABEL[row.status]}
                           </span>
+                        </td>
+                        <td style={styles.td}>
+                          <a href={`/partner/dashboard/deals/${row.id}/invoice`} style={styles.repeatLink}>
+                            명세서 인쇄
+                          </a>
                         </td>
                       </tr>
                     ))}
@@ -889,6 +895,7 @@ const styles: { [k: string]: React.CSSProperties } = {
   th: { background: colors.paper2, fontSize: 12.5, color: colors.muted, fontWeight: 700, padding: '12px 16px', textAlign: 'left' },
   td: { padding: '14px 16px', fontSize: 13.5, borderTop: `1px solid ${colors.paper2}` },
   htag: { fontSize: 11.5, fontWeight: 700, padding: '4px 9px', borderRadius: 12 },
+  repeatLink: { fontSize: 12.5, fontWeight: 700, color: colors.navy, cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap' },
   statsGrid: { display: 'grid', gap: 14, marginBottom: 22 },
   statCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: '18px 20px' },
   statLabel: { fontSize: 12, color: colors.muted, fontWeight: 600, marginBottom: 8 },

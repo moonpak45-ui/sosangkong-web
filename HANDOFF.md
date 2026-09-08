@@ -59,7 +59,8 @@ constraint`)를 이용해 실제 컬럼을 하나씩 알아낼 수 있습니다(
   견적요청 차단), 카테고리 수정/삭제(사용 중 카테고리는 FK로 삭제 차단)
 - 마이페이지/파트너 대시보드 공용 "계정 설정"(이메일 조회, 비밀번호 변경)
 - 재고관리북(ledgerbook) 1단계 — 거래전표/외상잔액/재고, 파트너 전용
-- **재고관리북(ledgerbook) 2단계** (이번 작업, 아래 상세) — 소상공인 조회 화면
+- 재고관리북(ledgerbook) 2단계 — 소상공인 조회 화면(미결제 배지, 품목 드릴다운)
+- **재고관리북(ledgerbook) 3단계** (이번 작업, 아래 상세) — 거래명세서 A4 인쇄
 
 ## 재고관리북(ledgerbook) 1단계
 
@@ -162,8 +163,88 @@ partner 본인만 select. `stock_levels`는 초기 등록용 insert만 partner �
 실제 계정(test01)으로 미결제 배지 노출·품목 드릴다운·`stock_levels` 여전히
 비노출까지 라이브 데이터로 검증함.
 
+## 재고관리북(ledgerbook) 3단계 — 거래명세서 A4 인쇄
+
+새 테이블/RLS 없음(마이그레이션 파일도 없음). 기존 `deals`/`deal_line_items`/
+`partners`/`buyer_profiles`/`ar_balances` 조회만으로 구성. PDF 라이브러리
+없이 `window.print()` + `@media print`/`@page` CSS만 사용.
+
+### 라우트
+
+`/partner/dashboard/deals/[id]/invoice`
+(`app/partner/dashboard/deals/[id]/invoice/page.tsx`) — `/partner/dashboard`의
+서브 라우트가 아니라 독립된 Next.js 라우트입니다(App Router는 같은 경로
+아래 여러 `page.tsx`를 자유롭게 둘 수 있음). `lib/supabaseClient`까지의
+상대 경로가 6단계(`../../../../../../lib/supabaseClient`)라 깊이가 헷갈리기
+쉬운데, `tsconfig.json`에 `@/*` alias가 설정되어 있으니(현재 다른 파일들은
+전부 상대경로를 씀 - 일관성 위해 이번에도 상대경로 사용) 다음에 이런 깊은
+라우트를 또 만들면 `@/lib/...`을 쓰는 것도 고려해볼 것.
+
+### 접근 권한
+
+별도 정책 불필요 — `deals_select_buyer_or_partner`(1단계 이전부터 있던 기존
+정책)가 이미 해당 거래의 buyer 또는 partner 본인만 select 가능하게 막아줌.
+작업 전에 실제로 확인한 것:
+
+- `buyer_profiles_select_partner_target` 정책(거래처가 자신에게 견적요청을
+  보낸 적 있는 소상공인의 buyer_profiles를 조회 가능하게 함)이 명세서에
+  필요한 주소/담당자명까지 포함한 **전체 컬럼**을 파트너에게 노출하는지 실제
+  계정으로 확인함(RLS는 컬럼이 아니라 행 단위라, 해당 행이 보이면 전체
+  컬럼이 다 보임 — 확인 완료).
+- test01(buyer), test4(partner) 둘 다 같은 거래의 명세서에 접근 가능함을
+  확인, 세션 없는 익명 요청은 거부됨(권한 없음 안내 문구)을 확인함.
+
+### 스키마 갭 하나 발견: "연락처" 컬럼이 아예 없음
+
+스펙은 공급자/공급받는자 양쪽에 "연락처"를 표시하라고 되어 있지만,
+`partners`/`buyer_profiles` 어디에도 전화번호류 컬럼이 없습니다(둘 다 실제
+컬럼을 전수 확인함 — `partners`는 `id/user_id/name/biz_reg_no/region/
+description/status/verified_badge/rating_avg/review_count/created_at`,
+`buyer_profiles`는 `id/user_id/business_name/biz_reg_no/industry/region/
+address/contact_name/created_at`뿐). 그래서:
+
+- 공급받는자 쪽은 그나마 있는 `buyer_profiles.contact_name`(담당자 이름)을
+  "연락처(담당자)"로 대신 표시.
+- 공급자 쪽은 대응되는 컬럼이 전혀 없어 "연락처" 행 자체는 두되 값은 `-`로
+  표시(기존 앱 전체에서 값 없을 때 쓰는 관례를 그대로 따름).
+- 전화번호를 실제로 받으려면 `partners`/`buyer_profiles`에 컬럼을 추가하고
+  각자 프로필 화면에 입력 필드를 만들어야 함(다음 단계 후보).
+
+### 화면
+
+- 상단 툴바(`.invoice-no-print` 클래스 — 인쇄 시 숨김): 뒤로가기 링크 +
+  "인쇄하기" 버튼(`window.print()`).
+- A4 미리보기 카드: 제목/발행일자·거래일자 → 공급자/공급받는자 2단
+  (`.responsive-two-col` 재사용, 새 CSS 없음) → 품목 테이블(품목명/수량/
+  단위/단가/금액/비고=외상여부) → 합계금액·외상잔액(해당 partner+buyer
+  쌍의 `ar_balances.balance`, 없으면 0원) → 서명란 2단(공급자 확인/인수자
+  확인, 마찬가지로 `.responsive-two-col` 재사용).
+- 진입점: `/partner/dashboard` "진행 중인 거래" 표에 "명세서 인쇄" 링크 열
+  추가.
+
+### 인쇄 CSS (`app/globals.css` 맨 아래)
+
+`@media print`로 `header`/`footer`/`.mobile-tabbar`/`.invoice-no-print`를
+전역으로 숨김(이 사이트의 모든 페이지에 적용되는 규칙 — Header/Footer/
+MobileTabBar는 루트 레이아웃이 모든 페이지에 렌더링하므로 페이지 단위로
+숨기는 방법이 마땅치 않아 전역 규칙으로 처리함. 지금은 인쇄가 필요한
+페이지가 이 명세서뿐이라 문제 없지만, 나중에 인쇄 대상 페이지가 늘어나면
+이 규칙이 의도치 않게 다른 인쇄 화면에도 적용된다는 점 참고). `@page {
+size: A4; margin: 15mm; }`로 용지 규격 고정. Playwright의
+`page.emulateMedia({ media: 'print' })`로 header/footer/tabbar/toolbar가
+전부 `display: none`이 되는 것까지 확인함(실제 프린터 출력물 자체를 확인한
+건 아님 — CSS 규칙이 올바르게 걸리는지까지만 검증).
+
+### 이번 단계에서 하지 않은 것 (스펙에서 명시적으로 제외됨)
+
+카카오 알림톡 발송 — 건당 비용 + 발송대행사 계약이 필요해 매출 발생 이후
+유료 addon으로 별도 진행 예정. 관련 버튼/placeholder도 추가하지 않음.
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
-- ledgerbook 3단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
+- ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
   선택/월별 필터링 같은 `/partner/ledger` 사용성 개선
+- `partners`/`buyer_profiles`에 실제 연락처(전화번호) 컬럼 추가 — 지금은
+  명세서에 표시할 데이터 자체가 없음
+- 카카오 알림톡 발송 연동 (유료 addon, 매출 발생 이후 예정)
 - `category_attribute_defs` 실제 스키마에 맞춘 관리 UI (보류 중)

@@ -214,3 +214,25 @@ body {
     grid-area: del;
   }
 }
+
+/* 거래명세서 인쇄 (/partner/dashboard/deals/[id]/invoice). 사이트 공통
+   Header/Footer/MobileTabBar는 루트 레이아웃이 모든 페이지에 렌더링하므로,
+   여기서 전역으로 숨겨야 명세서 본문만 인쇄됨. .invoice-no-print은 그
+   페이지 자체의 "인쇄하기" 버튼 등 화면 전용 UI에 붙임. */
+@media print {
+  header,
+  footer,
+  .mobile-tabbar,
+  .invoice-no-print {
+    display: none !important;
+  }
+  body {
+    padding-bottom: 0 !important;
+    background: #fff !important;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 15mm;
+}
