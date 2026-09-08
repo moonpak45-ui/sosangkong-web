@@ -12,6 +12,16 @@ type Attributes = {
   request_note?: string
 }
 
+function formatEta(raw: string | null): string {
+  if (!raw || !raw.trim()) return '-'
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return raw
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}.${m}.${day}`
+}
+
 type QuoteRequestRow = {
   id: string
   title: string | null
@@ -270,7 +280,7 @@ function QuoteCompareInner() {
                   <ul style={styles.qDetail}>
                     <li style={styles.qDetailLi}>
                       <span>배송/착수 예정</span>
-                      <span>{q.eta_or_schedule || '-'}</span>
+                      <span>{formatEta(q.eta_or_schedule)}</span>
                     </li>
                     <li style={styles.qDetailLi}>
                       <span>결제 조건</span>
