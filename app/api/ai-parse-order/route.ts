@@ -100,32 +100,66 @@ ${aliases.length ? aliases.map((a) => `- "${a.alias_text}" → "${a.matched_item
 # 카카오톡 대화 원문
 ${rawText}`
 
-  const anthropic = new Anthropic()
+  let anthropic: Anthropic
+  try {
+    anthropic = new Anthropic()
+  } catch (error) {
+    // ANTHROPIC_API_KEY가 서버 환경에 아예 없으면 생성자 자체가 여기서
+    // 던짐(요청이 API에 닿기도 전) - 별도로 잡아서 원인을 명확히 알려줌.
+    console.error('[ai-parse-order] Anthropic client init failed:', error)
+    return NextResponse.json(
+      { error: 'AI 서비스 설정 오류예요(ANTHROPIC_API_KEY 미설정 가능성). 관리자에게 문의해주세요.' },
+      { status: 500 }
+    )
+  }
 
   try {
     const response = await anthropic.messages.parse({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userContent }],
       output_config: { format: zodOutputFormat(ParsedOrderSchema) },
     })
 
+    if (response.stop_reason === 'max_tokens') {
+      console.error('[ai-parse-order] response truncated at max_tokens, rawText length:', rawText.length)
+      return NextResponse.json(
+        { error: '주문 내용이 너무 길어서 AI 응답이 중간에 끊겼어요. 내용을 나눠서 다시 시도해주세요.' },
+        { status: 502 }
+      )
+    }
+
     if (!response.parsed_output) {
+      console.error('[ai-parse-order] parsed_output is null, stop_reason:', response.stop_reason)
       return NextResponse.json({ error: 'AI 분석 결과를 해석하지 못했어요. 다시 시도해주세요.' }, { status: 502 })
     }
 
     return NextResponse.json({ items: response.parsed_output.items })
   } catch (error) {
+    // 서버 로그(Vercel Functions 로그)에 항상 전체 에러를 남김 - 지금까지는
+    // 아무것도 안 남겨서, "AI 분석 중 알 수 없는 오류" 리포트를 받아도
+    // 실제 원인을 추적할 방법이 없었음(실사용 중 겪은 문제 - 아래 분기로
+    // 클라이언트에도 실제 메시지를 보여주도록 같이 고침).
+    console.error('[ai-parse-order] Claude call failed:', error)
+
     if (error instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: 'AI 서비스 인증에 실패했어요. 관리자에게 문의해주세요.' }, { status: 500 })
+      return NextResponse.json({ error: 'AI 서비스 인증에 실패했어요(API 키 확인 필요). 관리자에게 문의해주세요.' }, { status: 500 })
     }
     if (error instanceof Anthropic.RateLimitError) {
       return NextResponse.json({ error: 'AI 서비스 이용량이 많아요. 잠시 후 다시 시도해주세요.' }, { status: 429 })
     }
-    if (error instanceof Anthropic.APIError) {
+    // AnthropicError는 APIError의 "부모" 클래스라 APIError보다 넓게
+    // 잡아야 함 - 구조화된 출력이 스키마와 안 맞아 파싱 실패했을 때
+    // (lib/parser.mjs의 parseOutputFormat)도 APIError가 아니라
+    // AnthropicError를 던져서, 예전엔 이 경우가 세 분기 어디에도 안
+    // 걸리고 바로 아래 "알 수 없는 오류"로 빠졌었음(실제 프로덕션에서
+    // 재현된 문제 - 긴 주문 텍스트로 응답이 잘리거나, 모델이 스키마에
+    // 안 맞는 값을 냈을 때 발생했을 가능성이 높음).
+    if (error instanceof Anthropic.AnthropicError) {
       return NextResponse.json({ error: 'AI 분석 중 오류가 발생했어요: ' + error.message }, { status: 502 })
     }
-    return NextResponse.json({ error: 'AI 분석 중 알 수 없는 오류가 발생했어요.' }, { status: 500 })
+    const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+    return NextResponse.json({ error: 'AI 분석 중 알 수 없는 오류가 발생했어요: ' + message }, { status: 500 })
   }
 }
