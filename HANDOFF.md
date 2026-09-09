@@ -52,15 +52,35 @@ constraint`)를 이용해 실제 컬럼을 하나씩 알아낼 수 있습니다(
 내역(`deals`, `quote_requests` 등)이 여러 건 들어있습니다 — 로그인 정보는 모름,
 관리자 계정으로만 조회 가능.
 
-**⚠ test4@email.com의 "진행 중인 거래" 목록에 E2E 테스트 거래가 남아있음**:
-"AI 거래전표 빠른입력"/"새 거래처로 시작하기" 기능을 실제 데이터로 검증하며
-`E2E테스트마트...`/`E2EAI테스트...`라는 이름의 walk-in 거래 3건(+ 도중 실패한
-시도가 남긴 로그인 불가능한 그림자 buyer 계정 3개)이 생성됨. `deals`/
-`deal_line_items`/`settlements`/`ar_balances`엔 삭제 UI/정책이 원래 없어서
-(재무 기록이라 삭제 대신 상태 전환만 하는 이 리포의 관례) 제가 지울 수
-없었습니다 — test4 계정의 "진행 중인 거래" 배지 숫자가 실제보다 3 많고,
-목록에 테스트 이름이 섞여 보입니다. 신경 쓰이시면 Supabase 대시보드에서
-직접 정리해주세요(무해하지만 지저분함).
+**✅ (해결됨) test4@email.com에 남았던 E2E 테스트 데이터 정리**: "AI
+거래전표 빠른입력"/"새 거래처로 시작하기" 검증 중 생긴 그림자 buyer
+계정은 실제로는 3개가 아니라 **5개**였음(quote_id 에러로 실패한 시도
+2개도 `users`/`buyer_profiles`까지는 만들어져 있었음 - `deals`는 없음).
+anon key로 만든 별도 조회 스크립트(admin/partner 세션으로 로그인해 관련
+테이블을 조회, 전부 `@sosangkong-walkin.invalid` 이메일로 정확히 식별 -
+실제 서비스 계정과 겹칠 수 없는 고유 마커)로 정확한 대상(계정 5개, 거래
+3건, 품목 5행, 정산 3건, 외상잔액 1건, 알림 6건, AI 로그 1건, 별칭 3건 -
+전부 test4 소유임을 확인)을 특정한 뒤,
+`supabase/migrations/20260916000000_cleanup_e2e_test_data.sql`(1회성
+정리 스크립트)로 정리함. `auth.users` 삭제까지 포함되어 있어 SQL
+Editor의 관리자 권한 연결에서만 실행 가능(anon/authenticated 키로는
+auth.users를 못 지움) - 이 파일은 재실행 전제로 설계되지 않은 일회성
+스크립트라는 점이 다른 마이그레이션과 다름.
+
+**⚠ 교훈 — Supabase SQL Editor의 DELETE도 RLS에 막힐 수 있음**: 이
+정리 스크립트 v1(단순 `delete from ... where id = any(...)`)을 SQL
+Editor에서 실행하면 **"Success"가 뜨지만 실제로는 0행도 안 지워짐** -
+별도 조회로 재확인해서 발견함. 이 프로젝트는 지금까지 "SQL Editor =
+DDL 권한 있음"만 확인했지 "DML(DELETE)도 RLS를 우회하는가"는 검증한
+적이 없었음 - 검증해보니 **우회하지 않았음**(SQL Editor 세션엔
+`auth.uid()`가 없어서 `qd_is_my_partner_id()` 등 모든 RLS 정책이
+통과되지 않고, DELETE는 대상이 0건이어도 에러를 내지 않으므로 "성공"
+메시지만 뜨고 조용히 아무 일도 안 일어남). v2는 삭제 대상 테이블마다
+같은 트랜잭션 안에서 `alter table ... disable/enable row level
+security`로 RLS를 명시적으로 껐다 켜서 우회함(에러가 나도 `exception
+when others`로 반드시 다시 켜지도록 함). **앞으로 SQL Editor로 기존
+데이터를 DELETE/UPDATE해야 하면 이 패턴을 재사용할 것** - DDL
+마이그레이션(CREATE/ALTER)은 이 문제가 없었음(RLS는 DML에만 적용).
 
 ## 완료된 기능 (최근 작업 순)
 
