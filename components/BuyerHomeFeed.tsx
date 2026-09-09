@@ -20,6 +20,11 @@ type PartnerRow = {
   matchScore: number
 }
 
+// 박스광고 섹션에 노출할 개수 상한. 승인된 박스광고가 이보다 많아지면
+// 매번 무작위로 이만큼만 뽑아 보여줌("순서 로테이션" — 특정 업체가 먼저
+// 신청했다는 이유만으로 계속 상단을 독점하지 않도록 함). HANDOFF 참고.
+const MAX_BOX_ADS = 4
+
 // role이 buyer로 로그인된 소상공인이 "/"에 접속했을 때 보이는 홈 피드.
 // /search 페이지와 같은 매칭 점수 계산(평점+검증뱃지 기반 단순 가중치 -
 // 아직 match_weight_configs 같은 정교한 알고리즘은 없음, 실제 데이터는
@@ -36,6 +41,8 @@ export default function BuyerHomeFeed() {
   const [regionInput, setRegionInput] = useState('')
   const [results, setResults] = useState<PartnerRow[]>([])
   const [recentPartnerIds, setRecentPartnerIds] = useState<Set<string>>(new Set())
+  const [boxAds, setBoxAds] = useState<PartnerRow[]>([])
+  const [lineAdPartnerIds, setLineAdPartnerIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -62,6 +69,53 @@ export default function BuyerHomeFeed() {
         setRecentPartnerIds(new Set((data || []).map((r) => r.partner_id as string)))
       })
   }, [buyerProfileId])
+
+  // 박스광고 — 카테고리/지역 필터와 무관하게 항상 같은 자리(롤링배너 아래)에
+  // 고정 노출되는 별도 섹션. 승인된 박스광고가 MAX_BOX_ADS보다 많으면 매번
+  // 무작위로 그만큼만 뽑아 보여줌(로테이션). end_date가 지난 건 자동 제외.
+  // 같은 업체가 박스광고를 여러 건 신청/승인받았을 수 있어(신청 자체는
+  // 막지 않음) partner id 기준으로 중복 제거 — 안 하면 같은 업체 카드가
+  // 여러 장 뜨고 React key도 중복됨(실제로 겪은 버그, 아래 참고).
+  useEffect(() => {
+    const todayIso = new Date().toISOString().slice(0, 10)
+    supabase
+      .from('ads')
+      .select('id, partner_id, partners ( id, name, region, description, verified_badge, rating_avg, review_count )')
+      .eq('status', 'active')
+      .eq('ad_type', 'box')
+      .or(`end_date.is.null,end_date.gte.${todayIso}`)
+      .then(({ data }) => {
+        const partnersById = new Map<string, Omit<PartnerRow, 'matchScore'>>()
+        for (const r of (data || []) as unknown as { partners: Omit<PartnerRow, 'matchScore'> | null }[]) {
+          if (r.partners && !partnersById.has(r.partners.id)) {
+            partnersById.set(r.partners.id, r.partners)
+          }
+        }
+        const rows = Array.from(partnersById.values()).map((p) => {
+          const base = 70 + Number(p.rating_avg || 0) * 5 + (p.verified_badge ? 4 : 0)
+          return { ...p, matchScore: Math.min(99, Math.round(base)) }
+        })
+        const shuffled = [...rows].sort(() => Math.random() - 0.5)
+        setBoxAds(shuffled.slice(0, MAX_BOX_ADS))
+      })
+  }, [])
+
+  // 줄광고 — 별도 섹션이 아니라 일반 매칭 리스트 안에서 최우선 정렬 + "광고"
+  // 뱃지로 구분(현재 검색/필터 결과에 있는 업체에 한해서만 - 필터와 무관한
+  // 박스광고와 달리 줄광고는 매칭 리스트에 "섞여서" 노출되는 것이라 필터를
+  // 따름). partner_id만 있으면 되므로 별도 partners 조인 없음.
+  useEffect(() => {
+    const todayIso = new Date().toISOString().slice(0, 10)
+    supabase
+      .from('ads')
+      .select('partner_id')
+      .eq('status', 'active')
+      .eq('ad_type', 'line')
+      .or(`end_date.is.null,end_date.gte.${todayIso}`)
+      .then(({ data }) => {
+        setLineAdPartnerIds(new Set((data || []).map((r) => r.partner_id as string)))
+      })
+  }, [])
 
   async function runSearch(category: string, region: string) {
     setLoading(true)
@@ -141,6 +195,10 @@ export default function BuyerHomeFeed() {
   }
 
   const visibleResults = [...results].sort((a, b) => {
+    const aAd = lineAdPartnerIds.has(a.id)
+    const bAd = lineAdPartnerIds.has(b.id)
+    if (aAd !== bAd) return aAd ? -1 : 1
+
     const aFav = favoritePartnerIds.has(a.id)
     const bFav = favoritePartnerIds.has(b.id)
     if (aFav !== bFav) return aFav ? -1 : 1
@@ -204,6 +262,31 @@ export default function BuyerHomeFeed() {
           <AdRollingBanner />
         </div>
 
+        {boxAds.length > 0 && (
+          <div style={styles.boxAdSection}>
+            <div style={styles.boxAdHeading}>
+              프리미엄 매칭 업체 <span style={styles.adLabelSmall}>광고</span>
+            </div>
+            <div style={styles.boxGrid}>
+              {boxAds.map((p) => (
+                <SupplierCard
+                  key={`box-${p.id}`}
+                  p={p}
+                  large
+                  isAd
+                  isFav={favoritePartnerIds.has(p.id)}
+                  isRecent={recentPartnerIds.has(p.id)}
+                  favPending={pendingId === p.id}
+                  selected={selectedIds.has(p.id)}
+                  onToggleFavorite={() => toggleFavorite(p.id)}
+                  onToggleSelect={() => toggleSelected(p.id)}
+                  onRequestQuote={() => requestQuote([p.id])}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={styles.listToolbar}>
           <span style={{ fontSize: 12.5, color: colors.muted }}>총 {visibleResults.length}곳</span>
           <button
@@ -226,70 +309,104 @@ export default function BuyerHomeFeed() {
 
         <div style={styles.grid}>
           {!loading &&
-            visibleResults.map((p) => {
-              const isFav = favoritePartnerIds.has(p.id)
-              const isRecent = recentPartnerIds.has(p.id)
-              return (
-                <div key={p.id} style={styles.card}>
-                  {(isFav || isRecent) && (
-                    <div style={styles.tagRow}>
-                      {isFav && <span style={styles.favTag}>★ 즐겨찾기</span>}
-                      {isRecent && <span style={styles.recentTag}>최근 거래</span>}
-                    </div>
-                  )}
-                  <div style={styles.cardTop}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(p.id)}
-                      onChange={() => toggleSelected(p.id)}
-                      style={{ width: 17, height: 17, cursor: 'pointer', flexShrink: 0 }}
-                    />
-                    <div style={styles.icon}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                        <path
-                          d="M4 12c2-3 4-4 8-4s6 1 8 4c-2 3-4 4-8 4s-6-1-8-4Z"
-                          stroke="#065A82"
-                          strokeWidth="1.6"
-                        />
-                      </svg>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={styles.nameRow}>
-                        <a href={`/partner/${p.id}`} style={styles.name}>
-                          {p.name}
-                        </a>
-                        {p.verified_badge && <span style={styles.badge}>✓ 검증</span>}
-                      </div>
-                      <div style={styles.loc}>{p.region || '지역 정보 없음'}</div>
-                    </div>
-                    <FavoriteHeart active={isFav} pending={pendingId === p.id} onClick={() => toggleFavorite(p.id)} />
-                  </div>
-
-                  <div style={styles.stats}>
-                    <div style={styles.stat}>
-                      <b style={styles.statValue}>{Number(p.rating_avg || 0).toFixed(1)}</b>
-                      <span style={styles.statLabel}>배송정시율(평점 대체)</span>
-                    </div>
-                    <div style={styles.stat}>
-                      <b style={styles.statValue}>{p.review_count}건</b>
-                      <span style={styles.statLabel}>리뷰</span>
-                    </div>
-                    <div style={styles.stat}>
-                      <b style={{ ...styles.statValue, color: colors.good }}>{p.matchScore}%</b>
-                      <span style={styles.statLabel}>일치</span>
-                    </div>
-                  </div>
-
-                  {p.description && <div style={styles.desc}>{p.description}</div>}
-
-                  <button style={styles.cta} onClick={() => requestQuote([p.id])}>
-                    무료 견적 요청
-                  </button>
-                </div>
-              )
-            })}
+            visibleResults.map((p) => (
+              <SupplierCard
+                key={p.id}
+                p={p}
+                isAd={lineAdPartnerIds.has(p.id)}
+                isFav={favoritePartnerIds.has(p.id)}
+                isRecent={recentPartnerIds.has(p.id)}
+                favPending={pendingId === p.id}
+                selected={selectedIds.has(p.id)}
+                onToggleFavorite={() => toggleFavorite(p.id)}
+                onToggleSelect={() => toggleSelected(p.id)}
+                onRequestQuote={() => requestQuote([p.id])}
+              />
+            ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+function SupplierCard({
+  p,
+  large,
+  isAd,
+  isFav,
+  isRecent,
+  favPending,
+  selected,
+  onToggleFavorite,
+  onToggleSelect,
+  onRequestQuote,
+}: {
+  p: PartnerRow
+  large?: boolean
+  isAd?: boolean
+  isFav: boolean
+  isRecent: boolean
+  favPending: boolean
+  selected: boolean
+  onToggleFavorite: () => void
+  onToggleSelect: () => void
+  onRequestQuote: () => void
+}) {
+  const showTagRow = isAd || isFav || isRecent
+
+  return (
+    <div style={{ ...styles.card, ...(large ? styles.cardLarge : {}) }}>
+      {showTagRow && (
+        <div style={styles.tagRow}>
+          {isAd && <span style={styles.adTag}>광고</span>}
+          {isFav && <span style={styles.favTag}>★ 즐겨찾기</span>}
+          {isRecent && <span style={styles.recentTag}>최근 거래</span>}
+        </div>
+      )}
+      <div style={styles.cardTop}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          style={{ width: 17, height: 17, cursor: 'pointer', flexShrink: 0 }}
+        />
+        <div style={{ ...styles.icon, ...(large ? styles.iconLarge : {}) }}>
+          <svg width={large ? 26 : 22} height={large ? 26 : 22} viewBox="0 0 24 24" fill="none">
+            <path d="M4 12c2-3 4-4 8-4s6 1 8 4c-2 3-4 4-8 4s-6-1-8-4Z" stroke="#065A82" strokeWidth="1.6" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={styles.nameRow}>
+            <a href={`/partner/${p.id}`} style={{ ...styles.name, ...(large ? styles.nameLarge : {}) }}>
+              {p.name}
+            </a>
+            {p.verified_badge && <span style={styles.badge}>✓ 검증</span>}
+          </div>
+          <div style={styles.loc}>{p.region || '지역 정보 없음'}</div>
+        </div>
+        <FavoriteHeart active={isFav} pending={favPending} onClick={onToggleFavorite} />
+      </div>
+
+      <div style={styles.stats}>
+        <div style={styles.stat}>
+          <b style={styles.statValue}>{Number(p.rating_avg || 0).toFixed(1)}</b>
+          <span style={styles.statLabel}>배송정시율(평점 대체)</span>
+        </div>
+        <div style={styles.stat}>
+          <b style={styles.statValue}>{p.review_count}건</b>
+          <span style={styles.statLabel}>리뷰</span>
+        </div>
+        <div style={styles.stat}>
+          <b style={{ ...styles.statValue, color: colors.good }}>{p.matchScore}%</b>
+          <span style={styles.statLabel}>일치</span>
+        </div>
+      </div>
+
+      {p.description && <div style={styles.desc}>{p.description}</div>}
+
+      <button style={styles.cta} onClick={onRequestQuote}>
+        무료 견적 요청
+      </button>
     </div>
   )
 }
@@ -360,14 +477,27 @@ const styles: { [k: string]: React.CSSProperties } = {
     gap: 18,
     paddingBottom: 90,
   },
+  boxAdSection: { marginTop: 22 },
+  boxAdHeading: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, color: colors.deep, marginBottom: 14 },
+  adLabelSmall: { fontSize: 10, fontWeight: 700, background: colors.amber, color: colors.deep, padding: '2px 8px', borderRadius: 10 },
+  boxGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: 18,
+    marginBottom: 4,
+  },
   card: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: 20, position: 'relative' },
+  cardLarge: { padding: 26, border: '1.5px solid ' + colors.amber, boxShadow: '0 8px 22px rgba(242,169,59,0.18)' },
   tagRow: { display: 'flex', gap: 6, marginBottom: 10 },
+  adTag: { fontSize: 10.5, fontWeight: 700, background: '#FDEFD9', color: '#8A5A0E', padding: '3px 9px', borderRadius: 20 },
   favTag: { fontSize: 10.5, fontWeight: 700, background: '#FEF6E9', color: '#D98D1F', padding: '3px 9px', borderRadius: 20 },
   recentTag: { fontSize: 10.5, fontWeight: 700, background: colors.goodBg, color: colors.good, padding: '3px 9px', borderRadius: 20 },
   cardTop: { display: 'flex', alignItems: 'center', gap: 10 },
   icon: { width: 40, height: 40, borderRadius: 9, background: colors.paper2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  iconLarge: { width: 56, height: 56 },
   nameRow: { display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 },
   name: { fontSize: 15, fontWeight: 700, color: colors.ink, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  nameLarge: { fontSize: 17 },
   badge: { fontSize: 10, fontWeight: 700, background: colors.goodBg, color: colors.good, padding: '2px 7px', borderRadius: 10, flexShrink: 0 },
   loc: { fontSize: 12, color: colors.muted, marginTop: 2 },
   stats: { display: 'flex', gap: 10, margin: '14px 0', padding: '12px 0', borderTop: `1px dashed ${colors.line}`, borderBottom: `1px dashed ${colors.line}` },

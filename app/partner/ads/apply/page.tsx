@@ -15,6 +15,7 @@ type AdRow = {
   banner_image_url: string | null
   memo: string | null
   reject_reason: string | null
+  end_date: string | null
   created_at: string
 }
 
@@ -52,6 +53,7 @@ export default function PartnerAdsApplyPage() {
 
   const [adType, setAdType] = useState<AdType>('box')
   const [memo, setMemo] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [bannerFile, setBannerFile] = useState<File | null>(null)
   const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null)
   const [bannerUploadedUrl, setBannerUploadedUrl] = useState<string | null>(null)
@@ -70,7 +72,7 @@ export default function PartnerAdsApplyPage() {
   function loadAds() {
     supabase
       .from('ads')
-      .select('id, ad_type, status, banner_image_url, memo, reject_reason, created_at')
+      .select('id, ad_type, status, banner_image_url, memo, reject_reason, end_date, created_at')
       .eq('partner_id', partner.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
@@ -129,6 +131,7 @@ export default function PartnerAdsApplyPage() {
       ad_type: adType,
       memo: memo.trim() || null,
       banner_image_url: adType === 'banner' ? bannerUploadedUrl : null,
+      end_date: endDate || null,
     })
     setSubmitting(false)
 
@@ -139,6 +142,7 @@ export default function PartnerAdsApplyPage() {
 
     setSubmitted(true)
     setMemo('')
+    setEndDate('')
     setBannerFile(null)
     setBannerPreviewUrl(null)
     setBannerUploadedUrl(null)
@@ -214,6 +218,16 @@ export default function PartnerAdsApplyPage() {
           )}
 
           <div style={styles.field}>
+            <label style={styles.label}>게재 종료 희망일 (선택, 비워두면 무기한)</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{ ...styles.input, maxWidth: 220 }}
+            />
+          </div>
+
+          <div style={styles.field}>
             <label style={styles.label}>요청사항 (선택)</label>
             <textarea
               value={memo}
@@ -263,7 +277,10 @@ export default function PartnerAdsApplyPage() {
                 style={{ marginTop: 12, width: '100%', maxWidth: 420, borderRadius: 8, border: `1px solid ${colors.line}` }}
               />
             )}
-            {ad.memo && <div style={{ fontSize: 12.5, color: colors.muted, marginTop: 10 }}>요청사항: {ad.memo}</div>}
+            {ad.end_date && (
+              <div style={{ fontSize: 12.5, color: colors.muted, marginTop: 10 }}>종료 희망일: {ad.end_date.replaceAll('-', '.')}</div>
+            )}
+            {ad.memo && <div style={{ fontSize: 12.5, color: colors.muted, marginTop: 6 }}>요청사항: {ad.memo}</div>}
             {ad.status === 'rejected' && ad.reject_reason && (
               <div style={{ ...styles.errorBox, marginTop: 10, marginBottom: 0 }}>반려 사유: {ad.reject_reason}</div>
             )}

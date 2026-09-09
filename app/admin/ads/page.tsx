@@ -14,6 +14,7 @@ type AdRow = {
   banner_image_url: string | null
   memo: string | null
   reject_reason: string | null
+  end_date: string | null
   created_at: string
   partners: { id: string; name: string } | null
 }
@@ -44,7 +45,7 @@ export default function AdminAdsPage() {
   function load() {
     supabase
       .from('ads')
-      .select('id, ad_type, status, banner_image_url, memo, reject_reason, created_at, partners ( id, name )')
+      .select('id, ad_type, status, banner_image_url, memo, reject_reason, end_date, created_at, partners ( id, name )')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         setAds((data || []) as unknown as AdRow[])
@@ -149,7 +150,10 @@ export default function AdminAdsPage() {
                     <span style={{ ...styles.htag, background: colors.paper2, color: colors.navy }}>{AD_TYPE_LABEL[ad.ad_type]}</span>
                     <span style={{ ...styles.htag, ...statusBadgeStyle(ad.status) }}>{AD_STATUS_LABEL[ad.status]}</span>
                   </div>
-                  <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{formatDate(ad.created_at)} 신청</div>
+                  <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>
+                    {formatDate(ad.created_at)} 신청
+                    {ad.end_date && ` · 종료 희망일 ${ad.end_date.replaceAll('-', '.')}`}
+                  </div>
                   {ad.memo && <div style={{ fontSize: 12.5, color: colors.ink, marginTop: 8 }}>요청사항: {ad.memo}</div>}
                   {ad.status === 'rejected' && ad.reject_reason && (
                     <div style={{ fontSize: 12.5, color: colors.warn, marginTop: 8 }}>사유: {ad.reject_reason}</div>

@@ -14,18 +14,21 @@ const ROTATE_MS = 4500
 
 // buyer 홈 피드 상단에 들어가는 롤링 배너 캐러셀. status='active'이고
 // ad_type='banner'인 광고만 자동 슬라이드로 보여줌(app/admin/ads에서
-// 승인된 것만 여기 노출됨). 활성 배너가 없으면 렌더링 자체를 생략하고,
-// 1개뿐이면 화살표/도트 없이 고정 노출.
+// 승인된 것만 여기 노출됨). end_date가 지난 건 자동 제외(null이면 무기한).
+// 활성 배너가 없으면 렌더링 자체를 생략하고, 1개뿐이면 화살표/도트 없이
+// 고정 노출.
 export default function AdRollingBanner() {
   const [banners, setBanners] = useState<BannerAd[] | null>(null)
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
+    const todayIso = new Date().toISOString().slice(0, 10)
     supabase
       .from('ads')
       .select('id, partner_id, banner_image_url, partners ( name )')
       .eq('status', 'active')
       .eq('ad_type', 'banner')
+      .or(`end_date.is.null,end_date.gte.${todayIso}`)
       .order('created_at', { ascending: true })
       .then(({ data }) => {
         setBanners((data || []) as unknown as BannerAd[])
