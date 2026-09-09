@@ -54,6 +54,9 @@ constraint`)를 이용해 실제 컬럼을 하나씩 알아낼 수 있습니다(
 
 ## 완료된 기능 (최근 작업 순)
 
+- **광고 시스템 신설** (이번 작업, 아래 상세) — 박스광고/줄광고/무료/롤링배너
+  4종. `/partner/ads/apply`(신청) + `/admin/ads`(승인/반려) + buyer 홈 피드
+  롤링 배너 캐러셀까지 실제 업로드→승인→노출 전체 플로우 실데이터로 검증함.
 - 모바일 반응형 전면 재작업 (헤더 검색폼, 하단 탭바, `.responsive-two-col` 그리드
   패턴, 각종 그리드의 `minmax(0,1fr)` 오버플로 수정)
 - 관리자 콘솔: 분쟁·클레임 해결/반려 처리, 소상공인 계정 활성/정지(+정지 시
@@ -1125,6 +1128,118 @@ user_id/biz_reg_no/phone/address/created_at`뿐). `app/my-page/page.tsx`가
 - 카테고리 퀵네비/광고 배너 등 마케팅 랜딩 전용 장식 요소는 buyer 홈에
   가져오지 않음(로그인 사용자에게는 불필요하다고 판단).
 
+## 광고 시스템 신설 (박스광고/줄광고/무료/롤링배너)
+
+**배경**: "기존 광고 시스템(박스광고/줄광고/무료)에 배너 유형을 추가해달라"는
+지시로 시작했지만, 실제로는 `ads` 테이블도 `/partner/ads/apply`·`/admin/ads`
+화면도 이 리포에 전혀 없었음(코드/마이그레이션 전체 grep으로 확인 — 있던
+건 마케팅 랜딩의 "광고 (준비 중)" 정적 문구 하나뿐). 사용자에게 확인 요청 →
+"광고 시스템 전체를 이번에 새로 설계"하는 방향으로 진행하기로 확정받음
+(가격/노출정책 등 세부사항은 합리적으로 가정하고 각 가정을 알려드리는
+조건).
+
+### 이번에 임의로 정한 가정 (다음에 실제 요구사항이 생기면 재조정 필요)
+
+1. **승인 플로우는 4종 전부 동일**: 공급업체가 신청(`status='pending'`) →
+   관리자가 시스템 밖에서(오프라인 계좌이체 확인 등) 확인 후 화면에서 수동
+   승인(`active`)/반려(`rejected` + 사유). 이 프로젝트 어디에도 결제 연동이
+   없어서, 계좌이체를 사람이 눈으로 확인하는 기존 관례를 그대로 확장한 것 —
+   실제 결제 게이트웨이 연동은 없음.
+2. **box/line/free 3종은 "신청 → 승인" 플로우까지만** 구현하고, 승인 이후
+   실제 노출 위치(예: 검색결과 상단 고정)는 만들지 않음 — 어디에 어떻게
+   노출할지 스펙이 전혀 없어 추측성 UI를 만들지 않기로 판단. **banner만
+   실제 노출까지 연동**(BuyerHomeFeed 롤링 배너) — 이번 지시가 명시적으로
+   요구한 부분이라 여기만 실제 구현.
+3. `status`는 `pending`/`active`/`rejected` 3가지만(별도 `expired` 없음 —
+   자동 만료 배치/cron이 이 프로젝트에 아직 없음). 이미 `active`인 광고를
+   내리고 싶으면 관리자가 "게재 중단" 버튼으로 `rejected`로 재전환.
+4. 정렬 순서는 신청 시각(`created_at`) 오름차순 — 별도 우선순위/
+   `display_order` 컬럼 없음.
+5. **가격(박스 10만원/줄 5만원/무료/배너 15만원, 월 단위)은 화면에 안내
+   텍스트로만 표시하고 DB엔 저장하지 않음** — "실제 청구 금액은 신청 후
+   담당자가 안내"라는 문구를 같이 노출. 완전히 지어낸 예시 금액이므로 실제
+   가격 정책이 정해지면 화면 텍스트(`app/partner/ads/apply/page.tsx`의
+   `AD_TYPE_INFO`)만 바꾸면 됨.
+6. 승인 권한은 `admin_role` 구분 없이 `qd_is_admin()` 기준(sub_admin도 승인
+   가능) — 회원관리·거래견적관리와 동일한 수준으로 판단.
+
+### DB (`supabase/migrations/20260912000000_ads_system.sql`, 실행 완료됨)
+
+- `ads` 테이블: `partner_id`, `ad_type`(box/line/free/banner),
+  `status`(pending/active/rejected), `banner_image_url`(banner 타입일 때만
+  NOT NULL — check 제약), `memo`, `reject_reason`, `reviewed_by`,
+  `reviewed_at`, `created_at`.
+- RLS: 공급업체는 본인 소유 partner의 광고만 신청(`qd_is_my_partner_id`
+  재사용, 항상 `pending`으로만 insert 가능)/조회, 관리자(`qd_is_admin()`)는
+  전체 조회+승인/반려(update), `status='active' and ad_type='banner'`인
+  행은 누구나 조회 가능(공개 정책 — `/search`가 비로그인도 되는 것과 동일한
+  관례).
+- **Storage 버킷 `partner-ad-banners` 신규 생성**(이 프로젝트에서 처음
+  쓰는 Storage — `insert into storage.buckets ...`로 SQL에서 직접 생성).
+  public 버킷(이미지를 `getPublicUrl()`로 바로 `<img src>`에 씀). 업로드는
+  `<partner_id>/파일명` 경로에만 허용(`storage.foldername(name)[1]`을
+  `qd_is_my_partner_id()`로 검증).
+
+### 화면
+
+- **`/partner/ads/apply`**(신규, `/partner/*` 사이드바에 "광고 신청" 메뉴
+  추가 — `app/partner/layout.tsx`의 `MYPAGE_SEGMENTS`에 `'ads'` 추가): 4종
+  라디오 카드(설명+가격 안내) 선택 → banner 선택 시 파일 업로드(5MB 제한,
+  `image/*`만 허용, 선택 즉시 Storage 업로드 후 미리보기) → 요청사항
+  메모(선택) → 신청. 본인 신청 이력(상태 배지, 반려 시 사유, 배너면
+  이미지)도 같은 화면에 표시.
+- **`/admin/ads`**(신규, `AdminLayout` NAV_ITEMS에 "광고 관리" 추가 —
+  super_admin 전용 아님): 승인대기/게재중/반려됨/전체 탭, banner 타입은
+  썸네일 미리보기(140×47px), 승인/반려(반려 사유는 `window.prompt()` —
+  기존 분쟁 반려처럼 이 프로젝트가 별도 모달 없이 confirm/prompt로 처리하는
+  관례를 그대로 따름) 버튼. `active` 상태에는 "게재 중단"(반려 사유 재사용,
+  `rejected`로 전환) 버튼 추가 — 요청엔 없었지만 관리자가 이미 게재 중인
+  광고를 내릴 방법이 최소한 하나는 있어야 한다고 판단해 추가.
+- **`components/AdRollingBanner.tsx`**(신규) + `BuyerHomeFeed.tsx` 연동
+  (필터바와 카드 리스트 사이): `status='active' and ad_type='banner'`인
+  광고를 신청 시각 오름차순으로 불러와 4.5초 간격 자동 슬라이드. 활성 배너
+  0개면 렌더링 자체를 생략(`return null`), 1개면 화살표/도트 없이 고정
+  노출, 2개 이상이면 좌우 화살표 + 하단 도트로 수동 전환도 가능. 클릭 시
+  `/partner/[partner_id]`로 이동.
+
+### 실제 검증 (puppeteer-core, 실 데이터로 전체 플로우)
+
+마이그레이션을 사용자가 Supabase 대시보드에서 직접 실행한 뒤, 실제 로그인
+3개 계정으로 업로드→승인→노출까지 전부 확인:
+1. test4@email.com(partner)으로 `/partner/ads/apply`에서 실제 이미지 파일을
+   Storage에 업로드(`partner-ad-banners/<partner_id>/...png`로 실제
+   저장됨), banner 타입으로 신청 → "신청이 접수됐어요" + 이력에 "롤링
+   배너"/"승인 대기" 표시 확인.
+2. test3@test.com(admin)으로 `/admin/ads` 승인 대기 탭에서 방금 신청 건이
+   업체명("test공급식자재")·배너 썸네일과 함께 뜨는 것 확인 → "승인" 클릭 →
+   게재중 탭으로 이동 확인.
+3. test01@test.com(buyer)으로 `/`에서 실제 Storage public URL
+   (`https://<project>.supabase.co/storage/v1/object/public/partner-ad-banners/...`)
+   이미지가 롤링 배너 영역에 렌더링되는 것 확인, 배너 클릭 →
+   `/partner/<partner_id>`로 이동해 "test공급식자재" 상세 페이지가 뜨는 것
+   까지 확인. 콘솔 에러 0건(스타일 shorthand/longhand 혼용 경고 1건은 이
+   프로젝트 전역에서 `{...styles.btn, ...styles.btnDangerSmall}` 패턴을 쓰는
+   기존 버튼들에 원래 있던 것 — 이번에 새로 생긴 문제 아님, 손대지 않음).
+4. **테스트로 승인한 배너는 실제 buyer들에게도 라이브로 노출되는 상태였기
+   때문에, 검증 직후 관리자 화면에서 "게재 중단"으로 다시 `rejected`
+   처리해 정리함**(buyer 홈에서 배너가 다시 사라지는 것까지 재확인). `ads`
+   테이블에 이 테스트 신청 행 자체는 `rejected` 상태로 남아있음(삭제
+   정책을 의도적으로 안 만들어서 — 아래 "하지 않은 것" 참고) — 화면
+   노출에는 영향 없지만, 완전히 지우고 싶다면 Supabase SQL Editor에서
+   직접 delete 필요.
+
+### 이번에 하지 않은 것
+
+- **`ads`에 delete 정책을 만들지 않음** — 다른 승인/반려 테이블(disputes,
+  partners.status 등)도 이 리포에서 delete를 안 쓰는 관례(반려/정지도
+  상태값 전환이지 삭제가 아님)를 그대로 따름. 감사 이력이 남는 장점이 있는
+  대신, 위 4번처럼 테스트/오신청 데이터를 완전히 지우려면 사람이 SQL로
+  직접 지워야 함.
+- box/line/free 승인 후 실제 노출 위치(검색결과 상단 고정 등) — 스펙 없어
+  구현 안 함(위 가정 2번 참고). 다음 작업 후보로 아래에 남겨둠.
+- 결제 연동, 광고 자동 만료(cron), 광고 우선순위/노출 순서 조정 UI, 승인/
+  반려 시 공급업체 알림(notifications) — 전부 스펙에 없어 스킵.
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
 - ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
@@ -1133,3 +1248,8 @@ user_id/biz_reg_no/phone/address/created_at`뿐). `app/my-page/page.tsx`가
 - `category_attribute_defs` 실제 스키마에 맞춘 관리 UI (보류 중)
 - `partners` 테이블에 배송정시율/응답률/배송조건 실제 컬럼 추가 + buyer 홈
   피드/`/search`/`/partner/[id]`의 "평점 대체" 표기를 실제 값으로 교체
+- box/line/free 광고 승인 후 실제 노출 위치 구현(예: `/search`·마케팅 랜딩
+  검색결과 상단 고정, 카테고리 배지 등) — 지금은 신청·승인 플로우만 있고
+  실제로 어디에도 노출되지 않음
+- 광고 결제 연동, 자동 만료(cron), 노출 순서(display_order) 조정 UI, 승인/
+  반려 시 공급업체 알림

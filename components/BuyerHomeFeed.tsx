@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabaseClient'
 import { useFavorites } from '../lib/useFavorites'
 import FavoriteHeart from './FavoriteHeart'
+import AdRollingBanner from './AdRollingBanner'
 
 type Category = { id: string; name: string }
 
@@ -199,6 +200,10 @@ export default function BuyerHomeFeed() {
       </div>
 
       <div style={styles.wrap}>
+        <div style={{ marginTop: 22 }}>
+          <AdRollingBanner />
+        </div>
+
         <div style={styles.listToolbar}>
           <span style={{ fontSize: 12.5, color: colors.muted }}>총 {visibleResults.length}곳</span>
           <button
