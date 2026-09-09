@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../../lib/supabaseClient'
 import { colors, styles, formatDate } from '../../_shared'
 import { usePartnerLayout } from '../../PartnerLayoutContext'
+import AiQuickEntryModal from '../../../../components/AiQuickEntryModal'
+import DealPicker from '../../../../components/DealPicker'
 
 type DealRow = {
   id: string
@@ -41,38 +43,67 @@ export default function PartnerLedgerEntryPage() {
   const [ledgerAdding, setLedgerAdding] = useState(false)
   const [ledgerError, setLedgerError] = useState('')
 
-  useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from('deals')
-        .select('id, amount, status, confirmed_at, buyer_profiles ( business_name )')
-        .eq('partner_id', partner.id)
-        .order('confirmed_at', { ascending: false })
-      setDeals((data || []) as unknown as DealRow[])
-      setLoading(false)
-    }
+  const [showAiModal, setShowAiModal] = useState(false)
+  const [aiUsageCount, setAiUsageCount] = useState(0)
 
-    load()
+  async function loadDeals() {
+    const { data } = await supabase
+      .from('deals')
+      .select('id, amount, status, confirmed_at, buyer_profiles ( business_name )')
+      .eq('partner_id', partner.id)
+      .order('confirmed_at', { ascending: false })
+    setDeals((data || []) as unknown as DealRow[])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    loadDeals()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partner.id])
 
   useEffect(() => {
-    async function loadLineItems() {
-      if (!ledgerDealId) {
-        setLedgerLineItems([])
-        return
-      }
-      setLedgerLoading(true)
-      const { data } = await supabase
-        .from('deal_line_items')
-        .select('id, item_name, quantity, unit, unit_price, amount, is_credit, created_at')
-        .eq('deal_id', ledgerDealId)
-        .order('created_at', { ascending: false })
-      setLedgerLineItems((data || []) as LineItemRow[])
-      setLedgerLoading(false)
-    }
+    loadAiUsageCount()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partner.id])
 
-    loadLineItems()
+  async function loadAiUsageCount() {
+    const monthStart = new Date()
+    monthStart.setDate(1)
+    monthStart.setHours(0, 0, 0, 0)
+
+    const { count } = await supabase
+      .from('ai_parse_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('partner_id', partner.id)
+      .gte('created_at', monthStart.toISOString())
+    setAiUsageCount(count || 0)
+  }
+
+  async function loadLineItemsFor(dealId: string) {
+    if (!dealId) {
+      setLedgerLineItems([])
+      return
+    }
+    setLedgerLoading(true)
+    const { data } = await supabase
+      .from('deal_line_items')
+      .select('id, item_name, quantity, unit, unit_price, amount, is_credit, created_at')
+      .eq('deal_id', dealId)
+      .order('created_at', { ascending: false })
+    setLedgerLineItems((data || []) as LineItemRow[])
+    setLedgerLoading(false)
+  }
+
+  useEffect(() => {
+    loadLineItemsFor(ledgerDealId)
   }, [ledgerDealId])
+
+  function handleAiConfirmed(dealId: string) {
+    setShowAiModal(false)
+    setLedgerDealId(dealId)
+    loadLineItemsFor(dealId)
+    loadAiUsageCount()
+  }
 
   async function addLineItem() {
     setLedgerError('')
@@ -129,27 +160,38 @@ export default function PartnerLedgerEntryPage() {
 
   return (
     <div>
-      <div style={styles.sectionTitle}>거래전표 등록</div>
-      <div style={styles.sectionSub}>
-        진행 중인 거래를 선택하고 품목별로 전표를 등록하세요. 외상 거래는 외상잔액에, 등록한 수량은
-        재고에 자동 반영됩니다(재고는 미리 등록해둔 품목만 차감돼요).
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={styles.sectionTitle}>거래전표 등록</div>
+          <div style={styles.sectionSub}>
+            진행 중인 거래를 선택하고 품목별로 전표를 등록하세요. 외상 거래는 외상잔액에, 등록한 수량은
+            재고에 자동 반영됩니다(재고는 미리 등록해둔 품목만 차감돼요).
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <button
+            type="button"
+            style={{ ...styles.btn, ...styles.btnPrimarySmall }}
+            onClick={() => setShowAiModal(true)}
+          >
+            ✨ AI로 빠르게 입력
+          </button>
+          <div style={{ fontSize: 11.5, color: colors.muted, marginTop: 6 }}>이번 달 AI 입력 {aiUsageCount}건 사용</div>
+        </div>
       </div>
 
+      {showAiModal && (
+        <AiQuickEntryModal
+          partnerId={partner.id}
+          deals={deals}
+          onClose={() => setShowAiModal(false)}
+          onConfirmed={handleAiConfirmed}
+          onDealCreated={loadDeals}
+        />
+      )}
+
       <div style={styles.card}>
-        <div style={styles.field}>
-          <label style={styles.label}>거래 선택</label>
-          <select style={styles.input} value={ledgerDealId} onChange={(e) => setLedgerDealId(e.target.value)}>
-            <option value="">진행 중인 거래를 선택하세요</option>
-            {deals
-              .filter((d) => d.status === 'in_progress')
-              .map((d) => (
-                <option key={d.id} value={d.id}>
-                  {formatDate(d.confirmed_at)} · {d.buyer_profiles?.business_name || '소상공인'} ·{' '}
-                  {Number(d.amount).toLocaleString('ko-KR')}원
-                </option>
-              ))}
-          </select>
-        </div>
+        <DealPicker partnerId={partner.id} deals={deals} value={ledgerDealId} onChange={setLedgerDealId} onDealCreated={loadDeals} />
 
         {ledgerDealId && (
           <>

@@ -1,0 +1,24 @@
+-- ============================================================
+-- deals.quote_id를 nullable로 변경 — "새 거래처로 시작하기"(walk-in 거래) 지원
+-- 대상 테이블: deals
+-- Supabase SQL Editor에 그대로 붙여넣어 실행하세요. (재실행해도 안전 —
+-- 이미 nullable이면 아무 효과 없음)
+--
+-- 배경) 지금까지 deals는 항상 견적(quotes) 수락을 통해서만 생성됐음
+-- (app/quote-compare/[quoteRequestId]/page.tsx의 confirmQuote() -
+-- quote_id/buyer_id/partner_id/category_id/amount를 채워 insert). 이번에
+-- "거래전표 등록" 화면에 아직 이 시스템에 계정이 없는 새 거래처의 첫
+-- 발주를 등록하는 기능(lib/createWalkInDeal.ts)을 추가하면서, 이런
+-- walk-in 거래는 애초에 견적 자체가 없어 quote_id를 채울 수 없다는 걸
+-- 실제 insert 시도에서 발견함(에러 메시지로 확인: `null value in column
+-- "quote_id" of relation "deals" violates not-null constraint` — 이
+-- 리포는 deals의 CREATE TABLE 구문이 없어 이런 실제 제약은 항상 에러
+-- 메시지로 알아내야 함, HANDOFF 최상단 경고 참고).
+--
+-- 영향) 기존 견적 기반 거래는 전부 quote_id가 이미 채워져 있어 아무
+-- 영향 없음. settlements 자동생성 트리거·모든 RLS 정책 어디에도 quote_id를
+-- 참조하는 곳이 없어(grep으로 확인) 이 변경이 다른 기능에 영향을 주지
+-- 않음.
+-- ============================================================
+
+alter table deals alter column quote_id drop not null;

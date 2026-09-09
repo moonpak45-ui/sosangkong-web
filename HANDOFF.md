@@ -52,8 +52,23 @@ constraint`)를 이용해 실제 컬럼을 하나씩 알아낼 수 있습니다(
 내역(`deals`, `quote_requests` 등)이 여러 건 들어있습니다 — 로그인 정보는 모름,
 관리자 계정으로만 조회 가능.
 
+**⚠ test4@email.com의 "진행 중인 거래" 목록에 E2E 테스트 거래가 남아있음**:
+"AI 거래전표 빠른입력"/"새 거래처로 시작하기" 기능을 실제 데이터로 검증하며
+`E2E테스트마트...`/`E2EAI테스트...`라는 이름의 walk-in 거래 3건(+ 도중 실패한
+시도가 남긴 로그인 불가능한 그림자 buyer 계정 3개)이 생성됨. `deals`/
+`deal_line_items`/`settlements`/`ar_balances`엔 삭제 UI/정책이 원래 없어서
+(재무 기록이라 삭제 대신 상태 전환만 하는 이 리포의 관례) 제가 지울 수
+없었습니다 — test4 계정의 "진행 중인 거래" 배지 숫자가 실제보다 3 많고,
+목록에 테스트 이름이 섞여 보입니다. 신경 쓰이시면 Supabase 대시보드에서
+직접 정리해주세요(무해하지만 지저분함).
+
 ## 완료된 기능 (최근 작업 순)
 
+- **"AI 거래전표 빠른입력" + "새 거래처로 시작하기"** (이번 작업, 아래
+  상세) — 카톡 텍스트 붙여넣기 → Claude가 초안 파싱 → 사람이 확인/수정 →
+  확정(기존 거래전표 등록과 동일 로직 재사용). 여기에 이어서, 아직 계정이
+  없는 거래처의 첫 발주를 등록하는 "새 거래처로 시작하기"도 함께 구현 —
+  실제 카톡 문구로 파싱→외상잔액 반영까지 전체 플로우 실데이터 검증함.
 - **box/line 광고 실제 노출** (이번 작업, 아래 상세) — 박스광고는 buyer
   홈 피드 상단 "프리미엄 매칭 업체" 섹션, 줄광고는 매칭 리스트 내 최우선
   배치+"광고" 뱃지. `ads.end_date` 신설(만료 자동 제외), 배너 전용이던
@@ -1351,6 +1366,176 @@ test01@test.com(buyer)으로 `/`에서 확인:
 - 관리자가 승인 화면에서 `end_date`를 직접 입력/수정하는 UI — 지금은
   공급업체가 신청 시 입력한 값 그대로 반영됨.
 
+## "AI 거래전표 빠른입력" (1차: 텍스트 붙여넣기) + "새 거래처로 시작하기"
+
+기존 "거래전표 등록"(`deal_line_items` insert → 트리거로 재고차감/외상잔액
+자동갱신, ledgerbook 1단계)은 전혀 안 건드리고, 입력 방식 2가지를 새로
+추가함: (1) 카톡 텍스트를 붙여넣으면 AI가 초안을 만들어주는 방식, (2) 아직
+이 시스템에 계정이 없는 거래처의 첫 발주를 등록하는 방식. 확정 시 둘 다
+기존 수동 입력과 완전히 동일한 `deal_line_items` insert 호출로 이어져서,
+기존 트리거는 자신이 새 입력 경로로부터 호출된 것인지 전혀 모른 채 그대로
+동작함.
+
+### AI 파싱 — 이 프로젝트 최초의 서버 API 라우트
+
+이 앱은 지금까지 100% 클라이언트에서 anon key로 Supabase를 직접 호출하는
+구조였음(Route Handler를 쓴 적이 전혀 없음). `ANTHROPIC_API_KEY`를
+브라우저에 노출할 수 없어서 `app/api/ai-parse-order/route.ts`를 처음으로
+신설함 — 이 라우트는 Claude 호출**만** 담당하고 DB 쓰기는 전부
+클라이언트가 기존처럼 사용자 세션+RLS로 직접 처리함(라우트 자체는 DB에
+아무것도 안 씀).
+
+- **모델**: `claude-sonnet-4-6` — 작업 지시에 명시된 모델을 그대로 씀
+  (Claude API 스킬의 기본값은 `claude-opus-5`지만, 사용자가 특정 모델을
+  명시하면 그걸 따르는 게 스킬 자체의 원칙).
+- **구조화된 출력**: `client.messages.parse()` +
+  `zodOutputFormat(ParsedOrderSchema)` (Zod 스키마, `@anthropic-ai/sdk`
+  0.124 + `zod` 4.5 신규 설치) — JSON 파싱 실패 걱정 없이 타입 안전하게
+  받음.
+- **인증**: 라우트 자체엔 세션이 없으므로, 클라이언트가
+  `Authorization: Bearer <access_token>`으로 넘긴 토큰을 라우트가
+  `supabase.auth.getUser(token)`으로 검증 + `users.role === 'partner'`
+  확인(유료 API라 로그인 여부만으로는 부족하다고 판단, 공급업체 계정만
+  허용). DB 쓰기가 없는 라우트라 이 검증이 유일한 방어선.
+- **프롬프트**: 이 공급업체의 `stock_levels` 품목 목록 + `item_aliases`
+  매핑을 함께 전달해 우선 매칭 시도하도록 지시, 애매하면 억지로 추측하지
+  말라고 명시(사람이 반드시 확인하는 화면을 거치므로). 요청 스펙의 출력
+  필드(`item_name`/`quantity`/`unit`/`unit_price`/`is_credit_guess`/
+  `matched_existing_item`)에 `raw_phrase`(이 품목을 추출한 원문 표현)를
+  하나 추가함 — `item_aliases` 학습에 필요해서(아래 참고).
+- **텍스트 길이 제한**: 6,000자(과도한 API 비용/남용 방지용 최소 안전장치,
+  스펙엔 없었지만 추가).
+
+### Step 3(확인·수정) — AI 결과와 사람이 다르면 `item_aliases`에 학습
+
+확정 시 각 행의 `raw_phrase`(AI가 추출한 원문)와 최종 `item_name`(사람이
+수정했을 수 있음)이 다르면 `item_aliases`에 upsert(있으면
+`use_count + 1`, 없으면 신규) — 다음번 같은 표현이 나오면 AI가 바로
+인식하도록. `use_count` 증가는 원자적 SQL 없이 클라이언트에서
+select→insert/update 두 단계로 처리(이 프로젝트가 지금까지 복잡한 DB
+함수보다 프론트 로직을 선호하는 관례를 따름 - 물량이 한 번 확정에 몇 건
+안 돼서 동시성 문제 현실적으로 없음).
+
+### 사용량 표시
+
+`ai_parse_logs`에 매 분석마다 원문/파싱결과/수정여부를 기록(품질 개선
+추적용 + 개인정보 우려로 본인만 조회 가능하게 RLS). "거래전표 등록" 화면
+상단에 이번 달 건수를 세어 "이번 달 AI 입력 N건 사용"으로 표시만 함(제한
+없음, 과금 없음 - 스펙대로).
+
+### "거래처 선택"은 공용 컴포넌트 `DealPicker`로 통합
+
+수동 입력 폼과 AI 모달 둘 다 `components/DealPicker.tsx`를 공용으로 씀 —
+기존 "진행 중인 거래" 드롭다운은 그대로 두고 "+ 새 거래처로 시작하기"
+옵션만 추가.
+
+### "새 거래처로 시작하기" — 이 앱에 원래 없던 "partner가 직접 거래 생성"을
+### 어떻게 만들었는가
+
+**막힌 지점**: `deals` insert RLS(`deals_insert_buyer`)는
+`qd_is_my_buyer_id(buyer_id)`만 허용 — **partner가 insert할 수 있는
+정책 자체가 없음**(지금까지 deals는 항상 buyer가 견적을 수락할 때 본인
+세션으로 만듦, `app/quote-compare/[quoteRequestId]/page.tsx`). 완전히
+새로운 거래처는 `buyer_profiles`도 없는데, 그 insert 정책도 본인
+(`user_id = auth.uid()`)만 허용.
+
+**택하지 않은 방법**: `deals`/`buyer_profiles`에 partner-insert 정책을
+새로 추가하거나 `buyer_id`를 nullable로 풀어 "계정 없는 거래처"라는
+새로운 개념을 만드는 방법 — settlements 자동생성 트리거, 알림 트리거,
+`/my-page`, disputes 등 `buyer_profiles.user_id`가 항상 유효한 auth
+계정이라고 가정하는 코드가 이 리포 전체에 퍼져 있어(특히 재무 관련
+트리거) 그 가정을 깨면 감사·검증 범위가 너무 커짐.
+
+**택한 방법**(`lib/createWalkInDeal.ts`) — `app/admin/admins/page.tsx`의
+`createAdmin()`(관리자가 다른 관리자 계정을 만들 때 쓰는, 이미 검증된
+패턴)과 완전히 동일한 기법:
+1. partner의 현재 세션(access/refresh token)을 저장.
+2. `supabase.auth.signUp({email: 'walkin-<uuid>@sosangkong-walkin.invalid', password: 랜덤})`
+   — 이 프로젝트는 이메일 확인이 꺼져 있어 성공하면 세션이 즉시 그 새
+   계정으로 전환됨(기존에 검증된 동작).
+3. 그 세션인 채로 `users`(role:'buyer') → `buyer_profiles` →
+   `deals`(status:'in_progress', confirmed_at:now())를 전부 본인 명의로
+   insert — 기존 self-insert 정책들을 그대로 만족.
+4. **성공/실패와 무관하게 항상** partner의 원래 세션으로 `setSession()`
+   복구.
+
+이렇게 만든 "그림자" buyer 계정은 실제로 로그인 가능한 진짜 auth 계정이지만
+(`.invalid` 도메인이라 아무도 실제로 로그인 못 함), `deals`/settlements/
+`ar_balances`/notifications/RLS 어디에서 봐도 진짜 buyer_profiles가 딸린
+정상 거래와 완전히 동일하게 취급됨 — **기존 트리거·RLS를 단 한 줄도
+안 건드리고** 실제 데이터로 검증 완료(아래 참고).
+
+**한계**: 이 함수는 여러 REST 호출로 이뤄져 있어 DB 트랜잭션이 아님 - 만약
+`users`/`buyer_profiles`는 성공했는데 `deals` insert가 실패하면(실제로
+아래 quote_id 이슈 때문에 두 번 겪음) 로그인 불가능한 그림자 buyer
+계정만 남고 롤백되지 않음. 실제로 무해하지만(거래가 없어 어디에도
+안 보임), service role key가 없어 완전 삭제는 불가능 — 위 "테스트 계정"
+섹션 참고.
+
+### 실제 테스트로 발견한 스키마 문제 2건 (둘 다 새 마이그레이션으로 해결)
+
+1. **`deals.quote_id` NOT NULL** — walk-in 거래엔 애초에 견적이 없어
+   채울 수 없음. 실제 insert 시도의 에러 메시지로 발견
+   (`null value in column "quote_id" ... violates not-null constraint`
+   — 이 리포는 `deals`의 `CREATE TABLE` 구문이 없어 실제 제약은 항상
+   이렇게 알아내야 함, 문서 최상단 경고 참고).
+   `20260915000000_deals_quote_id_nullable.sql`로 nullable로 변경(기존
+   견적 기반 거래는 이미 값이 차 있어 영향 없음, 어떤 트리거/RLS도
+   quote_id를 참조하지 않음을 grep으로 확인).
+2. **`buyer_profiles` 공개 조회 정책이 견적 경로로만 좁혀져 있었음** —
+   기존 `buyer_profiles_select_partner_target` 정책은 "나에게 견적요청을
+   보낸 적 있는 buyer"만 파트너에게 보여줌(`quote_requests` 경로).
+   walk-in 거래는 견적 자체가 없어서 이 경로에 안 걸려, 거래를 만든
+   파트너 본인에게조차 그 거래처 이름이 안 보임(`/partner/dashboard/deals`
+   "소상공인" 컬럼이 "-"로 뜨는 것으로 실제 확인). 이 버그도 실제
+   테스트 중 발견함 — `20260915010000_buyer_profiles_visible_via_deal.sql`
+   로 "deals로 실제 연결된 파트너"도 볼 수 있는 정책을 순수 추가(기존
+   정책 안 건드림).
+
+### 실제 검증 (puppeteer-core, `ANTHROPIC_API_KEY` 발급 후 실데이터로)
+
+- **새 거래처로 시작하기(단독)**: test4@email.com으로 수동 입력 폼에서
+  새 거래처 생성 → partner 세션 유지 확인 → 품목 추가 성공 → 새로고침
+  후 "진행 중인 거래" 드롭다운·`/partner/dashboard/deals`·`/partner/ledger`
+  전부에 정상 반영 확인(위 2번 버그 수정 전엔 거래처명이 "-"로
+  떴던 것까지 재현 후 수정 확인).
+- **AI 빠른입력 + 새 거래처(결합)**: AI 모달 안에서 "새 거래처로
+  시작하기"로 거래 생성 → 실제 카톡 문구
+  (`"새우 20박스" / "생닭 15개 마리당 8000원" / "얼린감자 10포 이번엔
+  외상으로 해주세요 월말에 정산할게요"`)를 실제 Claude API로 분석 →
+  3행 정확히 파싱(새우 20박스 단가 미확인, 생닭 15개 8,000원, **얼린감자
+  10포 외상 체크됨** - "외상으로 해주세요" 문구를 정확히 인식) → 확인
+  화면에서 노란 배경 "확인 필요(신규 품목)" 표시 확인 → 단가 미확인 행
+  수동 입력 후 확정 → `deal_line_items`에 3건 정확히 반영, "이번 달 AI
+  입력 1건 사용"으로 카운트 증가 확인.
+- **기존 트리거 체인 끝까지 확인**: 얼린감자 외상 라인 확정 후
+  `/partner/ledger`(매출·재고 현황)에서 이 walk-in 거래처의 외상잔액
+  99,990원이 정확히 반영된 것까지 확인 — `ledgerbook_on_line_item_insert`
+  트리거가 그림자 buyer 계정의 `buyer_profiles.user_id`를 정상적으로
+  타고 들어가 `ar_balances`를 갱신한다는 것을 실증함(트리거 코드는 전혀
+  안 건드렸음에도 완전히 정상 작동).
+- 콘솔 에러 0건. `tsc`/`lint` 새 에러 없음.
+
+### 이번에 하지 않은 것
+
+- `createWalkInDeal()`을 진짜 DB 트랜잭션으로 묶는 것 — Supabase
+  client-side REST 호출이라 불가능(service role/RPC 함수가 있어야 함).
+  지금은 중간 실패 시 그림자 buyer 계정만 남고 자동 정리되지 않음(위
+  "한계" 참고).
+- 이미지/OCR 기반 2차 확장은 이번 범위 밖이지만, Step 2(AI 파싱)를 별도
+  API 라우트(`app/api/ai-parse-order/route.ts`)로 분리해뒀고 입력이
+  "텍스트 하나"라는 인터페이스만 지키면 되므로, 나중에 이미지를 먼저
+  OCR/vision으로 텍스트화한 뒤 이 라우트에 그대로 넘기는 식으로 확장
+  가능하도록 구조를 잡아둠(라우트가 `rawText: string`만 받고 입력 방식은
+  전혀 모름).
+- 관리자가 `item_aliases` 매핑을 직접 보거나 수정하는 화면 — 스펙에
+  없어 스킵(지금은 공급업체가 확정할 때마다 자동으로만 쌓임).
+- walk-in 거래의 `deals.amount`(거래 금액)를 나중에 실제 `deal_line_items`
+  합계로 자동 동기화하는 기능 — 기존 견적 기반 거래도 마찬가지로 `amount`
+  는 생성 시점에 고정되고 이후 품목 추가와 무관하다는 기존 설계를 그대로
+  따름(건드리지 않음). 정산(`settlements`)은 거래 생성 시점의 `amount`
+  기준으로 이미 자동 생성됨.
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
 - ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
@@ -1368,3 +1553,9 @@ test01@test.com(buyer)으로 `/`에서 확인:
   DB엔 계속 active로 남음), 박스광고 노출 순서/개수 관리자 조정 UI
   (`display_order` 컬럼 없음, 지금은 무작위 로테이션), 승인/반려 시
   공급업체 알림
+- "AI 거래전표 빠른입력" 2차: 이미지(사진) 업로드 → OCR/vision으로
+  텍스트화 → 기존 `/api/ai-parse-order`에 그대로 전달하는 흐름 추가
+  (라우트는 이미 이 확장을 염두에 두고 `rawText: string`만 받는 구조)
+- `createWalkInDeal()`이 중간에 실패하면 남는 그림자 buyer 계정을 주기적
+  으로 정리하는 배치/스크립트 (지금은 무해하지만 계속 쌓이면 `users`/
+  `buyer_profiles`에 로그인 불가능한 더미 행이 누적됨)
