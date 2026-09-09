@@ -7,12 +7,15 @@ import { usePartnerLayout } from '../../PartnerLayoutContext'
 import AiQuickEntryModal from '../../../../components/AiQuickEntryModal'
 import DealPicker from '../../../../components/DealPicker'
 import LineItemGrid, { GridRow, emptyGridRow } from '../../../../components/LineItemGrid'
+import DeliveryEstimateBanner from '../../../../components/DeliveryEstimateBanner'
+import { computeExpectedDelivery, fetchOrderGroupForBuyer, OrderGroup, toDateOnlyString } from '../../../../lib/orderGroups'
 
 type DealRow = {
   id: string
   amount: number
   status: 'in_progress' | 'completed' | 'disputed'
   confirmed_at: string
+  buyer_id: string
   buyer_profiles: { business_name: string } | null
 }
 
@@ -25,6 +28,7 @@ type LineItemRow = {
   amount: number
   is_credit: boolean
   created_at: string
+  expected_delivery_date: string | null
 }
 
 export default function PartnerLedgerEntryPage() {
@@ -39,6 +43,7 @@ export default function PartnerLedgerEntryPage() {
   const [gridRows, setGridRows] = useState<GridRow[]>([emptyGridRow()])
   const [gridSaving, setGridSaving] = useState(false)
   const [gridError, setGridError] = useState('')
+  const [ledgerOrderGroup, setLedgerOrderGroup] = useState<OrderGroup | null>(null)
 
   const [showAiModal, setShowAiModal] = useState(false)
   const [aiUsageCount, setAiUsageCount] = useState(0)
@@ -46,7 +51,7 @@ export default function PartnerLedgerEntryPage() {
   async function loadDeals() {
     const { data } = await supabase
       .from('deals')
-      .select('id, amount, status, confirmed_at, buyer_profiles ( business_name )')
+      .select('id, amount, status, confirmed_at, buyer_id, buyer_profiles ( business_name )')
       .eq('partner_id', partner.id)
       .order('confirmed_at', { ascending: false })
     setDeals((data || []) as unknown as DealRow[])
@@ -84,7 +89,7 @@ export default function PartnerLedgerEntryPage() {
     setLedgerLoading(true)
     const { data } = await supabase
       .from('deal_line_items')
-      .select('id, item_name, quantity, unit, unit_price, amount, is_credit, created_at')
+      .select('id, item_name, quantity, unit, unit_price, amount, is_credit, created_at, expected_delivery_date')
       .eq('deal_id', dealId)
       .order('created_at', { ascending: false })
     setLedgerLineItems((data || []) as LineItemRow[])
@@ -95,6 +100,14 @@ export default function PartnerLedgerEntryPage() {
     loadLineItemsFor(ledgerDealId)
     setGridRows([emptyGridRow()])
     setGridError('')
+
+    const buyerId = deals.find((d) => d.id === ledgerDealId)?.buyer_id
+    if (!ledgerDealId || !buyerId) {
+      setLedgerOrderGroup(null)
+      return
+    }
+    fetchOrderGroupForBuyer(partner.id, buyerId).then(setLedgerOrderGroup)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ledgerDealId])
 
   function handleAiConfirmed(dealId: string) {
@@ -133,6 +146,11 @@ export default function PartnerLedgerEntryPage() {
       }
     }
 
+    // 저장 시점 기준으로 다시 계산(그리드에 입력하는 동안 마감시간을 넘길
+    // 수도 있으므로) - 그룹 미지정/시간외 허용 그룹이면 null 그대로 저장.
+    const estimate = ledgerOrderGroup ? computeExpectedDelivery(ledgerOrderGroup) : null
+    const expectedDeliveryDate = estimate ? toDateOnlyString(estimate.date) : null
+
     setGridSaving(true)
     const { error } = await supabase.from('deal_line_items').insert(
       filled.map((r) => ({
@@ -142,6 +160,7 @@ export default function PartnerLedgerEntryPage() {
         unit: r.unit.trim() || '개',
         unit_price: Number(r.unit_price),
         is_credit: r.is_credit,
+        expected_delivery_date: expectedDeliveryDate,
       }))
     )
     setGridSaving(false)
@@ -196,6 +215,7 @@ export default function PartnerLedgerEntryPage() {
 
         {ledgerDealId && (
           <>
+            <DeliveryEstimateBanner group={ledgerOrderGroup} />
             <div style={{ fontSize: 11.5, color: colors.muted, marginBottom: 10 }}>
               여러 품목을 표에 바로 입력하세요 — Enter로 다음 줄, Insert 키나 버튼으로 줄 추가, Ctrl+S(또는 F8)로 저장.
             </div>
@@ -224,6 +244,7 @@ export default function PartnerLedgerEntryPage() {
                   <th style={styles.th}>단가</th>
                   <th style={styles.th}>금액</th>
                   <th style={styles.th}>구분</th>
+                  <th style={styles.th}>예상 배송일</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,6 +268,7 @@ export default function PartnerLedgerEntryPage() {
                         {li.is_credit ? '외상' : '즉시결제'}
                       </span>
                     </td>
+                    <td style={styles.td}>{li.expected_delivery_date ? formatDate(li.expected_delivery_date) : '-'}</td>
                   </tr>
                 ))}
               </tbody>

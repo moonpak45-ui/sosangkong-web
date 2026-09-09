@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { colors, styles } from '../app/partner/_shared'
 import DealPicker, { DealOption } from './DealPicker'
 import LineItemGrid from './LineItemGrid'
+import DeliveryEstimateBanner from './DeliveryEstimateBanner'
+import { computeExpectedDelivery, fetchOrderGroupForBuyer, OrderGroup, toDateOnlyString } from '../lib/orderGroups'
 
 type ParsedItem = {
   raw_phrase: string
@@ -83,6 +85,16 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [orderGroup, setOrderGroup] = useState<OrderGroup | null>(null)
+
+  useEffect(() => {
+    const buyerId = deals.find((d) => d.id === dealId)?.buyer_id
+    if (!dealId || !buyerId) {
+      setOrderGroup(null)
+      return
+    }
+    fetchOrderGroupForBuyer(partnerId, buyerId).then(setOrderGroup)
+  }, [dealId, deals, partnerId])
 
   async function handleAnalyze() {
     setParseError('')
@@ -195,6 +207,11 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
 
     const editedFlag = wasEdited(filled)
 
+    // 저장 시점 기준으로 다시 계산(그리드 확인·수정하는 동안 마감시간을
+    // 넘길 수도 있으므로) - ledger-entry의 handleGridSave와 동일한 방식.
+    const estimate = orderGroup ? computeExpectedDelivery(orderGroup) : null
+    const expectedDeliveryDate = estimate ? toDateOnlyString(estimate.date) : null
+
     const { error: insertError } = await supabase.from('deal_line_items').insert(
       filled.map((r) => ({
         deal_id: dealId,
@@ -203,6 +220,7 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
         unit: r.unit.trim() || '개',
         unit_price: Number(r.unit_price),
         is_credit: r.is_credit,
+        expected_delivery_date: expectedDeliveryDate,
       }))
     )
 
@@ -287,6 +305,7 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
         {step === 'review' && (
           <div style={modalStyles.body}>
             <div style={modalStyles.noticeBox}>AI가 초안을 만들었어요. 확인 후 저장해주세요.</div>
+            <DeliveryEstimateBanner group={orderGroup} />
 
             <LineItemGrid
               rows={rows}

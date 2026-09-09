@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: '/partner/ledger', label: '매출·재고 현황' },
   { href: '/partner/dashboard/settlement', label: '정산' },
   { href: '/partner/profile', label: '프로필 · 배송조건 관리' },
+  { href: '/partner/order-groups', label: '거래처 주문그룹 관리' },
   { href: '/partner/ads/apply', label: '광고 신청' },
   { href: '/partner/account', label: '계정 설정' },
 ]
@@ -23,7 +24,7 @@ const NAV_ITEMS = [
 // - /partner/dashboard/deals/[id]/invoice : 인쇄 전용 명세서(별도 크롬 없음)
 // 폴더를 물리적으로 옮기는 대신(참조 경로가 많아 위험), pathname으로
 // 판별해서 이 두 경우엔 children을 그대로 통과시킴.
-const MYPAGE_SEGMENTS = new Set(['dashboard', 'profile', 'account', 'ledger', 'ads'])
+const MYPAGE_SEGMENTS = new Set(['dashboard', 'profile', 'account', 'ledger', 'ads', 'order-groups'])
 const INVOICE_PATTERN = /^\/partner\/dashboard\/deals\/[^/]+\/invoice$/
 
 function isMyPageRoute(pathname: string): boolean {

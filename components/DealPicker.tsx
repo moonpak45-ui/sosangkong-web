@@ -10,6 +10,7 @@ export type DealOption = {
   status: string
   amount: number
   confirmed_at: string
+  buyer_id: string
   buyer_profiles: { business_name: string } | null
 }
 
