@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import { supabase } from '../../../../../../lib/supabaseClient'
 
 type LineItemRow = {
@@ -54,9 +54,17 @@ function isBoxUnit(unit: string) {
   return /box|박스/i.test(unit)
 }
 
-export default function DealInvoicePage() {
+function DealInvoicePageInner() {
   const params = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
   const dealId = params.id
+  // "ids" 쿼리파라미터가 있으면 같은 날짜+거래처로 묶인 여러 거래를 한 장의
+  // 명세서로 합쳐서 보여줌(일자별 거래명세서 통합) - 없으면 기존처럼 단일
+  // 거래([id])만 조회하는 예전 링크/북마크도 그대로 동작함.
+  const idsParam = searchParams.get('ids')
+  const dealIds = Array.from(
+    new Set((idsParam ? idsParam.split(',') : [dealId]).map((s) => s.trim()).filter(Boolean))
+  )
 
   const [loading, setLoading] = useState(true)
   const [deal, setDeal] = useState<DealDetail | null>(null)
@@ -65,31 +73,44 @@ export default function DealInvoicePage() {
 
   useEffect(() => {
     async function load() {
-      if (!dealId) return
+      if (dealIds.length === 0) return
 
       // RLS(deals_select_buyer_or_partner)가 이미 해당 거래의 buyer/partner
       // 본인만 select 가능하도록 막아준다 - 별도 접근 제어 불필요.
-      const { data: dealRow } = await supabase
+      const { data: dealRows } = await supabase
         .from('deals')
         .select(
-          `id, amount, confirmed_at,
+          `id, amount, confirmed_at, buyer_id,
            partners ( id, name, biz_reg_no, address, phone ),
            buyer_profiles ( id, business_name, biz_reg_no, address, contact_name, phone, user_id )`
         )
-        .eq('id', dealId)
-        .maybeSingle()
+        .in('id', dealIds)
 
-      if (!dealRow) {
+      const allRows = (dealRows || []) as unknown as (DealDetail & { buyer_id: string })[]
+      if (allRows.length === 0) {
         setLoading(false)
         return
       }
-      const detail = dealRow as unknown as DealDetail
+      // 방어적으로 첫 거래와 같은 buyer_id인 것만 묶음 대상으로 인정 -
+      // ids 파라미터가 조작돼 다른 거래처 거래가 섞여도 명세서 내용이
+      // 깨지지 않도록 함(권한 자체는 위 RLS가 이미 보장).
+      const first = allRows[0]
+      const matched = allRows.filter((r) => r.buyer_id === first.buyer_id)
+      const matchedIds = matched.map((r) => r.id)
+
+      const detail: DealDetail = {
+        id: first.id,
+        amount: matched.reduce((s, r) => s + Number(r.amount), 0),
+        confirmed_at: first.confirmed_at,
+        partners: first.partners,
+        buyer_profiles: first.buyer_profiles,
+      }
       setDeal(detail)
 
       const { data: items } = await supabase
         .from('deal_line_items')
         .select('id, item_name, quantity, unit, unit_price, amount, is_credit')
-        .eq('deal_id', dealId)
+        .in('deal_id', matchedIds)
         .order('created_at', { ascending: true })
       setLineItems((items || []) as LineItemRow[])
 
@@ -107,7 +128,8 @@ export default function DealInvoicePage() {
     }
 
     load()
-  }, [dealId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsParam, dealId])
 
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: colors.muted }}>불러오는 중...</div>
@@ -358,6 +380,14 @@ export default function DealInvoicePage() {
         {renderCopy('receiver', deal)}
       </div>
     </div>
+  )
+}
+
+export default function DealInvoicePage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 60, textAlign: 'center', color: colors.muted }}>불러오는 중...</div>}>
+      <DealInvoicePageInner />
+    </Suspense>
   )
 }
 
