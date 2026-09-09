@@ -62,8 +62,11 @@ constraint`)를 이용해 실제 컬럼을 하나씩 알아낼 수 있습니다(
 - 재고관리북(ledgerbook) 1단계 — 거래전표/외상잔액/재고, 파트너 전용
 - 재고관리북(ledgerbook) 2단계 — 소상공인 조회 화면(미결제 배지, 품목 드릴다운)
 - 재고관리북(ledgerbook) 3단계 — 거래명세서 A4 인쇄(v1~v9, 여러 차례 수정)
-- **관리자 콘솔 3건** (이번 작업, 아래 상세) — 회원 목록 로그인 ID 표시,
-  관리자 비밀번호 변경, 중급 관리자(sub_admin) 권한 체계
+- **역할별 메인 홈 구조 신설** (이번 작업, 아래 상세) — `/` 접속 시 role별로
+  완전히 다른 화면(비로그인=마케팅 랜딩 / buyer=매칭 공급업체 피드 /
+  partner·admin=각자 대시보드로 리다이렉트)
+- 관리자 콘솔 3건 — 회원 목록 로그인 ID 표시, 관리자 비밀번호 변경, 중급
+  관리자(sub_admin) 권한 체계
 
 ## 재고관리북(ledgerbook) 1단계
 
@@ -1023,9 +1026,110 @@ LOGO_APPLY.md 8번 항목 그대로, 나중에 SVG/AI 원본이 생기면 그걸
 - iOS 웹앱 스플래시 `<link rel="apple-touch-startup-image">` 추가 —
   가이드에 "필요하면"으로 돼 있는 선택 항목이라 스킵.
 
+## 역할별 메인 홈 구조 신설
+
+**배경**: 로그인 여부/role과 무관하게 `/`가 항상 같은 마케팅 랜딩(www.sosangkong.com)
+이었음 — 로그인해도 Header는 상태를 반영하는데 메인 화면 자체는 그대로였던
+근본 원인. 알바천국처럼 role별로 완전히 다른 홈을 보여주도록 재설계.
+
+### 사전 조사 — 랜딩페이지 매칭 카드는 전부 더미데이터였음
+
+작업 전 확인한 것: 기존 `/`의 히어로 "96% 일치" 카드, `.supplier-grid`
+4개 카드(그린테이블 식자재 등), 하단 "가격만 봤을 때 vs 고객님의 조건 기준"
+비교 카드까지 전부 **하드코딩된 정적 텍스트**(실제 쿼리 없음). 진짜 매칭
+로직은 `/search`(`app/search/page.tsx`)에 이미 있었음:
+`base = 70 + rating_avg*5 + (verified_badge ? 4 : 0)`, 99% 캡 — 코드 내
+주석에 "TODO: match_weight_configs 기반 정교한 가중치 계산으로 교체 예정"
+이라고 적혀 있어, 지금 있는 게 임시 단순 버전이라는 것도 이미 알려져 있었음.
+**"배송정시율"/"응답률"에 대응하는 실제 컬럼은 `partners` 테이블에 없음**
+(`grep`으로 이 리포 전체의 `from('partners')` select 목록을 다 확인 —
+`id/name/region/description/verified_badge/rating_avg/review_count/status/
+user_id/biz_reg_no/phone/address/created_at`뿐). `app/my-page/page.tsx`가
+이미 `rating_avg`를 "배송정시율(평점 대체)"로 표기해 이 간극을 우회하는
+관례를 만들어뒀길래, 이번 새 홈에서도 그 표기를 그대로 재사용함(응답률은
+대응할 만한 대체 지표가 없어 아예 표시하지 않음 — 없는 값을 지어내지 않음).
+
+### 구현
+
+- **`app/page.tsx`**: 서버 컴포넌트 → `'use client'`로 전환. 기존 마케팅
+  랜딩 마크업 전체(히어로/카테고리 네비/통계/스텝/쇼케이스/후기/프로모/
+  하단 배너)는 그대로 `MarketingLanding()`이라는 내부 함수로 옮기고,
+  새 `export default function RootPage()`가 `supabase.auth.getSession()`
+  + `users.role` 조회로 분기:
+  - 비로그인 또는 role 조회 실패 → `MarketingLanding()` (기존 그대로)
+  - `role === 'buyer'` → `<BuyerHomeFeed />`
+  - `role === 'partner'` → `router.replace('/partner/dashboard')`
+  - `role === 'admin'`(super_admin/sub_admin 둘 다 `users.role`은
+    `'admin'`으로 동일 — `admin_role`은 안 봐도 됨) →
+    `router.replace('/admin/dashboard')`
+  - 확인 중/리다이렉트 중엔 다른 페이지들과 동일한 관례로 "불러오는
+    중..." 표시.
+- **`components/BuyerHomeFeed.tsx`** (신규) — buyer 홈 피드:
+  - 상단 검색바: 카테고리 드롭다운 + 지역 텍스트 입력(둘 다 `/search`와
+    동일한 쿼리 로직 재사용) + "배송 요일 · 최소주문금액 등 세부 배송조건
+    필터는 준비 중입니다" 안내(위 스키마 조사 결과 그대로 반영 — `/search`
+    필터 패널의 기존 문구와 동일한 관례) + "전체 업체 상세 검색 ›"로
+    `/search` 링크.
+  - 본문: 카드 그리드(반응형 `repeat(auto-fill, minmax(270px,1fr))`).
+    각 카드에 평점("배송정시율(평점 대체)")/리뷰수/매칭도%, 검증 뱃지,
+    설명, 즐겨찾기 하트(`lib/useFavorites.ts` 재사용), "무료 견적 요청"
+    버튼(`/quote-request?partner_ids=...`), 카드명 클릭 시 `/partner/[id]`
+    이동.
+  - **즐겨찾기·최근 거래 우선 노출**: `useFavorites()`의 `favoritePartnerIds`
+    + `deals` 테이블에서 `buyer_id = buyerProfileId`인 최근 20건의
+    `partner_id`를 조회해 정렬 우선순위로 사용(즐겨찾기 > 최근 거래 >
+    matchScore). 각각 "★ 즐겨찾기"/"최근 거래" 태그를 카드 위에 표시.
+  - 체크박스로 여러 업체 선택 후 한 번에 견적 요청(`/search`의 기존
+    UX와 동일한 패턴).
+- **`/partner/[id]`(공급업체 상세)**: 이번에 검토만 하고 코드는 안 건드림 —
+  이미 취급품목(카테고리 칩)/평점·리뷰/즐겨찾기/견적요청 버튼을 다 갖추고
+  있어 buyer 홈 카드에서 클릭해 들어갔을 때 충분하다고 판단. "배송조건"
+  표시는 못 넣음 — `partners` 테이블에 그런 컬럼 자체가 없고(위 조사
+  결과), 이 리포는 마이그레이션을 사람이 Supabase 대시보드에 직접
+  붙여넣어야만 반영되는 구조(문서 맨 위 참고)라 스키마 추가는 별도로
+  사용자와 상의해서 진행하는 게 맞다고 판단해 보류함.
+
+### 검증 (puppeteer-core, 4가지 role 전부 실제 로그인)
+
+`npm install --no-save puppeteer-core`로 로컬 Chrome을 띄워(재고관리북
+3단계 때와 동일한 방식) 4개 계정으로 직접 확인 후 puppeteer-core는 제거:
+- 비로그인 → `/` 방문 시 기존 마케팅 랜딩("나에게 맞는 파트너" 히어로)
+  그대로 노출.
+- test01@test.com(buyer) 로그인 → `/`에서 "오늘 조건에 맞는 공급업체"
+  피드 노출(마케팅 랜딩 아님). 실제 라이브 데이터로 확인된 것: test01이
+  실제 거래한 "test공급식자재"가 목록 최상단에 "최근 거래" 태그와 함께
+  노출됨(더미 아니라 실제 `deals` 조회 결과로 우선순위가 반영되는 것
+  확인) — 즐겨찾기 태그는 이 계정에 즐겨찾기가 없어 노출 안 됨(로직상
+  정상).
+- test4@email.com(partner) 로그인 → `/` 방문 시 `/partner/dashboard`로
+  자동 리다이렉트 확인.
+- test3@test.com(admin/super_admin) 로그인 → `/` 방문 시 `/admin/dashboard`로
+  자동 리다이렉트 확인(sub_admin 계정은 `users.role`이 admin으로 동일해서
+  별도 테스트 안 함 — 로직상 분기 기준이 `admin_role`이 아니라 `role`이라
+  차이 없음).
+- 4가지 시나리오 전부 브라우저 콘솔 에러 0건.
+- `npx tsc --noEmit` 통과, `npm run lint`는 이 작업으로 새로 생긴 에러
+  없음(`BuyerHomeFeed.tsx`의 "setState in effect" 경고는 `/search`
+  페이지에 원래 있던 동일 패턴을 그대로 재사용한 것이라 기존 컨벤션과
+  일치 — 이번에 새로 생긴 문제 아님).
+
+### 이번에 하지 않은 것
+
+- `partners` 테이블에 배송정시율/응답률/배송조건 등 실제 컬럼 추가 —
+  스키마 변경은 사람이 Supabase 대시보드에서 직접 실행해야 해서 범위
+  밖으로 남겨둠. 다음에 이 작업을 하게 되면 `/search`·buyer 홈 피드·
+  `/partner/[id]` 세 곳 모두 더미 대체 표기("평점 대체")를 실제 값으로
+  바꿔야 함.
+- `match_weight_configs` 기반 정교한 매칭 가중치 — `/search`의 기존 TODO를
+  그대로 이어받았을 뿐, 이번 작업에서 손대지 않음.
+- 카테고리 퀵네비/광고 배너 등 마케팅 랜딩 전용 장식 요소는 buyer 홈에
+  가져오지 않음(로그인 사용자에게는 불필요하다고 판단).
+
 ## 다음에 할 만한 것 (제안, 확정 아님)
 
 - ledgerbook 4단계 후보: 재고 수량 직접 조정 UI, 매입 추적, 다수 거래 동시
   선택/월별 필터링 같은 `/partner/ledger` 사용성 개선
 - 카카오 알림톡 발송 연동 (유료 addon, 매출 발생 이후 예정)
 - `category_attribute_defs` 실제 스키마에 맞춘 관리 UI (보류 중)
+- `partners` 테이블에 배송정시율/응답률/배송조건 실제 컬럼 추가 + buyer 홈
+  피드/`/search`/`/partner/[id]`의 "평점 대체" 표기를 실제 값으로 교체

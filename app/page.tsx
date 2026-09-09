@@ -1,6 +1,84 @@
-import RoleAwareCta from '../components/RoleAwareCta'
+'use client'
 
-export default function HomePage() {
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import RoleAwareCta from '../components/RoleAwareCta'
+import BuyerHomeFeed from '../components/BuyerHomeFeed'
+import { supabase } from '../lib/supabaseClient'
+
+type RootStatus = 'checking' | 'guest' | 'buyer' | 'redirecting'
+
+// "/"는 로그인 여부/role과 무관하게 항상 같은 마케팅 랜딩이 보이던 곳이었음
+// (Header는 로그인 상태를 반영하는데 정작 메인 화면은 그대로였던 버그의 근본
+// 원인). role별로 완전히 다른 홈을 보여주도록 분기:
+// - 비로그인 → 기존 마케팅 랜딩 그대로
+// - buyer → 매칭 공급업체 피드(BuyerHomeFeed)
+// - partner → /partner/dashboard로 리다이렉트(이미 있는 대시보드가 곧 홈)
+// - admin/sub_admin → /admin/dashboard로 리다이렉트
+export default function RootPage() {
+  const router = useRouter()
+  const [status, setStatus] = useState<RootStatus>('checking')
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function check() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session) {
+        if (!cancelled) setStatus('guest')
+        return
+      }
+
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle()
+
+      const role = userRow?.role
+
+      if (role === 'partner') {
+        if (!cancelled) setStatus('redirecting')
+        router.replace('/partner/dashboard')
+        return
+      }
+
+      if (role === 'admin') {
+        if (!cancelled) setStatus('redirecting')
+        router.replace('/admin/dashboard')
+        return
+      }
+
+      if (role === 'buyer') {
+        if (!cancelled) setStatus('buyer')
+        return
+      }
+
+      // role 조회 실패 등 알 수 없는 상태는 비로그인과 동일하게 마케팅 랜딩으로.
+      if (!cancelled) setStatus('guest')
+    }
+
+    check()
+    return () => {
+      cancelled = true
+    }
+  }, [router])
+
+  if (status === 'checking' || status === 'redirecting') {
+    return <div style={{ padding: 80, textAlign: 'center', color: '#5B6B79' }}>불러오는 중...</div>
+  }
+
+  if (status === 'buyer') {
+    return <BuyerHomeFeed />
+  }
+
+  return <MarketingLanding />
+}
+
+function MarketingLanding() {
   return (
     <>
       <style>{homeCss}</style>
