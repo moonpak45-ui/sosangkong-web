@@ -6,6 +6,7 @@ import { colors, styles, formatDate } from '../../_shared'
 import { usePartnerLayout } from '../../PartnerLayoutContext'
 import AiQuickEntryModal from '../../../../components/AiQuickEntryModal'
 import DealPicker from '../../../../components/DealPicker'
+import LineItemGrid, { GridRow, emptyGridRow } from '../../../../components/LineItemGrid'
 
 type DealRow = {
   id: string
@@ -35,13 +36,9 @@ export default function PartnerLedgerEntryPage() {
   const [ledgerDealId, setLedgerDealId] = useState('')
   const [ledgerLineItems, setLedgerLineItems] = useState<LineItemRow[]>([])
   const [ledgerLoading, setLedgerLoading] = useState(false)
-  const [ledgerItemName, setLedgerItemName] = useState('')
-  const [ledgerQty, setLedgerQty] = useState('')
-  const [ledgerUnit, setLedgerUnit] = useState('개')
-  const [ledgerPrice, setLedgerPrice] = useState('')
-  const [ledgerIsCredit, setLedgerIsCredit] = useState(false)
-  const [ledgerAdding, setLedgerAdding] = useState(false)
-  const [ledgerError, setLedgerError] = useState('')
+  const [gridRows, setGridRows] = useState<GridRow[]>([emptyGridRow()])
+  const [gridSaving, setGridSaving] = useState(false)
+  const [gridError, setGridError] = useState('')
 
   const [showAiModal, setShowAiModal] = useState(false)
   const [aiUsageCount, setAiUsageCount] = useState(0)
@@ -96,6 +93,8 @@ export default function PartnerLedgerEntryPage() {
 
   useEffect(() => {
     loadLineItemsFor(ledgerDealId)
+    setGridRows([emptyGridRow()])
+    setGridError('')
   }, [ledgerDealId])
 
   function handleAiConfirmed(dealId: string) {
@@ -105,53 +104,55 @@ export default function PartnerLedgerEntryPage() {
     loadAiUsageCount()
   }
 
-  async function addLineItem() {
-    setLedgerError('')
+  async function handleGridSave() {
+    setGridError('')
 
     if (!ledgerDealId) {
-      setLedgerError('거래를 선택해주세요.')
-      return
-    }
-    if (!ledgerItemName.trim()) {
-      setLedgerError('품목명을 입력해주세요.')
-      return
-    }
-    const qty = Number(ledgerQty)
-    if (!ledgerQty.trim() || Number.isNaN(qty) || qty <= 0) {
-      setLedgerError('수량은 0보다 큰 숫자로 입력해주세요.')
-      return
-    }
-    const price = Number(ledgerPrice)
-    if (!ledgerPrice.trim() || Number.isNaN(price) || price < 0) {
-      setLedgerError('단가를 올바르게 입력해주세요.')
+      setGridError('거래를 선택해주세요.')
       return
     }
 
-    setLedgerAdding(true)
-    const { data, error } = await supabase
-      .from('deal_line_items')
-      .insert({
+    // 품목명이 채워진 행만 실제 등록 대상 - 그리드 맨 끝의 "항상 비어있는
+    // 다음 줄"(LineItemGrid의 자동 추가 행)은 자연히 여기서 걸러짐.
+    const filled = gridRows.filter((r) => r.item_name.trim())
+    if (filled.length === 0) {
+      setGridError('등록할 품목을 입력해주세요.')
+      return
+    }
+
+    for (const r of filled) {
+      const qty = Number(r.quantity)
+      if (!r.quantity.trim() || Number.isNaN(qty) || qty <= 0) {
+        setGridError(`"${r.item_name}"의 수량을 올바르게 입력해주세요.`)
+        return
+      }
+      const price = Number(r.unit_price)
+      if (!r.unit_price.trim() || Number.isNaN(price) || price < 0) {
+        setGridError(`"${r.item_name}"의 단가를 올바르게 입력해주세요.`)
+        return
+      }
+    }
+
+    setGridSaving(true)
+    const { error } = await supabase.from('deal_line_items').insert(
+      filled.map((r) => ({
         deal_id: ledgerDealId,
-        item_name: ledgerItemName.trim(),
-        quantity: qty,
-        unit: ledgerUnit.trim() || '개',
-        unit_price: price,
-        is_credit: ledgerIsCredit,
-      })
-      .select('id, item_name, quantity, unit, unit_price, amount, is_credit, created_at')
-      .single()
-    setLedgerAdding(false)
+        item_name: r.item_name.trim(),
+        quantity: Number(r.quantity),
+        unit: r.unit.trim() || '개',
+        unit_price: Number(r.unit_price),
+        is_credit: r.is_credit,
+      }))
+    )
+    setGridSaving(false)
 
-    if (error || !data) {
-      setLedgerError('전표 등록 중 오류가 발생했습니다: ' + (error?.message || ''))
+    if (error) {
+      setGridError('전표 등록 중 오류가 발생했습니다: ' + error.message)
       return
     }
 
-    setLedgerLineItems((prev) => [data as LineItemRow, ...prev])
-    setLedgerItemName('')
-    setLedgerQty('')
-    setLedgerPrice('')
-    setLedgerIsCredit(false)
+    setGridRows([emptyGridRow()])
+    loadLineItemsFor(ledgerDealId)
   }
 
   if (loading) {
@@ -195,65 +196,12 @@ export default function PartnerLedgerEntryPage() {
 
         {ledgerDealId && (
           <>
-            <div style={styles.field}>
-              <label style={styles.label}>품목명</label>
-              <input
-                type="text"
-                style={styles.input}
-                placeholder="예) 냉동 흰살생선"
-                value={ledgerItemName}
-                onChange={(e) => setLedgerItemName(e.target.value)}
-              />
+            <div style={{ fontSize: 11.5, color: colors.muted, marginBottom: 10 }}>
+              여러 품목을 표에 바로 입력하세요 — Enter로 다음 줄, Insert 키나 버튼으로 줄 추가, Ctrl+S(또는 F8)로 저장.
             </div>
-            <div style={styles.fieldRow}>
-              <div style={styles.field}>
-                <label style={styles.label}>수량</label>
-                <input
-                  type="number"
-                  style={styles.input}
-                  placeholder="예) 10"
-                  value={ledgerQty}
-                  onChange={(e) => setLedgerQty(e.target.value)}
-                />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>단위</label>
-                <input
-                  type="text"
-                  style={styles.input}
-                  placeholder="예) 박스"
-                  value={ledgerUnit}
-                  onChange={(e) => setLedgerUnit(e.target.value)}
-                />
-              </div>
-            </div>
-            <div style={styles.field}>
-              <label style={styles.label}>단가 (원)</label>
-              <input
-                type="number"
-                style={styles.input}
-                placeholder="예) 12000"
-                value={ledgerPrice}
-                onChange={(e) => setLedgerPrice(e.target.value)}
-              />
-            </div>
-            <label
-              style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.muted, marginBottom: 16, cursor: 'pointer' }}
-            >
-              <input type="checkbox" checked={ledgerIsCredit} onChange={(e) => setLedgerIsCredit(e.target.checked)} />
-              외상 거래 (미수금으로 기록)
-            </label>
+            <LineItemGrid rows={gridRows} onRowsChange={setGridRows} onSave={handleGridSave} saving={gridSaving} />
 
-            {ledgerError && <div style={styles.errorBox}>{ledgerError}</div>}
-
-            <button
-              style={{ ...styles.btn, ...styles.btnPrimarySmall, width: '100%' }}
-              onClick={addLineItem}
-              disabled={ledgerAdding}
-              type="button"
-            >
-              {ledgerAdding ? '등록 중...' : '품목 추가'}
-            </button>
+            {gridError && <div style={{ ...styles.errorBox, marginTop: 12 }}>{gridError}</div>}
           </>
         )}
       </div>

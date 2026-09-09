@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { colors, styles } from '../app/partner/_shared'
 import DealPicker, { DealOption } from './DealPicker'
+import LineItemGrid from './LineItemGrid'
 
 type ParsedItem = {
   raw_phrase: string
@@ -45,13 +46,17 @@ function toEditableRow(p: ParsedItem): EditableRow {
   }
 }
 
+function emptyReviewRow(): EditableRow {
+  return { raw_phrase: '', item_name: '', quantity: '', unit: '개', unit_price: '', is_credit: false, matched_existing_item: true }
+}
+
 // "AI 거래전표 빠른입력" 모달. 카톡 대화 텍스트를 붙여넣으면 AI가 초안을
-// 만들고(Step 2), 사람이 반드시 확인·수정한 뒤(Step 3, 생략 불가) 확정
-// 버튼을 눌러야만(Step 4) 실제 deal_line_items에 반영됨 - 완전자동이
-// 아니라 "AI 초안 + 사람 확인"이 핵심.
+// 만들고(Step 2), 사람이 반드시 확인·수정한 뒤(Step 3, 생략 불가) 저장해야만
+// (Step 4) 실제 deal_line_items에 반영됨 - 완전자동이 아니라 "AI 초안 +
+// 사람 확인"이 핵심.
 //
-// 확정 시 기존 "거래전표 등록"(app/partner/dashboard/ledger-entry/page.tsx
-// addLineItem)과 완전히 동일한 테이블(deal_line_items)에 완전히 동일한
+// 저장 시 기존 "거래전표 등록"(app/partner/dashboard/ledger-entry/page.tsx
+// handleGridSave)과 완전히 동일한 테이블(deal_line_items)에 완전히 동일한
 // 컬럼으로 insert만 함 - 재고차감/외상잔액 자동갱신 트리거는 이 모달
 // 코드가 전혀 모르는 채로 그대로 동작함(건드리지 않음).
 //
@@ -59,6 +64,13 @@ function toEditableRow(p: ParsedItem): EditableRow {
 // "진행 중인 거래" 드롭다운에 "+ 새 거래처로 시작하기"를 추가해, 아직
 // 계정이 없는 거래처의 첫 발주도 여기서 바로 만들 수 있음(lib/
 // createWalkInDeal.ts 참고 - HANDOFF에 상세 기록).
+//
+// Step 3(확인·수정)의 표는 수동 입력 화면과 같은 LineItemGrid
+// (../LineItemGrid.tsx)를 그대로 씀 - AI 초안 rows를 그리드에 그대로
+// 채워 넣고, matched_existing_item=false인 행만 rowStyle/renderRowBadge로
+// 노란 배경 + "확인 필요" 표시를 얹는 방식으로 연동함(그리드 자체는 이
+// 필드를 모름 - EditableRow가 GridRow를 구조적으로 확장하고 있어서
+// LineItemGrid<EditableRow>로 그대로 재사용 가능).
 export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirmed, onDealCreated }: Props) {
   const [step, setStep] = useState<'input' | 'review'>('input')
   const [dealId, setDealId] = useState('')
@@ -126,7 +138,11 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
       }
 
       setOriginalParsed(items)
-      setRows(items.map(toEditableRow))
+      // 맨 끝에 빈 행을 하나 더 붙여둠 - LineItemGrid의 "마지막 행에 값이
+      // 있으면 자동으로 빈 행 추가" 로직은 사용자가 직접 편집할 때만
+      // 발동하고(그리드 내부 updateRow 경유), 부모가 rows를 통째로 설정하는
+      // 이 최초 진입 시점엔 안 걸리기 때문에 여기서 미리 넣어둠.
+      setRows([...items.map(toEditableRow), emptyReviewRow()])
       setStep('review')
     } catch {
       setParseError('AI 분석 요청 중 네트워크 오류가 발생했어요.')
@@ -135,24 +151,9 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
     setParsing(false)
   }
 
-  function updateRow(index: number, patch: Partial<EditableRow>) {
-    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)))
-  }
-
-  function removeRow(index: number) {
-    setRows((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  function addRow() {
-    setRows((prev) => [
-      ...prev,
-      { raw_phrase: '', item_name: '', quantity: '', unit: '개', unit_price: '', is_credit: false, matched_existing_item: true },
-    ])
-  }
-
-  function wasEdited(): boolean {
-    if (rows.length !== originalParsed.length) return true
-    return rows.some((r, i) => {
+  function wasEdited(filled: EditableRow[]): boolean {
+    if (filled.length !== originalParsed.length) return true
+    return filled.some((r, i) => {
       const o = originalParsed[i]
       return (
         r.item_name.trim() !== o.item_name ||
@@ -167,16 +168,17 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
   async function handleConfirm() {
     setSubmitError('')
 
-    if (rows.length === 0) {
+    // LineItemGrid가 편집 편의를 위해 맨 끝에 항상 비워둔 행은 실제 등록
+    // 대상이 아님 - 품목명이 채워진 행만 필터(수동 입력 화면
+    // handleGridSave와 동일한 규칙).
+    const filled = rows.filter((r) => r.item_name.trim())
+
+    if (filled.length === 0) {
       setSubmitError('등록할 품목이 없어요.')
       return
     }
 
-    for (const r of rows) {
-      if (!r.item_name.trim()) {
-        setSubmitError('품목명이 비어있는 행이 있어요.')
-        return
-      }
+    for (const r of filled) {
       const qty = Number(r.quantity)
       if (!r.quantity.trim() || Number.isNaN(qty) || qty <= 0) {
         setSubmitError(`"${r.item_name}"의 수량을 올바르게 입력해주세요.`)
@@ -191,10 +193,10 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
 
     setSubmitting(true)
 
-    const editedFlag = wasEdited()
+    const editedFlag = wasEdited(filled)
 
     const { error: insertError } = await supabase.from('deal_line_items').insert(
-      rows.map((r) => ({
+      filled.map((r) => ({
         deal_id: dealId,
         item_name: r.item_name.trim(),
         quantity: Number(r.quantity),
@@ -212,7 +214,7 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
 
     // 사람이 수정한 품목명이 원문 표현과 다르면 다음번엔 AI가 바로 인식하도록
     // item_aliases에 학습(있으면 use_count 증가, 없으면 신규 생성).
-    for (const r of rows) {
+    for (const r of filled) {
       const alias = r.raw_phrase.trim()
       const finalName = r.item_name.trim()
       if (!alias || alias === finalName) continue
@@ -284,99 +286,28 @@ export default function AiQuickEntryModal({ partnerId, deals, onClose, onConfirm
 
         {step === 'review' && (
           <div style={modalStyles.body}>
-            <div style={modalStyles.noticeBox}>AI가 초안을 만들었어요. 확인 후 확정해주세요.</div>
+            <div style={modalStyles.noticeBox}>AI가 초안을 만들었어요. 확인 후 저장해주세요.</div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table style={styles.historyTable}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>품목명</th>
-                    <th style={styles.th}>수량</th>
-                    <th style={styles.th}>단위</th>
-                    <th style={styles.th}>단가</th>
-                    <th style={styles.th}>외상</th>
-                    <th style={styles.th}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={i} style={r.matched_existing_item ? undefined : modalStyles.needsReviewRow}>
-                      <td style={styles.td}>
-                        <input
-                          type="text"
-                          style={modalStyles.cellInput}
-                          value={r.item_name}
-                          onChange={(e) => updateRow(i, { item_name: e.target.value })}
-                        />
-                        {!r.matched_existing_item && <div style={modalStyles.needsReviewTag}>확인 필요(신규 품목)</div>}
-                      </td>
-                      <td style={styles.td}>
-                        <input
-                          type="number"
-                          style={{ ...modalStyles.cellInput, width: 70 }}
-                          value={r.quantity}
-                          onChange={(e) => updateRow(i, { quantity: e.target.value })}
-                        />
-                      </td>
-                      <td style={styles.td}>
-                        <input
-                          type="text"
-                          style={{ ...modalStyles.cellInput, width: 60 }}
-                          value={r.unit}
-                          onChange={(e) => updateRow(i, { unit: e.target.value })}
-                        />
-                      </td>
-                      <td style={styles.td}>
-                        <input
-                          type="number"
-                          style={{ ...modalStyles.cellInput, width: 90 }}
-                          placeholder={r.unit_price === '' ? 'AI 미확인' : undefined}
-                          value={r.unit_price}
-                          onChange={(e) => updateRow(i, { unit_price: e.target.value })}
-                        />
-                      </td>
-                      <td style={styles.td}>
-                        <input
-                          type="checkbox"
-                          checked={r.is_credit}
-                          onChange={(e) => updateRow(i, { is_credit: e.target.checked })}
-                        />
-                      </td>
-                      <td style={styles.td}>
-                        <button type="button" style={modalStyles.removeBtn} onClick={() => removeRow(i)}>
-                          삭제
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <button type="button" style={{ ...styles.btn, ...styles.btnOutlineSmall, marginTop: 12 }} onClick={addRow}>
-              + 품목 추가
-            </button>
+            <LineItemGrid
+              rows={rows}
+              onRowsChange={setRows}
+              onSave={handleConfirm}
+              saving={submitting}
+              makeEmptyRow={emptyReviewRow}
+              rowStyle={(r) => (r.matched_existing_item ? undefined : modalStyles.needsReviewRow)}
+              renderRowBadge={(r) => (!r.matched_existing_item ? <div style={modalStyles.needsReviewTag}>확인 필요(신규 품목)</div> : null)}
+            />
 
             {submitError && <div style={{ ...styles.errorBox, marginTop: 14 }}>{submitError}</div>}
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <button
-                type="button"
-                style={{ ...styles.btn, ...styles.btnOutlineSmall, flex: 1 }}
-                onClick={() => setStep('input')}
-                disabled={submitting}
-              >
-                다시 입력
-              </button>
-              <button
-                type="button"
-                style={{ ...styles.btn, ...styles.btnPrimarySmall, flex: 2 }}
-                onClick={handleConfirm}
-                disabled={submitting}
-              >
-                {submitting ? '등록 중...' : '확정'}
-              </button>
-            </div>
+            <button
+              type="button"
+              style={{ ...styles.btn, ...styles.btnOutlineSmall, marginTop: 12, width: '100%' }}
+              onClick={() => setStep('input')}
+              disabled={submitting}
+            >
+              다시 입력
+            </button>
           </div>
         )}
       </div>
@@ -424,13 +355,4 @@ const modalStyles: { [k: string]: React.CSSProperties } = {
   },
   needsReviewRow: { background: '#FFFBEA' },
   needsReviewTag: { fontSize: 10.5, color: '#B5460B', fontWeight: 700, marginTop: 4 },
-  cellInput: {
-    width: '100%',
-    border: `1px solid ${colors.line}`,
-    borderRadius: 5,
-    padding: '6px 8px',
-    fontSize: 13,
-    color: colors.ink,
-  },
-  removeBtn: { border: 'none', background: 'none', color: colors.warn, fontSize: 12, cursor: 'pointer', textDecoration: 'underline' },
 }
