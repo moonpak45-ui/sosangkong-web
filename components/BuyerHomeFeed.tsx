@@ -9,6 +9,7 @@ import AdRollingBanner from './AdRollingBanner'
 import Card from './ui/Card'
 import Badge from './ui/Badge'
 import Button from './ui/Button'
+import Select from './ui/Select'
 
 type Category = { id: string; name: string }
 
@@ -224,7 +225,7 @@ export default function BuyerHomeFeed() {
           <form onSubmit={handleFilterSubmit} className="search-bar-grid" style={styles.searchBar}>
             <div style={styles.sbField}>
               <label style={styles.sbLabel}>카테고리</label>
-              <select
+              <Select
                 value={categoryInput}
                 onChange={(e) => setCategoryInput(e.target.value)}
                 style={styles.sbSelect}
@@ -235,7 +236,7 @@ export default function BuyerHomeFeed() {
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div style={styles.sbField}>
               <label style={styles.sbLabel}>지역</label>
