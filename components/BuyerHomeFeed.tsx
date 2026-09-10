@@ -6,6 +6,9 @@ import { supabase } from '../lib/supabaseClient'
 import { useFavorites } from '../lib/useFavorites'
 import FavoriteHeart from './FavoriteHeart'
 import AdRollingBanner from './AdRollingBanner'
+import Card from './ui/Card'
+import Badge from './ui/Badge'
+import Button from './ui/Button'
 
 type Category = { id: string; name: string }
 
@@ -355,12 +358,19 @@ function SupplierCard({
   const showTagRow = isAd || isFav || isRecent
 
   return (
-    <div style={{ ...styles.card, ...(large ? styles.cardLarge : {}) }}>
+    <Card
+      style={{
+        padding: large ? 26 : 20,
+        ...(large
+          ? { border: '1.5px solid var(--color-accent)', boxShadow: '0 8px 22px rgba(242,137,29,0.18)' }
+          : {}),
+      }}
+    >
       {showTagRow && (
         <div style={styles.tagRow}>
-          {isAd && <span style={styles.adTag}>광고</span>}
-          {isFav && <span style={styles.favTag}>★ 즐겨찾기</span>}
-          {isRecent && <span style={styles.recentTag}>최근 거래</span>}
+          {isAd && <Badge style={{ background: '#FDEFD9', color: '#8A5A0E' }}>광고</Badge>}
+          {isFav && <Badge style={{ background: '#FEF6E9', color: '#D98D1F' }}>★ 즐겨찾기</Badge>}
+          {isRecent && <Badge style={{ background: colors.goodBg, color: colors.good }}>최근 거래</Badge>}
         </div>
       )}
       <div style={styles.cardTop}>
@@ -380,7 +390,9 @@ function SupplierCard({
             <a href={`/partner/${p.id}`} style={{ ...styles.name, ...(large ? styles.nameLarge : {}) }}>
               {p.name}
             </a>
-            {p.verified_badge && <span style={styles.badge}>✓ 검증</span>}
+            {p.verified_badge && (
+              <Badge style={{ background: colors.goodBg, color: colors.good, flexShrink: 0 }}>✓ 검증</Badge>
+            )}
           </div>
           <div style={styles.loc}>{p.region || '지역 정보 없음'}</div>
         </div>
@@ -404,10 +416,10 @@ function SupplierCard({
 
       {p.description && <div style={styles.desc}>{p.description}</div>}
 
-      <button style={styles.cta} onClick={onRequestQuote}>
+      <Button variant="primary" size="sm" style={{ width: '100%' }} onClick={onRequestQuote}>
         무료 견적 요청
-      </button>
-    </div>
+      </Button>
+    </Card>
   )
 }
 
@@ -486,24 +498,17 @@ const styles: { [k: string]: React.CSSProperties } = {
     gap: 18,
     marginBottom: 4,
   },
-  card: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: 20, position: 'relative' },
-  cardLarge: { padding: 26, border: '1.5px solid ' + colors.amber, boxShadow: '0 8px 22px rgba(242,169,59,0.18)' },
   tagRow: { display: 'flex', gap: 6, marginBottom: 10 },
-  adTag: { fontSize: 10.5, fontWeight: 700, background: '#FDEFD9', color: '#8A5A0E', padding: '3px 9px', borderRadius: 20 },
-  favTag: { fontSize: 10.5, fontWeight: 700, background: '#FEF6E9', color: '#D98D1F', padding: '3px 9px', borderRadius: 20 },
-  recentTag: { fontSize: 10.5, fontWeight: 700, background: colors.goodBg, color: colors.good, padding: '3px 9px', borderRadius: 20 },
   cardTop: { display: 'flex', alignItems: 'center', gap: 10 },
   icon: { width: 40, height: 40, borderRadius: 9, background: colors.paper2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   iconLarge: { width: 56, height: 56 },
   nameRow: { display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 },
   name: { fontSize: 15, fontWeight: 700, color: colors.ink, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   nameLarge: { fontSize: 17 },
-  badge: { fontSize: 10, fontWeight: 700, background: colors.goodBg, color: colors.good, padding: '2px 7px', borderRadius: 10, flexShrink: 0 },
   loc: { fontSize: 12, color: colors.muted, marginTop: 2 },
   stats: { display: 'flex', gap: 10, margin: '14px 0', padding: '12px 0', borderTop: `1px dashed ${colors.line}`, borderBottom: `1px dashed ${colors.line}` },
   stat: { flex: 1, textAlign: 'center' },
   statValue: { display: 'block', fontSize: 14, color: colors.navy, fontFamily: "'Noto Serif KR', serif" },
   statLabel: { fontSize: 10.5, color: colors.muted },
   desc: { fontSize: 12, color: colors.muted, marginBottom: 14, lineHeight: 1.5 },
-  cta: { width: '100%', background: colors.amber, color: colors.deep, border: 'none', borderRadius: 6, padding: 11, fontSize: 13, fontWeight: 700, cursor: 'pointer' },
 }
