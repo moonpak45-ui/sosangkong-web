@@ -36,7 +36,7 @@ export const styles: { [k: string]: React.CSSProperties } = {
   textarea: { width: '100%', border: `1px solid ${colors.line}`, borderRadius: 6, padding: '10px 12px', fontSize: 14, color: colors.ink, background: colors.paper2, minHeight: 70, resize: 'vertical', fontFamily: "'Noto Sans KR', sans-serif" },
   btn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 20px', borderRadius: 6, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', border: '1.5px solid transparent' },
   btnPrimarySmall: { background: colors.amber, color: colors.deep },
-  btnOutlineSmall: { borderColor: colors.line, color: colors.navy, background: colors.white },
+  btnOutlineSmall: { border: `1.5px solid ${colors.line}`, color: colors.navy, background: colors.white },
   errorBox: { background: '#FDECEC', color: '#B3261E', borderRadius: 7, padding: '10px 12px', fontSize: 12.5, marginTop: 4, marginBottom: 12 },
   successBox: { background: '#E3F4F0', color: '#0B7A6D', borderRadius: 7, padding: '10px 12px', fontSize: 12.5, marginBottom: 12 },
   btnPrimary: { background: colors.amber, color: colors.deep, border: 'none', borderRadius: 6, padding: '13px 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', marginTop: 20 },

@@ -298,4 +298,4 @@ const styleLeadActions: React.CSSProperties = { display: 'flex', gap: 10, margin
 const styleQuoteForm: React.CSSProperties = { marginTop: 16, paddingTop: 16, borderTop: `1px dashed ${colors.line}` }
 const styleRadioGroup: React.CSSProperties = { display: 'flex', gap: 10, flexWrap: 'wrap' }
 const styleRadioChip: React.CSSProperties = { border: `1px solid ${colors.line}`, borderRadius: 20, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, color: colors.ink, cursor: 'pointer', background: colors.white }
-const styleRadioChipSel: React.CSSProperties = { background: colors.deep, color: colors.white, borderColor: colors.deep }
+const styleRadioChipSel: React.CSSProperties = { background: colors.deep, color: colors.white, border: `1px solid ${colors.deep}` }
