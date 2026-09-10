@@ -8,7 +8,11 @@ import Card from '../../../components/ui/Card'
 import Button from '../../../components/ui/Button'
 
 type CategoryRow = { id: string; name: string }
-type AttributeDefRow = { id: string; name: string; required: boolean | null }
+// category_attribute_defs 실제 컬럼(HANDOFF.md 참고, live schema로 재확인함) —
+// 관리자 화면이 원래 가정했던 name/required는 존재하지 않음(42703). 조회만
+// 실제 컬럼(attribute_label/is_required)에 맞춤 — "속성 추가" 폼(INSERT)은
+// applies_to/data_type ENUM 허용값을 몰라 아직 스키마와 안 맞고, 별도 과제.
+type AttributeDefRow = { id: string; attribute_label: string; is_required: boolean | null }
 
 export default function AdminCategoriesPage() {
   const adminRole = useAdminRole()
@@ -56,9 +60,9 @@ export default function AdminCategoriesPage() {
       setAttrLoading(true)
       const { data } = await supabase
         .from('category_attribute_defs')
-        .select('id, name, required')
+        .select('id, attribute_label, is_required')
         .eq('category_id', selectedId)
-        .order('name', { ascending: true })
+        .order('attribute_label', { ascending: true })
       setAttributeDefs((data || []) as AttributeDefRow[])
       setAttrLoading(false)
     }
@@ -174,7 +178,9 @@ export default function AdminCategoriesPage() {
       return
     }
 
-    setAttributeDefs((prev) => [...prev, data as AttributeDefRow].sort((a, b) => a.name.localeCompare(b.name)))
+    setAttributeDefs((prev) =>
+      [...prev, data as unknown as AttributeDefRow].sort((a, b) => a.attribute_label.localeCompare(b.attribute_label))
+    )
     setNewAttrName('')
     setNewAttrRequired(false)
   }
@@ -352,8 +358,8 @@ export default function AdminCategoriesPage() {
                     <tbody>
                       {attributeDefs.map((a) => (
                         <tr key={a.id}>
-                          <td style={styles.td}>{a.name}</td>
-                          <td style={styles.td}>{a.required ? '필수' : '선택'}</td>
+                          <td style={styles.td}>{a.attribute_label}</td>
+                          <td style={styles.td}>{a.is_required ? '필수' : '선택'}</td>
                         </tr>
                       ))}
                     </tbody>

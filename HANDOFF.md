@@ -28,8 +28,22 @@
   모르고 안 보내서, 이 기능이 계속 조용히 실패하고 있었음.
 - `category_attribute_defs`: 기존 관리자 화면이 가정한 `name`/`required` 구조가
   아니라 `applies_to`(ENUM)/`attribute_key`/`attribute_label`/`data_type`을 가진,
-  훨씬 복잡하고 지금 앱 어디서도 안 쓰이는 동적 폼 필드 스키마였음. **아직 손대지
-  않음** — 다음에 이 테이블을 다루게 되면 반드시 실제 컬럼부터 확인할 것.
+  훨씬 복잡하고 지금 앱 어디서도 안 쓰이는 동적 폼 필드 스키마였음.
+  **2026-09-10 갱신**: `/admin/categories`에서 이 스키마 불일치 때문에 속성
+  목록 조회가 400(`42703 column ... name/required does not exist`)으로 계속
+  실패하던 걸 발견 — anon key로 라이브 스키마에 직접 확인해서 실제 컬럼이
+  `id`/`category_id`/`applies_to`(enum `attribute_applies_to`)/`attribute_key`/
+  `attribute_label`/`data_type`(enum `attribute_data_type`)/`is_required`임을
+  재확인함. **조회(SELECT)만** `name→attribute_label`, `required→is_required`로
+  고쳐서 목록은 정상화됨(`app/admin/categories/page.tsx`의 `loadAttrs`).
+  **"속성 추가"(INSERT) 폼은 여전히 스키마와 안 맞아 계속 실패함** —
+  `attribute_key`/`applies_to`/`data_type`을 전혀 입력받지 않고 `name`/
+  `required`로 insert를 시도해서, `applies_to`/`data_type` ENUM의 허용값을
+  확인하기 전까지는 고치지 않기로 함(추측으로 잘못된 값을 넣는 것을 피하기
+  위해 의도적으로 보류). 다음에 이 폼을 다루게 되면: 1) Supabase 대시보드에서
+  `attribute_applies_to`/`attribute_data_type` enum 허용값 확인, 2) 폼에
+  `attribute_key`(또는 라벨에서 자동 생성)·`applies_to`·`data_type` 입력을
+  추가, 3) `addAttributeDef()`의 insert/select 컬럼을 실제 스키마에 맞게 수정.
 
 **교훈**: 새 기능이 기존 테이블(특히 리포에 `CREATE TABLE` 구문이 없는 테이블)을
 건드릴 때는, 코드/마이그레이션 주석의 스키마 가정을 곧이곧대로 믿지 말고 먼저
