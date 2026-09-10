@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../../lib/supabaseClient'
 import { colors, styles, formatDate } from '../../_shared'
 import { usePartnerLayout } from '../../PartnerLayoutContext'
+import Card from '../../../../components/ui/Card'
+import Button from '../../../../components/ui/Button'
 
 type AdType = 'box' | 'line' | 'free' | 'banner'
 type AdStatus = 'pending' | 'active' | 'rejected'
@@ -162,29 +164,28 @@ export default function PartnerAdsApplyPage() {
             <label style={styles.label}>광고 유형</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
               {(Object.keys(AD_TYPE_INFO) as AdType[]).map((t) => (
-                <label
-                  key={t}
-                  style={{
-                    border: `1.5px solid ${adType === t ? colors.navy : colors.line}`,
-                    borderRadius: 8,
-                    padding: 14,
-                    cursor: 'pointer',
-                    background: adType === t ? colors.paper2 : colors.white,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="radio"
-                      name="ad_type"
-                      checked={adType === t}
-                      onChange={() => setAdType(t)}
-                    />
-                    <b style={{ fontSize: 13.5, color: colors.ink }}>{AD_TYPE_INFO[t].label}</b>
-                  </div>
-                  <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{AD_TYPE_INFO[t].desc}</div>
-                  <div style={{ fontSize: 12.5, color: colors.navy, fontWeight: 700, marginTop: 6 }}>
-                    {AD_TYPE_INFO[t].price}
-                  </div>
+                <label key={t} style={{ display: 'block', cursor: 'pointer' }}>
+                  <Card
+                    style={{
+                      padding: 14,
+                      border: adType === t ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
+                      background: adType === t ? 'var(--color-surface-muted)' : 'var(--color-surface)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="radio"
+                        name="ad_type"
+                        checked={adType === t}
+                        onChange={() => setAdType(t)}
+                      />
+                      <b style={{ fontSize: 13.5, color: colors.ink }}>{AD_TYPE_INFO[t].label}</b>
+                    </div>
+                    <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{AD_TYPE_INFO[t].desc}</div>
+                    <div style={{ fontSize: 12.5, color: colors.navy, fontWeight: 700, marginTop: 6 }}>
+                      {AD_TYPE_INFO[t].price}
+                    </div>
+                  </Card>
                 </label>
               ))}
             </div>
@@ -240,13 +241,14 @@ export default function PartnerAdsApplyPage() {
           {submitError && <div style={styles.errorBox}>{submitError}</div>}
           {submitted && <div style={styles.successBox}>신청이 접수됐어요. 담당자 확인 후 게재됩니다.</div>}
 
-          <button
+          <Button
             type="submit"
-            style={{ ...styles.btn, ...styles.btnPrimarySmall, marginTop: 8 }}
+            variant="primary"
+            style={{ marginTop: 8 }}
             disabled={submitting || uploading}
           >
             {submitting ? '신청 중...' : '신청하기'}
-          </button>
+          </Button>
         </form>
       </div>
 
