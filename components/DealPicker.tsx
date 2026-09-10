@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { createWalkInDeal } from '../lib/createWalkInDeal'
 import { colors, styles } from '../app/partner/_shared'
+import Input from './ui/Input'
+import Select from './ui/Select'
 
 export type DealOption = {
   id: string
@@ -151,52 +153,52 @@ export default function DealPicker({ partnerId, deals, value, onChange, onDealCr
           <div style={styles.fieldRow}>
             <div style={styles.field}>
               <label style={styles.label}>상호명 *</label>
-              <input type="text" style={styles.input} value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
+              <Input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
             </div>
             <div style={styles.field}>
               <label style={styles.label}>사업자번호</label>
-              <input type="text" style={styles.input} value={bizRegNo} onChange={(e) => setBizRegNo(e.target.value)} />
+              <Input type="text" value={bizRegNo} onChange={(e) => setBizRegNo(e.target.value)} />
             </div>
           </div>
           <div style={styles.fieldRow}>
             <div style={styles.field}>
               <label style={styles.label}>지역</label>
-              <input type="text" style={styles.input} value={region} onChange={(e) => setRegion(e.target.value)} />
+              <Input type="text" value={region} onChange={(e) => setRegion(e.target.value)} />
             </div>
             <div style={styles.field}>
               <label style={styles.label}>업종</label>
-              <input type="text" style={styles.input} value={industry} onChange={(e) => setIndustry(e.target.value)} />
+              <Input type="text" value={industry} onChange={(e) => setIndustry(e.target.value)} />
             </div>
           </div>
           <div style={styles.fieldRow}>
             <div style={styles.field}>
               <label style={styles.label}>담당자명</label>
-              <input type="text" style={styles.input} value={contactName} onChange={(e) => setContactName(e.target.value)} />
+              <Input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)} />
             </div>
             <div style={styles.field}>
               <label style={styles.label}>연락처</label>
-              <input type="text" style={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
           </div>
           <div style={styles.field}>
             <label style={styles.label}>주소</label>
-            <input type="text" style={styles.input} value={address} onChange={(e) => setAddress(e.target.value)} />
+            <Input type="text" value={address} onChange={(e) => setAddress(e.target.value)} />
           </div>
           <div style={styles.fieldRow}>
             <div style={styles.field}>
               <label style={styles.label}>카테고리 *</label>
-              <select style={styles.input} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">선택하세요</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div style={styles.field}>
               <label style={styles.label}>거래 금액 (원) *</label>
-              <input type="number" style={styles.input} placeholder="예) 150000" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Input type="number" placeholder="예) 150000" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
           </div>
 
@@ -223,7 +225,7 @@ export default function DealPicker({ partnerId, deals, value, onChange, onDealCr
   return (
     <div style={styles.field}>
       <label style={styles.label}>거래 선택</label>
-      <select style={styles.input} value={value} onChange={handleSelectChange}>
+      <Select value={value} onChange={handleSelectChange}>
         <option value="">진행 중인 거래를 선택하세요</option>
         {inProgressDeals.map((d) => (
           <option key={d.id} value={d.id}>
@@ -231,7 +233,7 @@ export default function DealPicker({ partnerId, deals, value, onChange, onDealCr
           </option>
         ))}
         <option value={NEW_DEAL_SENTINEL}>+ 새 거래처로 시작하기</option>
-      </select>
+      </Select>
     </div>
   )
 }
