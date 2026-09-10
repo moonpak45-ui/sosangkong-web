@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation'
 import RoleAwareCta from '../components/RoleAwareCta'
 import BuyerHomeFeed from '../components/BuyerHomeFeed'
 import { supabase } from '../lib/supabaseClient'
+import IconCircle from '../components/ui/IconCircle'
+import Card from '../components/ui/Card'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
 
 type RootStatus = 'checking' | 'guest' | 'buyer' | 'redirecting'
 
@@ -100,10 +104,10 @@ function MarketingLanding() {
               거래처에 문제가 생기면 대체 업체도 바로 추천해드립니다.
             </p>
             <div className="hero-ctas">
-              <RoleAwareCta targetRole="buyer" className="btn btn-primary">
+              <RoleAwareCta targetRole="buyer" variant="primary">
                 소상공인으로 시작하기
               </RoleAwareCta>
-              <RoleAwareCta targetRole="partner" className="btn btn-ghost">
+              <RoleAwareCta targetRole="partner" variant="secondary">
                 공급업체로 등록하기
               </RoleAwareCta>
             </div>
@@ -145,11 +149,11 @@ function MarketingLanding() {
           <div className="wrap cat-row">
             {['냉동·수산', '축산', '식자재', '공산품', '배송 파트너', '전국 권역별'].map((label) => (
               <a className="cat-item" href="/search" key={label}>
-                <div className="cat-icon">
+                <IconCircle>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="8" stroke="#065A82" strokeWidth="1.6" />
                   </svg>
-                </div>
+                </IconCircle>
                 <span>{label}</span>
               </a>
             ))}
@@ -158,22 +162,22 @@ function MarketingLanding() {
 
         <div className="stat-strip">
           <div className="wrap">
-            <div className="stat-cell">
+            <Card className="stat-cell">
               <div className="stat-num">312개</div>
               <div className="stat-label">등록 공급업체 (전국)</div>
-            </div>
-            <div className="stat-cell">
+            </Card>
+            <Card className="stat-cell">
               <div className="stat-num">468곳</div>
               <div className="stat-label">이용 중인 소상공인 사업장</div>
-            </div>
-            <div className="stat-cell">
+            </Card>
+            <Card className="stat-cell">
               <div className="stat-num">96%</div>
               <div className="stat-label">평균 조건 매칭 정확도</div>
-            </div>
-            <div className="stat-cell">
+            </Card>
+            <Card className="stat-cell">
               <div className="stat-num">92%</div>
               <div className="stat-label">첫 거래 후 재거래율</div>
-            </div>
+            </Card>
           </div>
         </div>
       </header>
@@ -271,7 +275,7 @@ function MarketingLanding() {
             </div>
           </div>
           <div className="showcase-grid">
-            <div className="compare-card">
+            <Card className="compare-card" style={{ padding: 28 }}>
               <h3>가격만 봤을 때</h3>
               <div className="cand">
                 <div>
@@ -294,8 +298,11 @@ function MarketingLanding() {
                 </div>
                 <div className="score">103,000원</div>
               </div>
-            </div>
-            <div className="compare-card result">
+            </Card>
+            <Card
+              className="compare-card result"
+              style={{ padding: 28, background: 'var(--color-primary)', border: 'none' }}
+            >
               <h3>고객님의 조건 기준</h3>
               <div className="result-headline">
                 C업체가 <b>96% 일치</b>합니다
@@ -309,7 +316,7 @@ function MarketingLanding() {
               <div className="why-box">
                 추천 이유 : 마포구 내 냉동수산물 거래 경험이 많고, 요청하신 화요일 오전 배송 조건을 충족합니다.
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </section>
@@ -394,29 +401,31 @@ function MarketingLanding() {
       </section>
 
       <section className="supply">
-        <div className="wrap supply-grid">
-          <div>
-            <h2>
-              이미 다니는 배송 노선에,
-              <br />
-              거래처 하나만 더 얹어보세요
-            </h2>
-            <p>전화 영업 대신 프로필과 배송조건만 등록하면, 조건이 맞는 소상공인에게 자동으로 연결됩니다.</p>
-            <div className="supply-mini-stats">
-              <div>
-                <b>312개</b>등록 공급업체
-              </div>
-              <div>
-                <b>3개월</b>수수료 무료 기간
-              </div>
-              <div>
-                <b>2~5%</b>거래 성사 시 수수료
+        <div className="wrap">
+          <Card className="supply-grid" style={{ padding: 40 }}>
+            <div>
+              <h2>
+                이미 다니는 배송 노선에,
+                <br />
+                거래처 하나만 더 얹어보세요
+              </h2>
+              <p>전화 영업 대신 프로필과 배송조건만 등록하면, 조건이 맞는 소상공인에게 자동으로 연결됩니다.</p>
+              <div className="supply-mini-stats">
+                <div>
+                  <b>312개</b>등록 공급업체
+                </div>
+                <div>
+                  <b>3개월</b>수수료 무료 기간
+                </div>
+                <div>
+                  <b>2~5%</b>거래 성사 시 수수료
+                </div>
               </div>
             </div>
-          </div>
-          <RoleAwareCta targetRole="partner" className="btn btn-ghost">
-            공급업체 무료 등록
-          </RoleAwareCta>
+            <RoleAwareCta targetRole="partner" variant="primary">
+              공급업체 무료 등록
+            </RoleAwareCta>
+          </Card>
         </div>
       </section>
     </>
@@ -441,8 +450,11 @@ function SupplierCard({
   tags: string[]
 }) {
   return (
-    <div className={`supplier-card${premium ? ' premium' : ''}`}>
-      {premium && <span className="premium-tag">우선 노출</span>}
+    <Card
+      className={`supplier-card${premium ? ' premium' : ''}`}
+      style={premium ? { border: '1.5px solid var(--color-accent)' } : undefined}
+    >
+      {premium && <Badge style={{ marginBottom: 12 }}>우선 노출</Badge>}
       <div className="sc-top">
         <div className="sc-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -475,8 +487,10 @@ function SupplierCard({
           </span>
         ))}
       </div>
-      <button className="sc-cta">무료 견적 요청</button>
-    </div>
+      <Button variant="primary" size="sm" style={{ width: '100%' }}>
+        무료 견적 요청
+      </Button>
+    </Card>
   )
 }
 
@@ -504,7 +518,7 @@ function ReviewCard({
   biz: string
 }) {
   return (
-    <div className="review-card">
+    <Card className="review-card" style={{ padding: 22 }}>
       <div className="review-stars">{stars}</div>
       <p className="review-text">{text}</p>
       <div className="review-who">
@@ -514,7 +528,7 @@ function ReviewCard({
           <div className="review-biz">{biz}</div>
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -528,9 +542,6 @@ const homeCss = `
   body{ background:var(--paper); }
   h1,h2,h3{ font-family:'Noto Serif KR',serif; font-weight:600; margin:0; color:var(--deep); }
   .wrap{max-width:1180px;margin:0 auto;padding:0 32px;}
-  .btn{ display:inline-flex;align-items:center;gap:8px; padding:13px 26px;border-radius:4px;font-weight:700;font-size:15px; cursor:pointer;border:1.5px solid transparent;white-space:nowrap; text-decoration:none; }
-  .btn-primary{background:var(--amber);color:var(--deep);}
-  .btn-ghost{border-color:rgba(255,255,255,0.4);color:var(--white);}
   .hero{ background:var(--deep); background-image: radial-gradient(ellipse at 85% 15%, rgba(28,114,147,0.35), transparent 55%); padding:64px 0 0; position:relative; overflow:hidden; }
   .hero-grid{ display:grid;grid-template-columns:1.05fr 0.95fr;gap:56px;align-items:center; padding-bottom:64px; }
   .eyebrow-line{ display:flex;align-items:center;gap:10px;margin-bottom:22px; }
@@ -552,16 +563,14 @@ const homeCss = `
   .result-sub{font-size:12px;color:var(--muted);margin-top:2px;}
   .match-badge{ background:var(--good-bg);color:var(--good);font-size:12.5px;font-weight:700; padding:4px 10px;border-radius:20px; }
   .stat-strip{ border-top:1px solid rgba(255,255,255,0.1); }
-  .stat-strip .wrap{ display:grid;grid-template-columns:repeat(4,1fr); }
-  .stat-cell{ padding:22px 0;text-align:center;border-right:1px solid rgba(255,255,255,0.1); }
-  .stat-cell:last-child{border-right:none;}
-  .stat-num{ font-family:'Noto Serif KR',serif;font-size:26px;font-weight:700;color:var(--amber); }
-  .stat-label{ font-size:12.8px;color:#9FC3D8;margin-top:4px; }
+  .stat-strip .wrap{ display:grid;grid-template-columns:repeat(4,1fr);gap:16px; }
+  .stat-cell{ text-align:center; }
+  .stat-num{ font-family:'Noto Serif KR',serif;font-size:26px;font-weight:700;color:var(--navy); }
+  .stat-label{ font-size:12.8px;color:var(--muted);margin-top:4px; }
   .cat-nav{ margin:8px 0 40px; }
   .cat-row{ display:flex;justify-content:space-between;gap:8px; background:var(--white);border-radius:14px;padding:26px 20px; box-shadow:0 16px 40px rgba(5,20,40,0.25); }
   .cat-item{ display:flex;flex-direction:column;align-items:center;gap:9px;flex:1;padding:6px 4px;border-radius:8px; text-decoration:none; }
   .cat-item:hover{background:var(--paper2);}
-  .cat-icon{ width:46px;height:46px;border-radius:50%;background:var(--paper2); display:flex;align-items:center;justify-content:center; }
   .cat-item span{font-size:13px;font-weight:500;color:var(--ink);}
   .section{padding:80px 0;}
   .section-head{ display:flex;justify-content:space-between;align-items:flex-end;max-width:100%;margin-bottom:44px;gap:24px; }
@@ -570,9 +579,6 @@ const homeCss = `
   .section-head p{margin-top:12px;color:var(--muted);font-size:15px;max-width:56ch;}
   .link-more{font-size:14px;font-weight:700;color:var(--navy);white-space:nowrap;padding-bottom:4px;text-decoration:none;}
   .supplier-grid{ display:grid;grid-template-columns:repeat(4,1fr);gap:18px; }
-  .supplier-card{ background:var(--white);border:1px solid var(--line);border-radius:10px; padding:20px;position:relative; }
-  .supplier-card.premium{ border:1.5px solid var(--amber); box-shadow:0 8px 22px rgba(242,169,59,0.18); }
-  .premium-tag{ position:absolute;top:-11px;left:16px;background:var(--amber);color:var(--deep); font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px; }
   .sc-top{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
   .sc-icon{ width:48px;height:48px;border-radius:9px;background:var(--paper2); display:flex;align-items:center;justify-content:center;flex-shrink:0; }
   .sc-name{font-size:15px;font-weight:700;color:var(--ink);}
@@ -583,8 +589,6 @@ const homeCss = `
   .sc-stat span{font-size:11px;color:var(--muted);}
   .sc-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
   .sc-tag{font-size:11.5px;background:var(--paper2);color:var(--muted);padding:4px 9px;border-radius:14px;}
-  .sc-cta{ width:100%;background:var(--deep);color:var(--white);border:none;border-radius:6px; padding:11px;font-size:13.5px;font-weight:700;cursor:pointer; }
-  .supplier-card.premium .sc-cta{background:var(--amber-deep);}
   .steps{ display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-top:1px solid var(--line); }
   .step{ padding:28px 20px 0 0;border-right:1px solid var(--line); }
   .step:last-child{border-right:none;}
@@ -593,8 +597,6 @@ const homeCss = `
   .step p{font-size:13px;color:var(--muted);margin-top:8px;}
   .showcase{background:var(--paper2);}
   .showcase-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:stretch;}
-  .compare-card{ background:var(--white);border-radius:10px;padding:28px;border:1px solid var(--line); }
-  .compare-card.result{background:var(--deep);border:none;}
   .compare-card h3{font-size:15px;color:var(--muted);font-weight:500;margin-bottom:18px;font-family:'Noto Sans KR',sans-serif;}
   .compare-card.result h3{color:#9FC3D8;}
   .cand{display:flex;justify-content:space-between;align-items:baseline;padding:13px 0;border-bottom:1px solid var(--paper2);}
@@ -610,7 +612,6 @@ const homeCss = `
   .checklist li::before{content:"";position:absolute;left:0;top:12px;width:8px;height:8px;border-radius:50%;background:var(--amber);}
   .why-box{background:rgba(255,255,255,0.06);border-radius:6px;padding:14px 16px;font-size:13px;color:#B9CFE0;line-height:1.6;}
   .review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
-  .review-card{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:22px;}
   .review-stars{color:var(--amber);font-size:14px;letter-spacing:2px;margin-bottom:12px;}
   .review-text{font-size:14px;color:var(--ink);line-height:1.75;min-height:96px;}
   .review-who{display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--paper2);}
@@ -627,13 +628,13 @@ const homeCss = `
   .promo-card h3{color:var(--white);font-size:18px;margin-bottom:8px;}
   .promo-card p{font-size:13px;opacity:0.9;margin:0 0 18px;line-height:1.6;}
   .promo-cta{font-size:13px;font-weight:700;text-decoration:underline;color:var(--white);}
-  .supply{ background:var(--navy);padding:60px 0; }
+  .supply{ background:var(--paper2);padding:60px 0; }
   .supply-grid{display:flex;justify-content:space-between;align-items:center;gap:32px;flex-wrap:wrap;}
-  .supply h2{color:var(--white);font-size:24px;max-width:540px;}
-  .supply p{color:#CFE6F0;margin-top:10px;max-width:480px;font-size:14px;}
+  .supply h2{font-size:24px;max-width:540px;}
+  .supply p{color:var(--muted);margin-top:10px;max-width:480px;font-size:14px;}
   .supply-mini-stats{display:flex;gap:22px;margin-top:16px;}
-  .supply-mini-stats div{font-size:13px;color:#CFE6F0;}
-  .supply-mini-stats b{display:block;font-family:'Noto Serif KR',serif;font-size:20px;color:var(--white);}
+  .supply-mini-stats div{font-size:13px;color:var(--muted);}
+  .supply-mini-stats b{display:block;font-family:'Noto Serif KR',serif;font-size:20px;color:var(--navy);}
   .ad-slot{ background:var(--white);border:1px solid var(--line);border-radius:10px; padding:24px;text-align:center; color:var(--muted); font-size:12px; }
   .ad-slot .ad-label{ font-size:10.5px;color:var(--muted);text-align:left;margin-bottom:8px;letter-spacing:0.3px; }
   .ad-band{padding:28px 0;background:var(--white);}
@@ -649,12 +650,10 @@ const homeCss = `
     .cat-row{flex-wrap:wrap;}
     .cat-item{flex:0 0 30%;}
     .stat-strip .wrap{grid-template-columns:repeat(2,1fr);}
-    .stat-cell:nth-child(2){border-right:none;}
   }
   @media (max-width:640px){
     .cat-row{ display:grid;grid-template-columns:repeat(4,1fr);gap:18px 6px;padding:22px 14px; }
     .cat-item{padding:2px;}
-    .cat-icon{width:44px;height:44px;}
     .cat-item span{font-size:12px;}
   }
   @media (max-width:380px){

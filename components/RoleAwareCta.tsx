@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabaseClient'
+import Button from './ui/Button'
 
 type TargetRole = 'buyer' | 'partner'
 
 type Props = {
   targetRole: TargetRole
-  className?: string
+  variant?: 'primary' | 'secondary'
+  size?: 'md' | 'sm'
   children: React.ReactNode
 }
 
@@ -47,7 +49,7 @@ const ROLE_LABEL_WITH_PARTICLE: Record<'buyer' | 'partner' | 'admin', string> = 
 // 2) 이미 같은 역할로 로그인 → 그 역할의 마이페이지로 바로 이동
 // 3) 다른 역할로 로그인 중(예: 소상공인이 "공급업체로 등록하기" 클릭) →
 //    새 계정 가입 시 기존 로그인이 풀린다는 걸 확인받고 진행
-export default function RoleAwareCta({ targetRole, className, children }: Props) {
+export default function RoleAwareCta({ targetRole, variant = 'primary', size = 'md', children }: Props) {
   const router = useRouter()
   const [session, setSession] = useState<SessionState>(undefined)
 
@@ -83,9 +85,7 @@ export default function RoleAwareCta({ targetRole, className, children }: Props)
 
   const signupHref = `/login?view=signup&type=${SIGNUP_TYPE_PARAM[targetRole]}`
 
-  function handleClick(e: React.MouseEvent) {
-    e.preventDefault()
-
+  function handleClick() {
     // 세션 확인이 아직 안 끝났으면(거의 순간적으로 끝나지만) 무시 - 확인
     // 전에 잘못된 곳으로 보내는 것보다 한 번 더 누르게 하는 게 안전함.
     if (session === undefined) return
@@ -109,8 +109,8 @@ export default function RoleAwareCta({ targetRole, className, children }: Props)
   }
 
   return (
-    <a className={className} href={signupHref} onClick={handleClick}>
+    <Button type="button" variant={variant} size={size} onClick={handleClick}>
       {children}
-    </a>
+    </Button>
   )
 }
