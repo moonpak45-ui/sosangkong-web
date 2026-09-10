@@ -8,6 +8,7 @@ import FavoriteHeart from '../../components/FavoriteHeart'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import Select from '../../components/ui/Select'
 
 type Category = {
   id: string
@@ -160,7 +161,7 @@ function SearchPageInner() {
           <form onSubmit={handleSearchSubmit} className="search-bar-grid" style={styles.searchBar}>
             <div style={styles.sbField}>
               <label style={styles.sbLabel}>카테고리</label>
-              <select
+              <Select
                 value={categoryInput}
                 onChange={(e) => setCategoryInput(e.target.value)}
                 style={styles.sbSelect}
@@ -171,7 +172,7 @@ function SearchPageInner() {
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div style={styles.sbField}>
               <label style={styles.sbLabel}>지역</label>
@@ -227,14 +228,14 @@ function SearchPageInner() {
           {/* 결과 리스트 */}
           <div>
             <div style={styles.listToolbar}>
-              <select
+              <Select
                 value={sortKey}
                 onChange={(e) => setSortKey(e.target.value as 'match' | 'rating')}
-                style={styles.sortSelect}
+                style={{ width: 'auto', fontSize: 13.3 }}
               >
                 <option value="match">조건 일치도순</option>
                 <option value="rating">평점순</option>
-              </select>
+              </Select>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <span style={{ fontSize: 12.5, color: colors.muted }}>총 {visibleResults.length}곳</span>
                 <button
