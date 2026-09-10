@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles, formatDate, statusBadgeStyle } from '../_shared'
+import Card from '../../../components/ui/Card'
+import Badge from '../../../components/ui/Badge'
+import Button from '../../../components/ui/Button'
 
 type AdType = 'box' | 'line' | 'free' | 'banner'
 type AdStatus = 'pending' | 'active' | 'rejected'
@@ -129,12 +132,12 @@ export default function AdminAdsPage() {
       {actionError && <div style={{ ...styles.errorBox, marginBottom: 16 }}>{actionError}</div>}
 
       {visible.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>해당하는 광고 신청이 없어요</h3>
-        </div>
+        </Card>
       ) : (
         visible.map((ad) => (
-          <div key={ad.id} style={styles.card}>
+          <Card key={ad.id} style={{ padding: 20, marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: 16, flex: 1, minWidth: 260 }}>
                 {ad.banner_image_url && (
@@ -148,7 +151,7 @@ export default function AdminAdsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <b style={{ fontSize: 14.5, color: colors.ink }}>{ad.partners?.name || '(삭제된 업체)'}</b>
                     <span style={{ ...styles.htag, background: colors.paper2, color: colors.navy }}>{AD_TYPE_LABEL[ad.ad_type]}</span>
-                    <span style={{ ...styles.htag, ...statusBadgeStyle(ad.status) }}>{AD_STATUS_LABEL[ad.status]}</span>
+                    <Badge style={statusBadgeStyle(ad.status)}>{AD_STATUS_LABEL[ad.status]}</Badge>
                   </div>
                   <div style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>
                     {formatDate(ad.created_at)} 신청
@@ -164,43 +167,39 @@ export default function AdminAdsPage() {
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 {ad.status === 'pending' && (
                   <>
-                    <button
-                      style={{ ...styles.btn, ...styles.btnPrimarySmall }}
-                      disabled={updatingId === ad.id}
-                      onClick={() => approve(ad.id)}
-                    >
+                    <Button variant="primary" size="sm" disabled={updatingId === ad.id} onClick={() => approve(ad.id)}>
                       승인
-                    </button>
-                    <button
-                      style={{ ...styles.btn, ...styles.btnDangerSmall }}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      style={{ color: colors.warn, border: `1px solid ${colors.warn}` }}
                       disabled={updatingId === ad.id}
                       onClick={() => reject(ad.id, false)}
                     >
                       반려
-                    </button>
+                    </Button>
                   </>
                 )}
                 {ad.status === 'active' && (
-                  <button
-                    style={{ ...styles.btn, ...styles.btnDangerSmall }}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    style={{ color: colors.warn, border: `1px solid ${colors.warn}` }}
                     disabled={updatingId === ad.id}
                     onClick={() => reject(ad.id, true)}
                   >
                     게재 중단
-                  </button>
+                  </Button>
                 )}
                 {ad.status === 'rejected' && (
-                  <button
-                    style={{ ...styles.btn, ...styles.btnPrimarySmall }}
-                    disabled={updatingId === ad.id}
-                    onClick={() => approve(ad.id)}
-                  >
+                  <Button variant="primary" size="sm" disabled={updatingId === ad.id} onClick={() => approve(ad.id)}>
                     승인
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
-          </div>
+          </Card>
         ))
       )}
     </div>
