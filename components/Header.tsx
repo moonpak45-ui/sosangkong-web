@@ -1,27 +1,59 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 import Button from './ui/Button'
+import RoleAwareCta from './RoleAwareCta'
+
+type Role = 'buyer' | 'partner' | 'admin' | null
+
+type NavItem = { label: string; href: string }
+
+// 역할별 메뉴 구성 - 비로그인/buyer/partner가 서로 완전히 다름(관리자는
+// 이 메뉴 대상이 아니라 빈 배열 - 관리자는 우측의 "관리자 콘솔" 링크로
+// 충분히 이동 가능).
+function getNavItems(session: Session | null, role: Role): NavItem[] {
+  if (!session) {
+    return [
+      { label: '공급업체 찾기', href: '/search' },
+      // "공급업체 유치 랜딩" 페이지가 따로 없어서(리포에 해당 라우트 없음),
+      // RoleAwareCta/풋터와 동일한 실제 가입 딥링크로 연결.
+      { label: '공급업체 등록하기', href: '/login?view=signup&type=supplier' },
+      { label: '광고 상품 안내', href: '/partner/ads/apply' },
+    ]
+  }
+  if (role === 'buyer') {
+    return [
+      { label: '공급업체 찾기', href: '/search' },
+      { label: '견적 요청', href: '/quote-request' },
+      { label: '거래 관리', href: '/my-page' },
+    ]
+  }
+  if (role === 'partner') {
+    // 파트너 본인이 공급업체라 "공급업체 찾기"는 의미가 없고, "견적 요청"/
+    // "공급업체 등록"도 이미 등록된 업체 입장에선 해당 없음.
+    return [
+      { label: '거래 관리', href: '/partner/dashboard' },
+      { label: '광고 상품', href: '/partner/ads/apply' },
+    ]
+  }
+  return []
+}
+
+function isNavActive(pathname: string, href: string) {
+  const hrefPath = href.split('?')[0]
+  if (hrefPath === '/') return pathname === '/'
+  return pathname.startsWith(hrefPath)
+}
 
 export default function Header() {
   const router = useRouter()
+  const pathname = usePathname()
   const [session, setSession] = useState<Session | null>(null)
-  const [role, setRole] = useState<'buyer' | 'partner' | 'admin' | null>(null)
+  const [role, setRole] = useState<Role>(null)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [keyword, setKeyword] = useState('')
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const [isMobileHeader, setIsMobileHeader] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)')
-    setIsMobileHeader(mq.matches)
-    const handleChange = (e: MediaQueryListEvent) => setIsMobileHeader(e.matches)
-    mq.addEventListener('change', handleChange)
-    return () => mq.removeEventListener('change', handleChange)
-  }, [])
 
   useEffect(() => {
     async function loadRole(userId: string) {
@@ -67,53 +99,25 @@ export default function Header() {
     router.push('/')
   }
 
-  function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (keyword.trim()) {
-      setMobileSearchOpen(false)
-      router.push(`/search?q=${encodeURIComponent(keyword.trim())}`)
-    }
-  }
+  const navItems = getNavItems(session, role)
 
   return (
     <header style={styles.header}>
       <div className="header-inner" style={styles.inner}>
         <a href="/" style={styles.logo} aria-label="소상공닷컴 홈">
-          <img
-            src="/brand/logo-lockup.png"
-            alt="sosangKong 소상공닷컴"
-            style={{ ...styles.logoImg, height: isMobileHeader ? 24 : 28 }}
-          />
+          <img src="/brand/logo-lockup.png" alt="sosangKong 소상공닷컴" style={styles.logoImg} />
         </a>
 
-        {!isMobileHeader && (
-          <form onSubmit={handleSearchSubmit} className="header-search-form" style={styles.searchForm}>
-            <input
-              type="text"
-              placeholder="어떤 거래처를 찾으세요? (예: 냉동수산, 식자재)"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              className="header-search-input"
-              style={styles.searchInput}
-            />
-            <button type="submit" style={styles.searchBtn}>
-              검색
-            </button>
-          </form>
-        )}
-
-        <button
-          type="button"
-          className="header-search-toggle"
-          style={styles.searchToggleBtn}
-          aria-label="검색창 열기"
-          onClick={() => setMobileSearchOpen((v) => !v)}
-        >
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
-            <circle cx="11" cy="11" r="7" stroke={colors.ink} strokeWidth="1.8" />
-            <path d="M20 20L16.5 16.5" stroke={colors.ink} strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
+        <nav className="header-nav-menu" style={styles.navMenu} aria-label="주요 메뉴">
+          {navItems.map((item) => {
+            const active = isNavActive(pathname, item.href)
+            return (
+              <a key={item.label} href={item.href} style={{ ...styles.navMenuLink, ...(active ? styles.navMenuLinkActive : {}) }}>
+                {item.label}
+              </a>
+            )
+          })}
+        </nav>
 
         <nav className="header-nav" style={styles.nav}>
           {session ? (
@@ -150,29 +154,17 @@ export default function Header() {
               </button>
             </>
           ) : (
-            <Button variant="primary" size="sm" onClick={() => router.push('/login')}>
-              로그인
-            </Button>
+            <>
+              <Button variant="secondary" size="sm" onClick={() => router.push('/login')}>
+                로그인
+              </Button>
+              <RoleAwareCta targetRole="buyer" variant="primary" size="sm">
+                무료 시작
+              </RoleAwareCta>
+            </>
           )}
         </nav>
       </div>
-
-      {mobileSearchOpen && (
-        <form onSubmit={handleSearchSubmit} className="header-search-mobile-row">
-          <input
-            type="text"
-            autoFocus
-            placeholder="어떤 거래처를 찾으세요? (예: 냉동수산, 식자재)"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            className="header-search-input"
-            style={styles.searchInput}
-          />
-          <button type="submit" style={styles.searchBtn}>
-            검색
-          </button>
-        </form>
-      )}
     </header>
   )
 }
@@ -214,41 +206,26 @@ const styles: { [k: string]: React.CSSProperties } = {
     width: 'auto',
     display: 'block',
   },
-  searchForm: {
+  // display는 여기 넣지 않음 - app/globals.css의 .header-nav-menu가
+  // 담당(기본 flex, 640px 이하에서 none). 인라인 style은 항상 외부 CSS보다
+  // 우선하므로, 반응형으로 바뀌어야 하는 속성은 인라인에 넣으면 안 됨
+  // (이 리포의 기존 관례, app/globals.css 상단 주석 참고).
+  navMenu: {
     flex: 1,
-    display: 'flex',
-    maxWidth: 480,
-  },
-  searchInput: {
-    flex: 1,
-    border: `1px solid ${colors.line}`,
-    borderRight: 'none',
-    borderRadius: '7px 0 0 7px',
-    padding: '9px 12px',
-    fontSize: 13.5,
-    color: colors.ink,
-    background: colors.paper2,
-  },
-  searchToggleBtn: {
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    background: colors.white,
-    width: 36,
-    height: 36,
     alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    flexShrink: 0,
+    gap: 28,
   },
-  searchBtn: {
-    border: 'none',
-    borderRadius: '0 7px 7px 0',
-    background: colors.navy,
-    color: colors.white,
-    padding: '0 16px',
-    fontSize: 13.5,
-    fontWeight: 700,
-    cursor: 'pointer',
+  navMenuLink: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: colors.muted,
+    textDecoration: 'none',
+    padding: '4px 0',
+    borderBottom: '2px solid transparent',
+  },
+  navMenuLinkActive: {
+    color: 'var(--color-primary)',
+    borderBottom: '2px solid var(--color-accent)',
   },
   nav: {
     display: 'flex',

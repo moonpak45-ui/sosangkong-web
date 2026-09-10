@@ -75,30 +75,17 @@ body {
    untouched.
    ============================================================ */
 
-/* Header search bar: below 640px Header.tsx doesn't render the search form
-   at all (JS viewport check), replacing it with an icon button that reveals
-   a full-width search row underneath the header. */
-.header-search-form {
+/* Header primary nav menu (Header.tsx's role-based menu, between the logo
+   and the right-side user actions): below 640px there's no room for both
+   this menu and the right-side actions, and MobileTabBar already covers
+   primary navigation on mobile, so the menu is simply hidden there. */
+.header-nav-menu {
+  display: flex;
   min-width: 0;
-}
-.header-search-input {
-  min-width: 0;
-  width: 100%;
-}
-.header-search-toggle {
-  display: none;
-}
-.header-search-mobile-row {
-  display: none;
 }
 @media (max-width: 640px) {
-  .header-search-toggle {
-    display: inline-flex;
-  }
-  .header-search-mobile-row {
-    display: flex;
-    gap: 8px;
-    padding: 0 16px 12px;
+  .header-nav-menu {
+    display: none;
   }
   .header-inner {
     gap: 12px !important;
@@ -106,13 +93,10 @@ body {
     padding-right: 16px !important;
     flex-wrap: wrap;
   }
-  /* Logged-in nav (bell + role link + logout) doesn't fit next to the logo
-     and search toggle on one row once a role's label is long enough (e.g.
-     "공급업체 마이페이지"). margin-left:auto (not a forced flex-basis:100%)
-     keeps it right-aligned whether flex-wrap keeps it on line 1 (short
-     labels like "마이페이지") or drops it to its own line 2 (long labels) -
-     it only wraps when it genuinely doesn't fit, instead of every role
-     always paying for two rows. */
+  /* With .header-nav-menu hidden, it no longer occupies the flex:1 space
+     between the logo and the right-side actions (bell + role link + logout,
+     or the guest 로그인/무료 시작 buttons) - margin-left:auto keeps that
+     cluster right-aligned instead of collapsing next to the logo. */
   .header-nav {
     margin-left: auto;
   }
