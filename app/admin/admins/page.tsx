@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles } from '../_shared'
 import { useAdminRole, AdminRole } from '../AdminRoleContext'
+import Button from '../../../components/ui/Button'
 
 type AdminRow = {
   id: string
@@ -193,13 +194,14 @@ export default function AdminAccountsPage() {
           </select>
         </div>
 
-        <button
-          style={{ ...styles.btn, ...styles.btnPrimarySmall, width: '100%', padding: '10px 14px' }}
+        <Button
+          variant="primary"
+          style={{ width: '100%', padding: '10px 14px' }}
           onClick={createAdmin}
           disabled={creating}
         >
           {creating ? '생성 중...' : '관리자 계정 생성'}
-        </button>
+        </Button>
       </div>
 
       <div style={styles.card}>
@@ -233,20 +235,22 @@ export default function AdminAccountsPage() {
                   </td>
                   <td style={styles.td}>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button
-                        style={{ ...styles.btn, ...styles.btnOutlineSmall }}
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         disabled={updatingId === a.id || a.admin_role === 'sub_admin'}
                         onClick={() => changeRole(a.id, 'sub_admin')}
                       >
                         중급으로
-                      </button>
-                      <button
-                        style={{ ...styles.btn, ...styles.btnPrimarySmall }}
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
                         disabled={updatingId === a.id || a.admin_role === 'super_admin'}
                         onClick={() => changeRole(a.id, 'super_admin')}
                       >
                         최고로
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
