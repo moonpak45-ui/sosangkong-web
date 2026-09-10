@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles, formatDate, won, DEAL_STATUS_LABEL, statusBadgeStyle } from '../_shared'
+import Card from '../../../components/ui/Card'
+import Button from '../../../components/ui/Button'
 
 type PendingPartner = {
   id: string
@@ -115,22 +117,22 @@ export default function AdminDashboardPage() {
       <div style={styles.sectionSub}>플랫폼 현황을 한눈에 확인하세요.</div>
 
       <div style={styles.statsGrid}>
-        <div style={styles.statCard}>
+        <Card style={{ padding: '18px 20px' }}>
           <div style={styles.statLabel}>전체 회원 수</div>
           <div style={styles.statValue}>{memberCount.toLocaleString('ko-KR')}명</div>
-        </div>
-        <div style={styles.statCard}>
+        </Card>
+        <Card style={{ padding: '18px 20px' }}>
           <div style={styles.statLabel}>이번 달 거래 확정 건수</div>
           <div style={styles.statValue}>{dealsThisMonth.toLocaleString('ko-KR')}건</div>
-        </div>
-        <div style={styles.statCard}>
+        </Card>
+        <Card style={{ padding: '18px 20px' }}>
           <div style={styles.statLabel}>이번 달 정산 매출 합계</div>
           <div style={styles.statValue}>{won(settlementRevenueThisMonth)}</div>
-        </div>
-        <div style={styles.statCard}>
+        </Card>
+        <Card style={{ padding: '18px 20px' }}>
           <div style={styles.statLabel}>승인 대기 건수</div>
           <div style={styles.statValue}>{pendingCount.toLocaleString('ko-KR')}건</div>
-        </div>
+        </Card>
       </div>
 
       <div style={{ ...styles.sectionTitle, fontSize: 17, marginTop: 8 }}>승인 대기 업체</div>
@@ -139,12 +141,12 @@ export default function AdminDashboardPage() {
       {actionError && <div style={{ ...styles.errorBox, marginBottom: 16 }}>{actionError}</div>}
 
       {pendingPartners.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px', marginBottom: 44 }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>승인 대기 중인 업체가 없어요</h3>
           <p style={{ fontSize: 13.5, color: colors.muted }}>새로 가입한 공급업체가 있으면 이곳에 표시됩니다.</p>
-        </div>
+        </Card>
       ) : (
-        <div style={{ overflowX: 'auto', marginBottom: 44 }}>
+        <Card style={{ padding: 0, overflowX: 'auto', marginBottom: 44 }}>
           <table style={styles.historyTable}>
             <thead>
               <tr>
@@ -162,38 +164,41 @@ export default function AdminDashboardPage() {
                   <td style={styles.td}>{formatDate(p.created_at)}</td>
                   <td style={styles.td}>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button
-                        style={{ ...styles.btn, ...styles.btnPrimarySmall }}
+                      <Button
+                        variant="primary"
+                        size="sm"
                         disabled={updatingId === p.id}
                         onClick={() => updatePartnerStatus(p.id, 'approved')}
                       >
                         승인
-                      </button>
-                      <button
-                        style={{ ...styles.btn, ...styles.btnDangerSmall }}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        style={{ color: colors.warn, border: `1px solid ${colors.warn}` }}
                         disabled={updatingId === p.id}
                         onClick={() => updatePartnerStatus(p.id, 'suspended')}
                       >
                         보류
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       <div style={{ ...styles.sectionTitle, fontSize: 17 }}>최근 거래 확정 내역</div>
       <div style={styles.sectionSub}>가장 최근에 확정된 거래 10건입니다.</div>
 
       {recentDeals.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>확정된 거래가 없어요</h3>
-        </div>
+        </Card>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <Card style={{ padding: 0, overflowX: 'auto' }}>
           <table style={styles.historyTable}>
             <thead>
               <tr>
@@ -220,7 +225,7 @@ export default function AdminDashboardPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   )

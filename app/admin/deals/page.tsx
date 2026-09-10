@@ -12,6 +12,8 @@ import {
   DISPUTE_STATUS_LABEL,
   statusBadgeStyle,
 } from '../_shared'
+import Card from '../../../components/ui/Card'
+import Button from '../../../components/ui/Button'
 
 type QuoteRequestRow = {
   id: string
@@ -149,11 +151,11 @@ export default function AdminDealsPage() {
 
       {tab === 'requests' &&
         (requests.length === 0 ? (
-          <div style={styles.emptyState}>
+          <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
             <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>견적요청 내역이 없어요</h3>
-          </div>
+          </Card>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <Card style={{ padding: 0, overflowX: 'auto' }}>
             <table style={styles.historyTable}>
               <thead>
                 <tr>
@@ -188,16 +190,16 @@ export default function AdminDealsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </Card>
         ))}
 
       {tab === 'deals' &&
         (deals.length === 0 ? (
-          <div style={styles.emptyState}>
+          <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
             <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>확정된 거래가 없어요</h3>
-          </div>
+          </Card>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <Card style={{ padding: 0, overflowX: 'auto' }}>
             <table style={styles.historyTable}>
               <thead>
                 <tr>
@@ -239,19 +241,19 @@ export default function AdminDealsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </Card>
         ))}
 
       {tab === 'disputes' &&
         (disputes.length === 0 ? (
-          <div style={styles.emptyState}>
+          <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
             <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>등록된 분쟁·클레임이 없어요</h3>
             <p style={{ fontSize: 13.5, color: colors.muted }}>거래 중 분쟁이 접수되면 이곳에서 확인할 수 있어요.</p>
-          </div>
+          </Card>
         ) : (
           <>
             {disputeActionError && <div style={{ ...styles.errorBox, marginBottom: 16 }}>{disputeActionError}</div>}
-            <div style={{ overflowX: 'auto' }}>
+            <Card style={{ padding: 0, overflowX: 'auto' }}>
               <table style={styles.historyTable}>
                 <thead>
                   <tr>
@@ -278,20 +280,23 @@ export default function AdminDealsPage() {
                       <td style={styles.td}>
                         {(d.status === 'received' || d.status === 'reviewing') && (
                           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                            <button
-                              style={{ ...styles.btn, ...styles.btnPrimarySmall }}
+                            <Button
+                              variant="primary"
+                              size="sm"
                               disabled={updatingDisputeId === d.id}
                               onClick={() => updateDisputeStatus(d.id, 'resolved')}
                             >
                               해결
-                            </button>
-                            <button
-                              style={{ ...styles.btn, ...styles.btnDangerSmall }}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              style={{ color: colors.warn, border: `1px solid ${colors.warn}` }}
                               disabled={updatingDisputeId === d.id}
                               onClick={() => updateDisputeStatus(d.id, 'rejected')}
                             >
                               반려
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </td>
@@ -299,7 +304,7 @@ export default function AdminDealsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </Card>
           </>
         ))}
     </div>

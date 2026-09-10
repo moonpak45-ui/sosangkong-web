@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles } from '../_shared'
 import { useAdminRole } from '../AdminRoleContext'
+import Card from '../../../components/ui/Card'
+import Button from '../../../components/ui/Button'
 
 type CategoryRow = { id: string; name: string }
 type AttributeDefRow = { id: string; name: string; required: boolean | null }
@@ -183,10 +185,10 @@ export default function AdminCategoriesPage() {
   // 여기서 먼저 막아 안내 문구를 보여줌.
   if (adminRole === 'sub_admin') {
     return (
-      <div style={styles.emptyState}>
+      <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
         <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>접근 권한이 없어요</h3>
         <p style={{ fontSize: 13.5, color: colors.muted }}>카테고리 관리는 최고 관리자만 이용할 수 있어요.</p>
-      </div>
+      </Card>
     )
   }
 
@@ -206,7 +208,7 @@ export default function AdminCategoriesPage() {
         style={{ alignItems: 'start', ['--rtc-cols' as string]: '300px 1fr', ['--rtc-gap' as string]: '24px' } as React.CSSProperties}
       >
         <div>
-          <div style={styles.card}>
+          <Card style={{ padding: 20, marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: colors.deep, marginBottom: 12 }}>
               카테고리 ({categories.length})
             </div>
@@ -227,20 +229,24 @@ export default function AdminCategoriesPage() {
                         onChange={(e) => setEditingName(e.target.value)}
                         autoFocus
                       />
-                      <button
-                        style={{ ...styles.btn, ...styles.btnPrimarySmall, padding: '6px 10px' }}
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        style={{ padding: '6px 10px' }}
                         onClick={() => saveEditCategory(c.id)}
                         disabled={savingEdit}
                       >
                         저장
-                      </button>
-                      <button
-                        style={{ ...styles.btn, ...styles.btnOutlineSmall, padding: '6px 10px' }}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        style={{ padding: '6px 10px' }}
                         onClick={cancelEditCategory}
                         disabled={savingEdit}
                       >
                         취소
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <div
@@ -269,28 +275,32 @@ export default function AdminCategoriesPage() {
                         {c.name}
                       </span>
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                        <button
-                          style={{ ...styles.btn, ...styles.btnOutlineSmall, padding: '4px 8px', fontSize: 11.5 }}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          style={{ padding: '4px 8px', fontSize: 11.5 }}
                           onClick={() => startEditCategory(c)}
                         >
                           수정
-                        </button>
-                        <button
-                          style={{ ...styles.btn, ...styles.btnDangerSmall, padding: '4px 8px', fontSize: 11.5 }}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          style={{ padding: '4px 8px', fontSize: 11.5, color: colors.warn, border: `1px solid ${colors.warn}` }}
                           disabled={deletingId === c.id}
                           onClick={() => deleteCategory(c.id)}
                         >
                           삭제
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )
                 )}
               </div>
             )}
-          </div>
+          </Card>
 
-          <div style={styles.card}>
+          <Card style={{ padding: 20, marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: colors.deep, marginBottom: 12 }}>
               새 카테고리 추가
             </div>
@@ -304,21 +314,17 @@ export default function AdminCategoriesPage() {
               />
             </div>
             {categoryError && <div style={styles.errorBox}>{categoryError}</div>}
-            <button
-              style={{ ...styles.btn, ...styles.btnPrimarySmall, width: '100%', marginTop: 4 }}
-              onClick={addCategory}
-              disabled={addingCategory}
-            >
+            <Button variant="primary" style={{ width: '100%', marginTop: 4 }} onClick={addCategory} disabled={addingCategory}>
               {addingCategory ? '추가 중...' : '카테고리 추가'}
-            </button>
-          </div>
+            </Button>
+          </Card>
         </div>
 
         <div>
           {!selectedCategory ? (
-            <div style={styles.emptyState}>
+            <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
               <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>카테고리를 먼저 추가해주세요</h3>
-            </div>
+            </Card>
           ) : (
             <>
               <div style={{ fontSize: 15, fontWeight: 700, color: colors.deep, marginBottom: 4 }}>
@@ -331,11 +337,11 @@ export default function AdminCategoriesPage() {
               {attrLoading ? (
                 <div style={{ padding: 30, textAlign: 'center', color: colors.muted }}>불러오는 중...</div>
               ) : attributeDefs.length === 0 ? (
-                <div style={styles.emptyState}>
+                <Card style={{ textAlign: 'center', padding: '50px 20px', marginBottom: 20 }}>
                   <h3 style={{ fontSize: 15, marginBottom: 8, color: colors.deep }}>등록된 속성이 없어요</h3>
-                </div>
+                </Card>
               ) : (
-                <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+                <Card style={{ padding: 0, overflowX: 'auto', marginBottom: 20 }}>
                   <table style={styles.historyTable}>
                     <thead>
                       <tr>
@@ -352,10 +358,10 @@ export default function AdminCategoriesPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </Card>
               )}
 
-              <div style={styles.card}>
+              <Card style={{ padding: 20, marginBottom: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: colors.deep, marginBottom: 12 }}>
                   속성 추가
                 </div>
@@ -388,16 +394,12 @@ export default function AdminCategoriesPage() {
                     />
                     필수
                   </label>
-                  <button
-                    style={{ ...styles.btn, ...styles.btnPrimarySmall }}
-                    onClick={addAttributeDef}
-                    disabled={addingAttr}
-                  >
+                  <Button variant="primary" onClick={addAttributeDef} disabled={addingAttr}>
                     {addingAttr ? '추가 중...' : '속성 추가'}
-                  </button>
+                  </Button>
                 </div>
                 {attrError && <div style={styles.errorBox}>{attrError}</div>}
-              </div>
+              </Card>
             </>
           )}
         </div>

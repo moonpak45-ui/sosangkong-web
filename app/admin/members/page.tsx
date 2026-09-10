@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles, formatDate, PARTNER_STATUS_LABEL, BUYER_STATUS_LABEL, statusBadgeStyle } from '../_shared'
+import Card from '../../../components/ui/Card'
+import Button from '../../../components/ui/Button'
 
 type BuyerRow = {
   id: string
@@ -117,11 +119,11 @@ export default function AdminMembersPage() {
 
       {tab === 'buyer' ? (
         buyers.length === 0 ? (
-          <div style={styles.emptyState}>
+          <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
             <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>가입한 소상공인이 없어요</h3>
-          </div>
+          </Card>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <Card style={{ padding: 0, overflowX: 'auto' }}>
             <table style={styles.historyTable}>
               <thead>
                 <tr>
@@ -158,20 +160,23 @@ export default function AdminMembersPage() {
                       </td>
                       <td style={styles.td}>
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                          <button
-                            style={{ ...styles.btn, ...styles.btnPrimarySmall }}
+                          <Button
+                            variant="primary"
+                            size="sm"
                             disabled={updatingId === b.user_id || status === 'active'}
                             onClick={() => updateBuyerStatus(b.user_id, 'active')}
                           >
                             활성
-                          </button>
-                          <button
-                            style={{ ...styles.btn, ...styles.btnDangerSmall }}
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            style={{ color: colors.warn, border: `1px solid ${colors.warn}` }}
                             disabled={updatingId === b.user_id || status === 'suspended'}
                             onClick={() => updateBuyerStatus(b.user_id, 'suspended')}
                           >
                             정지
-                          </button>
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -179,14 +184,14 @@ export default function AdminMembersPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </Card>
         )
       ) : partners.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>가입한 공급업체가 없어요</h3>
-        </div>
+        </Card>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <Card style={{ padding: 0, overflowX: 'auto' }}>
           <table style={styles.historyTable}>
             <thead>
               <tr>
@@ -214,27 +219,30 @@ export default function AdminMembersPage() {
                   </td>
                   <td style={styles.td}>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button
-                        style={{ ...styles.btn, ...styles.btnPrimarySmall }}
+                      <Button
+                        variant="primary"
+                        size="sm"
                         disabled={updatingId === p.id || p.status === 'approved'}
                         onClick={() => updatePartnerStatus(p.id, 'approved')}
                       >
                         승인
-                      </button>
-                      <button
-                        style={{ ...styles.btn, ...styles.btnDangerSmall }}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        style={{ color: colors.warn, border: `1px solid ${colors.warn}` }}
                         disabled={updatingId === p.id || p.status === 'suspended'}
                         onClick={() => updatePartnerStatus(p.id, 'suspended')}
                       >
                         정지
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   )
