@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
+import Input from '../../../components/ui/Input'
+import Textarea from '../../../components/ui/Textarea'
 
 type PartnerFields = {
   name: string
@@ -278,8 +280,7 @@ export default function PartnerProfileEditPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>업체명 *</label>
-            <input
-              style={styles.input}
+            <Input
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
               placeholder="예) 고푸드"
@@ -289,8 +290,7 @@ export default function PartnerProfileEditPage() {
           <div style={styles.fieldRow}>
             <div style={styles.field}>
               <label style={styles.label}>사업자등록번호</label>
-              <input
-                style={styles.input}
+              <Input
                 value={form.biz_reg_no}
                 onChange={(e) => update('biz_reg_no', e.target.value)}
                 placeholder="000-00-00000"
@@ -298,8 +298,7 @@ export default function PartnerProfileEditPage() {
             </div>
             <div style={styles.field}>
               <label style={styles.label}>지역</label>
-              <input
-                style={styles.input}
+              <Input
                 value={form.region}
                 onChange={(e) => update('region', e.target.value)}
                 placeholder="예) 서울 마포구"
@@ -309,8 +308,7 @@ export default function PartnerProfileEditPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>연락처</label>
-            <input
-              style={styles.input}
+            <Input
               value={form.phone}
               onChange={(e) => update('phone', e.target.value)}
               placeholder="예) 02-1234-5678"
@@ -319,8 +317,7 @@ export default function PartnerProfileEditPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>주소</label>
-            <input
-              style={styles.input}
+            <Input
               value={form.address}
               onChange={(e) => update('address', e.target.value)}
               placeholder="사업장 주소"
@@ -329,8 +326,7 @@ export default function PartnerProfileEditPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>소개 (취급 품목 등)</label>
-            <textarea
-              style={styles.textarea}
+            <Textarea
               value={form.description}
               onChange={(e) => update('description', e.target.value)}
               placeholder="예) 냉동 수산물 전문, 당일 배송 가능"
@@ -403,8 +399,7 @@ export default function PartnerProfileEditPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>품목명</label>
-            <input
-              style={styles.input}
+            <Input
               value={stockItemName}
               onChange={(e) => setStockItemName(e.target.value)}
               placeholder="예) 냉동 흰살생선"
@@ -413,9 +408,8 @@ export default function PartnerProfileEditPage() {
           <div style={styles.fieldRow}>
             <div style={styles.field}>
               <label style={styles.label}>초기 수량</label>
-              <input
+              <Input
                 type="number"
-                style={styles.input}
                 value={stockQty}
                 onChange={(e) => setStockQty(e.target.value)}
                 placeholder="예) 100"
@@ -423,8 +417,7 @@ export default function PartnerProfileEditPage() {
             </div>
             <div style={styles.field}>
               <label style={styles.label}>단위</label>
-              <input
-                style={styles.input}
+              <Input
                 value={stockUnit}
                 onChange={(e) => setStockUnit(e.target.value)}
                 placeholder="예) 박스"
@@ -474,27 +467,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   fieldRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
   field: { marginBottom: 16 },
   label: { display: 'block', fontSize: 12.8, color: colors.muted, fontWeight: 600, marginBottom: 7 },
-  input: {
-    width: '100%',
-    border: `1px solid ${colors.line}`,
-    borderRadius: 6,
-    padding: '11px 12px',
-    fontSize: 14,
-    color: colors.ink,
-    background: colors.paper2,
-  },
-  textarea: {
-    width: '100%',
-    border: `1px solid ${colors.line}`,
-    borderRadius: 6,
-    padding: '11px 12px',
-    fontSize: 14,
-    color: colors.ink,
-    background: colors.paper2,
-    minHeight: 84,
-    resize: 'vertical',
-    fontFamily: "'Noto Sans KR', sans-serif",
-  },
   chipGroup: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   chip: {
     border: '1px solid var(--color-border)',
