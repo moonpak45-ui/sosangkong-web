@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../../../lib/supabaseClient'
 import { colors, styles, formatDate } from '../../_shared'
 import { usePartnerLayout } from '../../PartnerLayoutContext'
+import Card from '../../../../components/ui/Card'
 
 type QuoteItem = { name: string; qty?: string; unit?: string }
 type RequestAttributes = { items?: QuoteItem[] }
@@ -123,14 +124,14 @@ export default function PartnerDealsPage() {
       <div style={styles.sectionSub}>확정된 거래 내역입니다. 상태가 바뀌면 이곳에서 확인할 수 있어요.</div>
 
       {deals.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>진행 중인 거래가 없어요</h3>
           <p style={{ fontSize: 13.5, color: colors.muted }}>
             견적을 제출하고 소상공인이 확정하면 이곳에서 거래를 확인할 수 있어요.
           </p>
-        </div>
+        </Card>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <Card style={{ padding: 0, overflowX: 'auto' }}>
           <table style={styles.historyTable}>
             <thead>
               <tr>
@@ -207,7 +208,7 @@ export default function PartnerDealsPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   )

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../../lib/supabaseClient'
 import { colors, styles, formatDate } from '../../_shared'
 import { usePartnerLayout } from '../../PartnerLayoutContext'
+import Card from '../../../../components/ui/Card'
 
 type SettlementRow = {
   id: string
@@ -83,31 +84,31 @@ export default function PartnerSettlementPage() {
       <div style={styles.sectionSub}>거래 확정 시 자동으로 생성된 정산 내역입니다.</div>
 
       <div className="partner-stats-grid" style={styles.statsGrid}>
-        <div style={styles.statCard}>
+        <Card style={{ padding: '18px 20px' }}>
           <div style={styles.statLabel}>다음 정산 예정액</div>
           <div style={styles.statValue}>{nextSettlementAmount.toLocaleString('ko-KR')}원</div>
-        </div>
-        <div style={styles.statCard}>
+        </Card>
+        <Card style={{ padding: '18px 20px' }}>
           <div style={styles.statLabel}>이번 달 확정 거래액</div>
           <div style={styles.statValue}>{thisMonthDealAmount.toLocaleString('ko-KR')}원</div>
-        </div>
-        <div style={styles.statCard}>
+        </Card>
+        <Card style={{ padding: '18px 20px' }}>
           <div style={styles.statLabel}>이번 달 수수료 합계</div>
           <div style={styles.statValue}>{thisMonthCommission.toLocaleString('ko-KR')}원</div>
-        </div>
-        <div style={styles.statCard}>
+        </Card>
+        <Card style={{ padding: '18px 20px' }}>
           <div style={styles.statLabel}>누적 정산 완료액</div>
           <div style={styles.statValue}>{totalSettledAmount.toLocaleString('ko-KR')}원</div>
-        </div>
+        </Card>
       </div>
 
       {settlements.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>정산 내역이 없어요</h3>
           <p style={{ fontSize: 13.5, color: colors.muted }}>거래가 확정되면 이곳에 정산 내역이 자동으로 생성됩니다.</p>
-        </div>
+        </Card>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <Card style={{ padding: 0, overflowX: 'auto' }}>
           <table style={styles.historyTable}>
             <thead>
               <tr>
@@ -144,7 +145,7 @@ export default function PartnerSettlementPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   )

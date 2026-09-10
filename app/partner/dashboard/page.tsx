@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles } from '../_shared'
 import { usePartnerLayout } from '../PartnerLayoutContext'
+import Card from '../../../components/ui/Card'
+import Button from '../../../components/ui/Button'
 
 type QuoteItem = { name: string; qty?: string; unit?: string }
 
@@ -158,18 +160,18 @@ export default function PartnerRequestsPage() {
       <div style={styles.sectionSub}>회신 대기 중인 소상공인의 견적요청입니다.</div>
 
       {targets.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>대기 중인 견적요청이 없어요</h3>
           <p style={{ fontSize: 13.5, color: colors.muted }}>
             검색결과에 노출되면 소상공인의 견적요청이 이곳에 도착합니다.
           </p>
-        </div>
+        </Card>
       ) : (
         targets.map((target) => {
           const qr = target.quote_requests
           const form = forms[target.id]
           return (
-            <div key={target.id} style={styleLeadCard}>
+            <Card key={target.id} style={{ padding: 20, marginBottom: 12 }}>
               <div style={styleLeadTop}>
                 <div>
                   <div style={styleLeadBuyer}>{qr?.buyer_profiles?.business_name || '요청자 정보 없음'} 사장님</div>
@@ -199,9 +201,9 @@ export default function PartnerRequestsPage() {
 
               {openId !== target.id ? (
                 <div style={styleLeadActions}>
-                  <button style={{ ...styles.btn, ...styles.btnPrimarySmall, flex: 1 }} onClick={() => openForm(target)}>
+                  <Button variant="primary" size="sm" style={{ flex: 1 }} onClick={() => openForm(target)}>
                     견적 제출하기
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div style={styleQuoteForm}>
@@ -257,24 +259,28 @@ export default function PartnerRequestsPage() {
                   {formError[target.id] && <div style={styles.errorBox}>{formError[target.id]}</div>}
 
                   <div style={styleLeadActions}>
-                    <button
-                      style={{ ...styles.btn, ...styles.btnOutlineSmall, flex: 1 }}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      style={{ flex: 1 }}
                       onClick={() => setOpenId(null)}
                       disabled={submittingId === target.id}
                     >
                       취소
-                    </button>
-                    <button
-                      style={{ ...styles.btn, ...styles.btnPrimarySmall, flex: 1 }}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      style={{ flex: 1 }}
                       onClick={() => submitQuote(target)}
                       disabled={submittingId === target.id}
                     >
                       {submittingId === target.id ? '제출 중...' : '견적 제출하기'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
-            </div>
+            </Card>
           )
         })
       )}
@@ -282,7 +288,6 @@ export default function PartnerRequestsPage() {
   )
 }
 
-const styleLeadCard: React.CSSProperties = { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: 20, marginBottom: 12 }
 const styleLeadTop: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }
 const styleLeadBuyer: React.CSSProperties = { fontSize: 14.5, fontWeight: 700 }
 const styleLeadMeta: React.CSSProperties = { fontSize: 12, color: colors.muted, marginTop: 3 }
