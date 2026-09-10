@@ -473,7 +473,7 @@ const styles: { [k: string]: React.CSSProperties } = {
   switchLink: { color: colors.navy, cursor: 'pointer' },
   typeGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 },
   typeCard: { border: `1.5px solid ${colors.line}`, borderRadius: 10, padding: '18px 14px', textAlign: 'center', cursor: 'pointer' },
-  typeCardSel: { borderColor: colors.navy, background: colors.paper2 },
+  typeCardSel: { border: `1.5px solid ${colors.navy}`, background: colors.paper2 },
   typeTitle: { fontSize: 13.8, fontWeight: 700, color: colors.ink },
   typeSub: { fontSize: 11.5, color: colors.muted, marginTop: 4 },
   chipGroup: { display: 'flex', gap: 8, flexWrap: 'wrap' },
