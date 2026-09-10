@@ -8,11 +8,39 @@ import Card from '../../../components/ui/Card'
 import Button from '../../../components/ui/Button'
 
 type CategoryRow = { id: string; name: string }
+
 // category_attribute_defs 실제 컬럼(HANDOFF.md 참고, live schema로 재확인함) —
-// 관리자 화면이 원래 가정했던 name/required는 존재하지 않음(42703). 조회만
-// 실제 컬럼(attribute_label/is_required)에 맞춤 — "속성 추가" 폼(INSERT)은
-// applies_to/data_type ENUM 허용값을 몰라 아직 스키마와 안 맞고, 별도 과제.
-type AttributeDefRow = { id: string; attribute_label: string; is_required: boolean | null }
+// 관리자 화면이 원래 가정했던 name/required 대신 attribute_key/attribute_label/
+// applies_to/data_type/is_required/options 구조. 두 ENUM 허용값은 사용자가
+// Supabase 대시보드에서 직접 확인해 알려준 값.
+type AppliesTo = 'partner_profile' | 'quote_request'
+type AttrDataType = 'text' | 'number' | 'boolean' | 'select' | 'multiselect' | 'date'
+
+type AttributeDefRow = {
+  id: string
+  attribute_key: string
+  attribute_label: string
+  applies_to: AppliesTo
+  data_type: AttrDataType
+  is_required: boolean | null
+  options: string[] | null
+}
+
+const APPLIES_TO_LABEL: Record<AppliesTo, string> = {
+  partner_profile: '공급업체 프로필용',
+  quote_request: '견적요청용',
+}
+
+const DATA_TYPE_LABEL: Record<AttrDataType, string> = {
+  text: '텍스트',
+  number: '숫자',
+  boolean: '참/거짓',
+  select: '단일 선택',
+  multiselect: '다중 선택',
+  date: '날짜',
+}
+
+const OPTIONS_DATA_TYPES: AttrDataType[] = ['select', 'multiselect']
 
 export default function AdminCategoriesPage() {
   const adminRole = useAdminRole()
@@ -34,7 +62,11 @@ export default function AdminCategoriesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
 
+  const [newAttrKey, setNewAttrKey] = useState('')
   const [newAttrName, setNewAttrName] = useState('')
+  const [newAttrAppliesTo, setNewAttrAppliesTo] = useState<AppliesTo>('quote_request')
+  const [newAttrDataType, setNewAttrDataType] = useState<AttrDataType>('text')
+  const [newAttrOptionsText, setNewAttrOptionsText] = useState('')
   const [newAttrRequired, setNewAttrRequired] = useState(false)
   const [addingAttr, setAddingAttr] = useState(false)
   const [attrError, setAttrError] = useState('')
@@ -60,7 +92,7 @@ export default function AdminCategoriesPage() {
       setAttrLoading(true)
       const { data } = await supabase
         .from('category_attribute_defs')
-        .select('id, attribute_label, is_required')
+        .select('id, attribute_key, attribute_label, applies_to, data_type, is_required, options')
         .eq('category_id', selectedId)
         .order('attribute_label', { ascending: true })
       setAttributeDefs((data || []) as AttributeDefRow[])
@@ -157,19 +189,48 @@ export default function AdminCategoriesPage() {
     }
   }
 
+  const newAttrNeedsOptions = OPTIONS_DATA_TYPES.includes(newAttrDataType)
+
   async function addAttributeDef() {
     setAttrError('')
     if (!selectedId) return
+
+    const key = newAttrKey.trim()
+    if (!key) {
+      setAttrError('내부 키를 입력해주세요.')
+      return
+    }
+    if (!/^[a-z][a-z0-9_]*$/.test(key)) {
+      setAttrError('내부 키는 영문 소문자로 시작하고, 영문 소문자/숫자/밑줄(_)만 사용할 수 있어요.')
+      return
+    }
     if (!newAttrName.trim()) {
-      setAttrError('속성명을 입력해주세요.')
+      setAttrError('표시명을 입력해주세요.')
+      return
+    }
+
+    const optionList = newAttrOptionsText
+      .split(/[,\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (newAttrNeedsOptions && optionList.length === 0) {
+      setAttrError('선택지를 1개 이상 입력해주세요.')
       return
     }
 
     setAddingAttr(true)
     const { data, error } = await supabase
       .from('category_attribute_defs')
-      .insert({ category_id: selectedId, name: newAttrName.trim(), required: newAttrRequired })
-      .select('id, name, required')
+      .insert({
+        category_id: selectedId,
+        attribute_key: key,
+        attribute_label: newAttrName.trim(),
+        applies_to: newAttrAppliesTo,
+        data_type: newAttrDataType,
+        is_required: newAttrRequired,
+        options: newAttrNeedsOptions ? optionList : null,
+      })
+      .select('id, attribute_key, attribute_label, applies_to, data_type, is_required, options')
       .single()
     setAddingAttr(false)
 
@@ -179,9 +240,13 @@ export default function AdminCategoriesPage() {
     }
 
     setAttributeDefs((prev) =>
-      [...prev, data as unknown as AttributeDefRow].sort((a, b) => a.attribute_label.localeCompare(b.attribute_label))
+      [...prev, data as AttributeDefRow].sort((a, b) => a.attribute_label.localeCompare(b.attribute_label))
     )
+    setNewAttrKey('')
     setNewAttrName('')
+    setNewAttrAppliesTo('quote_request')
+    setNewAttrDataType('text')
+    setNewAttrOptionsText('')
     setNewAttrRequired(false)
   }
 
@@ -352,6 +417,9 @@ export default function AdminCategoriesPage() {
                     <thead>
                       <tr>
                         <th style={styles.th}>속성명</th>
+                        <th style={styles.th}>내부 키</th>
+                        <th style={styles.th}>적용 대상</th>
+                        <th style={styles.th}>입력 형식</th>
                         <th style={styles.th}>필수여부</th>
                       </tr>
                     </thead>
@@ -359,6 +427,14 @@ export default function AdminCategoriesPage() {
                       {attributeDefs.map((a) => (
                         <tr key={a.id}>
                           <td style={styles.td}>{a.attribute_label}</td>
+                          <td style={{ ...styles.td, color: colors.muted, fontFamily: 'monospace' }}>{a.attribute_key}</td>
+                          <td style={styles.td}>{APPLIES_TO_LABEL[a.applies_to] || a.applies_to}</td>
+                          <td style={styles.td}>
+                            {DATA_TYPE_LABEL[a.data_type] || a.data_type}
+                            {OPTIONS_DATA_TYPES.includes(a.data_type) && a.options && a.options.length > 0
+                              ? ` (${a.options.join(', ')})`
+                              : ''}
+                          </td>
                           <td style={styles.td}>{a.is_required ? '필수' : '선택'}</td>
                         </tr>
                       ))}
@@ -371,9 +447,20 @@ export default function AdminCategoriesPage() {
                 <div style={{ fontSize: 13, fontWeight: 700, color: colors.deep, marginBottom: 12 }}>
                   속성 추가
                 </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-                  <div style={{ ...styles.field, flex: 1, marginBottom: 0 }}>
-                    <label style={styles.label}>속성명</label>
+
+                <div style={styles.fieldRow}>
+                  <div style={{ ...styles.field, marginBottom: 0 }}>
+                    <label style={styles.label}>내부 키</label>
+                    <input
+                      type="text"
+                      style={styles.input}
+                      placeholder="예) weight_kg"
+                      value={newAttrKey}
+                      onChange={(e) => setNewAttrKey(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ ...styles.field, marginBottom: 0 }}>
+                    <label style={styles.label}>표시명</label>
                     <input
                       type="text"
                       style={styles.input}
@@ -382,6 +469,52 @@ export default function AdminCategoriesPage() {
                       onChange={(e) => setNewAttrName(e.target.value)}
                     />
                   </div>
+                </div>
+
+                <div style={{ ...styles.fieldRow, marginTop: 14 }}>
+                  <div style={{ ...styles.field, marginBottom: 0 }}>
+                    <label style={styles.label}>적용 대상</label>
+                    <select
+                      style={styles.input}
+                      value={newAttrAppliesTo}
+                      onChange={(e) => setNewAttrAppliesTo(e.target.value as AppliesTo)}
+                    >
+                      {(Object.keys(APPLIES_TO_LABEL) as AppliesTo[]).map((v) => (
+                        <option key={v} value={v}>
+                          {APPLIES_TO_LABEL[v]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ ...styles.field, marginBottom: 0 }}>
+                    <label style={styles.label}>입력 형식</label>
+                    <select
+                      style={styles.input}
+                      value={newAttrDataType}
+                      onChange={(e) => setNewAttrDataType(e.target.value as AttrDataType)}
+                    >
+                      {(Object.keys(DATA_TYPE_LABEL) as AttrDataType[]).map((v) => (
+                        <option key={v} value={v}>
+                          {DATA_TYPE_LABEL[v]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {newAttrNeedsOptions && (
+                  <div style={{ ...styles.field, marginTop: 14, marginBottom: 0 }}>
+                    <label style={styles.label}>선택지 (쉼표 또는 줄바꿈으로 구분)</label>
+                    <textarea
+                      style={styles.textarea}
+                      placeholder="예) 빨강, 파랑, 초록"
+                      value={newAttrOptionsText}
+                      onChange={(e) => setNewAttrOptionsText(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 14 }}>
                   <label
                     style={{
                       display: 'flex',
@@ -389,7 +522,6 @@ export default function AdminCategoriesPage() {
                       gap: 6,
                       fontSize: 13,
                       color: colors.muted,
-                      paddingBottom: 10,
                       cursor: 'pointer',
                     }}
                   >

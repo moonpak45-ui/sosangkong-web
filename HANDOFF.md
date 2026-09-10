@@ -36,14 +36,21 @@
   `attribute_label`/`data_type`(enum `attribute_data_type`)/`is_required`임을
   재확인함. **조회(SELECT)만** `name→attribute_label`, `required→is_required`로
   고쳐서 목록은 정상화됨(`app/admin/categories/page.tsx`의 `loadAttrs`).
-  **"속성 추가"(INSERT) 폼은 여전히 스키마와 안 맞아 계속 실패함** —
-  `attribute_key`/`applies_to`/`data_type`을 전혀 입력받지 않고 `name`/
-  `required`로 insert를 시도해서, `applies_to`/`data_type` ENUM의 허용값을
-  확인하기 전까지는 고치지 않기로 함(추측으로 잘못된 값을 넣는 것을 피하기
-  위해 의도적으로 보류). 다음에 이 폼을 다루게 되면: 1) Supabase 대시보드에서
-  `attribute_applies_to`/`attribute_data_type` enum 허용값 확인, 2) 폼에
-  `attribute_key`(또는 라벨에서 자동 생성)·`applies_to`·`data_type` 입력을
-  추가, 3) `addAttributeDef()`의 insert/select 컬럼을 실제 스키마에 맞게 수정.
+  **2026-09-10 후속 갱신**: 사용자가 Supabase 대시보드(`enum_range`)로 두 ENUM
+  허용값을 직접 확인해줌 — `attribute_applies_to`: `partner_profile`(공급업체
+  프로필 등록용), `quote_request`(견적요청용). `attribute_data_type`: `text`,
+  `number`, `boolean`, `select`, `multiselect`, `date`. 추가로 select/
+  multiselect의 선택지를 저장하는 `options`(jsonb) 컬럼도 anon key
+  타입-프로빙으로 확인(`~~` 연산자 에러로 jsonb 판별). 이 값들을 바탕으로
+  **"속성 추가"(INSERT) 폼도 실제 스키마에 맞게 전부 다시 만듦** —
+  내부 키(`attribute_key`, 영문 소문자/숫자/밑줄 검증)·표시명
+  (`attribute_label`)·적용 대상(`applies_to` select)·입력 형식(`data_type`
+  select)·선택지(`options`, select/multiselect일 때만 노출, 쉼표/줄바꿈
+  구분 텍스트 → 문자열 배열)·필수여부(`is_required`) 전부 입력받도록 변경.
+  조회 쪽도 `attribute_key`/`applies_to`/`data_type`/`options`까지 같이
+  표시하도록 확장. "공산품" 카테고리에 텍스트형 1건 + 다중선택형(선택지
+  3개) 1건을 실제로 추가해 저장·재조회까지 확인 완료 — **이 이슈는 완전히
+  해결됨**.
 
 **교훈**: 새 기능이 기존 테이블(특히 리포에 `CREATE TABLE` 구문이 없는 테이블)을
 건드릴 때는, 코드/마이그레이션 주석의 스키마 가정을 곧이곧대로 믿지 말고 먼저
