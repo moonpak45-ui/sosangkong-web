@@ -6,6 +6,9 @@ import { colors, styles } from '../_shared'
 import { useAdminRole } from '../AdminRoleContext'
 import Card from '../../../components/ui/Card'
 import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
+import Textarea from '../../../components/ui/Textarea'
 
 type CategoryRow = { id: string; name: string }
 
@@ -451,9 +454,8 @@ export default function AdminCategoriesPage() {
                 <div style={styles.fieldRow}>
                   <div style={{ ...styles.field, marginBottom: 0 }}>
                     <label style={styles.label}>내부 키</label>
-                    <input
+                    <Input
                       type="text"
-                      style={styles.input}
                       placeholder="예) weight_kg"
                       value={newAttrKey}
                       onChange={(e) => setNewAttrKey(e.target.value)}
@@ -461,9 +463,8 @@ export default function AdminCategoriesPage() {
                   </div>
                   <div style={{ ...styles.field, marginBottom: 0 }}>
                     <label style={styles.label}>표시명</label>
-                    <input
+                    <Input
                       type="text"
-                      style={styles.input}
                       placeholder="예) 중량"
                       value={newAttrName}
                       onChange={(e) => setNewAttrName(e.target.value)}
@@ -474,8 +475,7 @@ export default function AdminCategoriesPage() {
                 <div style={{ ...styles.fieldRow, marginTop: 14 }}>
                   <div style={{ ...styles.field, marginBottom: 0 }}>
                     <label style={styles.label}>적용 대상</label>
-                    <select
-                      style={styles.input}
+                    <Select
                       value={newAttrAppliesTo}
                       onChange={(e) => setNewAttrAppliesTo(e.target.value as AppliesTo)}
                     >
@@ -484,12 +484,11 @@ export default function AdminCategoriesPage() {
                           {APPLIES_TO_LABEL[v]}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div style={{ ...styles.field, marginBottom: 0 }}>
                     <label style={styles.label}>입력 형식</label>
-                    <select
-                      style={styles.input}
+                    <Select
                       value={newAttrDataType}
                       onChange={(e) => setNewAttrDataType(e.target.value as AttrDataType)}
                     >
@@ -498,15 +497,14 @@ export default function AdminCategoriesPage() {
                           {DATA_TYPE_LABEL[v]}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 </div>
 
                 {newAttrNeedsOptions && (
                   <div style={{ ...styles.field, marginTop: 14, marginBottom: 0 }}>
                     <label style={styles.label}>선택지 (쉼표 또는 줄바꿈으로 구분)</label>
-                    <textarea
-                      style={styles.textarea}
+                    <Textarea
                       placeholder="예) 빨강, 파랑, 초록"
                       value={newAttrOptionsText}
                       onChange={(e) => setNewAttrOptionsText(e.target.value)}
