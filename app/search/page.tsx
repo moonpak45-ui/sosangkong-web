@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import { useFavorites } from '../../lib/useFavorites'
 import FavoriteHeart from '../../components/FavoriteHeart'
+import Card from '../../components/ui/Card'
+import Badge from '../../components/ui/Badge'
+import Button from '../../components/ui/Button'
 
 type Category = {
   id: string
@@ -257,7 +260,11 @@ function SearchPageInner() {
 
             {!loading &&
               visibleResults.map((p) => (
-                <div key={p.id} className="search-result-card" style={styles.resultCard}>
+                <Card
+                  key={p.id}
+                  className="search-result-card"
+                  style={{ padding: '20px 22px', marginBottom: 14 }}
+                >
                   <input
                     type="checkbox"
                     checked={selectedIds.has(p.id)}
@@ -278,7 +285,9 @@ function SearchPageInner() {
                       <a href={`/partner/${p.id}`} style={styles.rcName}>
                         {p.name}
                       </a>
-                      {p.verified_badge && <span style={styles.rcBadge}>✓ 검증 업체</span>}
+                      {p.verified_badge && (
+                        <Badge style={{ background: colors.goodBg, color: colors.good }}>✓ 검증 업체</Badge>
+                      )}
                     </div>
                     <div style={styles.rcLoc}>{p.region || '지역 정보 없음'}</div>
                     <div style={styles.rcStats}>
@@ -301,11 +310,11 @@ function SearchPageInner() {
                   <div style={styles.rcRight}>
                     <div style={styles.rcMatch}>{p.matchScore}%</div>
                     <div style={styles.rcMatchLabel}>일치</div>
-                    <button style={styles.rcCta} onClick={() => requestQuote([p.id])}>
+                    <Button variant="primary" size="sm" style={{ marginTop: 12 }} onClick={() => requestQuote([p.id])}>
                       무료 견적 요청
-                    </button>
+                    </Button>
                   </div>
-                </div>
+                </Card>
               ))}
           </div>
         </div>
@@ -383,14 +392,6 @@ const styles: { [k: string]: React.CSSProperties } = {
     background: colors.white,
     color: colors.ink,
   },
-  resultCard: {
-    background: colors.white,
-    border: `1px solid ${colors.line}`,
-    borderRadius: 10,
-    padding: '20px 22px',
-    marginBottom: 14,
-    alignItems: 'center',
-  },
   rcIcon: {
     width: 56,
     height: 56,
@@ -403,7 +404,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   },
   rcNameRow: { display: 'flex', alignItems: 'center', gap: 8 },
   rcName: { fontSize: 16, fontWeight: 700, color: colors.ink, textDecoration: 'none' },
-  rcBadge: { fontSize: 10.5, fontWeight: 700, background: colors.goodBg, color: colors.good, padding: '3px 8px', borderRadius: 10 },
   rcLoc: { fontSize: 12.5, color: colors.muted, marginTop: 3 },
   rcStats: { display: 'flex', gap: 16, marginTop: 10 },
   rcStat: { fontSize: 12.3, color: colors.muted },
