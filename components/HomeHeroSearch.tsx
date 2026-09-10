@@ -81,10 +81,6 @@ export default function HomeHeroSearch({ initialCategory = '', initialRegion = '
               <br />
               <em style={styles.em}>여러 곳에 동시에 견적을 요청하세요</em>
             </h1>
-            <p style={styles.sub}>
-              지역·품목·배송시간·온도조건까지 맞춰 공급업체를 비교하고, 여러 곳에 동시에 견적을 요청하세요.
-              거래처에 문제가 생기면 대체 업체도 바로 추천해드립니다.
-            </p>
             {showCtas && (
               <div style={styles.ctaRow}>
                 <RoleAwareCta targetRole="buyer" variant="primary">
@@ -165,7 +161,6 @@ const styles: { [k: string]: React.CSSProperties } = {
     wordBreak: 'keep-all',
   },
   em: { fontStyle: 'normal', color: 'var(--color-accent)' },
-  sub: { marginTop: 16, fontSize: 15, lineHeight: 1.6, color: 'rgba(255,255,255,0.8)', maxWidth: '50ch' },
   ctaRow: { display: 'flex', gap: 14, marginTop: 24, flexWrap: 'wrap' },
   statsCol: { display: 'flex', gap: 20, flexWrap: 'wrap', paddingTop: 4 },
   statCell: { textAlign: 'center', minWidth: 92 },
