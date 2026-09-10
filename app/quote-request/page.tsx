@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
+import Card from '../../components/ui/Card'
+import Button from '../../components/ui/Button'
 
 type SelectedPartner = {
   id: string
@@ -29,6 +31,7 @@ function todayDateString() {
 }
 
 function QuoteRequestInner() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const partnerIds = (searchParams.get('partner_ids') || '').split(',').filter(Boolean)
 
@@ -263,17 +266,21 @@ function QuoteRequestInner() {
           선택하신 {selectedPartners.length}곳에 동일한 요청서가 발송되었습니다. 업체가 회신하면 알림을 보내드리고,
           마이페이지에서 확인하실 수 있습니다.
         </p>
-        <div style={styles.confirmList}>
+        <Card style={{ padding: '16px 20px', marginTop: 20, textAlign: 'left' }}>
           {selectedPartners.map((p) => (
             <div key={p.id} style={styles.confirmListRow}>
               <span>{p.name}</span>
               <span style={{ color: colors.good, fontWeight: 700, fontSize: 12.5 }}>발송 완료</span>
             </div>
           ))}
-        </div>
-        <a href="/my-page" style={{ ...styles.btnPrimary, marginTop: 22, width: '100%' }}>
+        </Card>
+        <Button
+          variant="primary"
+          style={{ marginTop: 22, width: '100%' }}
+          onClick={() => router.push('/my-page')}
+        >
           마이페이지에서 확인하기
-        </a>
+        </Button>
       </div>
     )
   }
@@ -297,7 +304,7 @@ function QuoteRequestInner() {
         >
           <div>
             {/* 선택된 업체 */}
-            <div style={styles.card}>
+            <Card style={{ padding: 26, marginBottom: 16 }}>
               <h3 style={styles.cardH3}>견적을 요청할 업체 ({selectedPartners.length}곳)</h3>
               {selectedPartners.map((p) => (
                 <div key={p.id} style={styles.selItem}>
@@ -326,7 +333,7 @@ function QuoteRequestInner() {
               <a href="/search" style={styles.selAdd}>
                 + 검색결과에서 업체 더 추가하기
               </a>
-            </div>
+            </Card>
 
             {/* 품목 */}
             <div style={styles.card}>
@@ -429,7 +436,7 @@ function QuoteRequestInner() {
 
           {/* Sidebar summary */}
           <div>
-            <div style={styles.card}>
+            <Card style={{ padding: 26, marginBottom: 16 }}>
               <h4 style={styles.cardH4}>요청 요약</h4>
               <div style={styles.sideRow}>
                 <span>발송 대상</span>
@@ -450,20 +457,21 @@ function QuoteRequestInner() {
 
               {submitError && <div style={styles.errorBox}>{submitError}</div>}
 
-              <button
-                style={{ ...styles.btnPrimary, width: '100%', marginTop: 6 }}
+              <Button
+                variant="primary"
+                style={{ width: '100%', marginTop: 6 }}
                 onClick={submitRequest}
                 disabled={submitting}
                 type="button"
               >
                 {submitting ? '전송 중...' : `${selectedPartners.length}곳에 동시 견적 요청하기`}
-              </button>
+              </Button>
               <div style={styles.submitNote}>평균 3시간 내 회신 · 회신 도착 시 알림을 보내드려요</div>
               <div style={styles.sideNote}>
                 요청서는 선택한 업체 모두에게 동시에 전송되며, 회신이 도착하는 대로 마이페이지에서 확인하실 수
                 있습니다.
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </div>
@@ -532,6 +540,5 @@ const styles: { [k: string]: React.CSSProperties } = {
   confirmIcon: { width: 60, height: 60, borderRadius: '50%', background: colors.goodBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' },
   confirmH2: { fontSize: 21, fontFamily: "'Noto Serif KR', serif", color: colors.deep, margin: 0 },
   confirmP: { color: colors.muted, fontSize: 14, marginTop: 10 },
-  confirmList: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: '16px 20px', marginTop: 20, textAlign: 'left' },
   confirmListRow: { fontSize: 13.5, padding: '8px 0', borderBottom: `1px solid ${colors.paper2}`, display: 'flex', justifyContent: 'space-between' },
 }

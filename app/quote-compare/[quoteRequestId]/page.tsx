@@ -3,6 +3,9 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabaseClient'
+import Card from '../../../components/ui/Card'
+import Badge from '../../../components/ui/Badge'
+import Button from '../../../components/ui/Button'
 
 type Attributes = {
   items?: { name: string; qty?: string; unit?: string }[]
@@ -261,8 +264,21 @@ function QuoteCompareInner() {
             {quotes.map((q) => {
               const isBest = bestScore != null && q.match_score === bestScore
               return (
-                <div key={q.id} style={{ ...styles.quoteCard, ...(isBest ? styles.quoteCardBest : {}) }}>
-                  {isBest && <span style={styles.bestTag}>추천 견적</span>}
+                <Card
+                  key={q.id}
+                  style={{
+                    padding: 22,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    border: isBest ? '1.5px solid var(--color-accent)' : '1.5px solid var(--color-border)',
+                    boxShadow: isBest ? '0 10px 26px rgba(242,169,59,0.18)' : undefined,
+                  }}
+                >
+                  {isBest && (
+                    <Badge style={{ background: colors.amber, color: colors.deep, marginBottom: 10, alignSelf: 'flex-start' }}>
+                      추천 견적
+                    </Badge>
+                  )}
                   <div style={styles.qSupplier}>
                     <div style={styles.qIcon}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -292,14 +308,15 @@ function QuoteCompareInner() {
                     </li>
                   </ul>
                   {q.note && <div style={styles.qNote}>{q.note}</div>}
-                  <button
-                    style={{ ...styles.qBtn, ...(isBest ? styles.qBtnBest : {}) }}
+                  <Button
+                    variant="primary"
+                    style={{ width: '100%', ...(isBest ? { background: colors.amberDeep } : {}) }}
                     onClick={() => confirmQuote(q)}
                     disabled={isClosed || confirmingId === q.id}
                   >
                     {confirmingId === q.id ? '확정 중...' : '이 견적으로 확정'}
-                  </button>
-                </div>
+                  </Button>
+                </Card>
               )
             })}
           </div>
@@ -353,9 +370,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   h2: { fontSize: 19, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, margin: 0 },
   compareP: { color: colors.muted, fontSize: 13.5, marginTop: 6 },
   quoteGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, alignItems: 'stretch' },
-  quoteCard: { background: colors.white, border: `1.5px solid ${colors.line}`, borderRadius: 10, padding: 22, position: 'relative', display: 'flex', flexDirection: 'column' },
-  quoteCardBest: { borderColor: colors.amber, boxShadow: '0 10px 26px rgba(242,169,59,0.18)' },
-  bestTag: { position: 'absolute', top: -11, left: 20, background: colors.amber, color: colors.deep, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 },
   qSupplier: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 },
   qIcon: { width: 36, height: 36, borderRadius: 8, background: colors.paper2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   qName: { fontSize: 14.5, fontWeight: 700 },
@@ -364,8 +378,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   qDetail: { listStyle: 'none', padding: 0, margin: '0 0 16px', flex: 1 },
   qDetailLi: { display: 'flex', justifyContent: 'space-between', fontSize: 12.8, color: colors.muted, padding: '7px 0', borderBottom: `1px solid ${colors.paper2}` },
   qNote: { background: colors.paper2, borderRadius: 6, padding: '10px 12px', fontSize: 12, color: colors.muted, marginBottom: 16 },
-  qBtn: { width: '100%', borderRadius: 6, padding: 12, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${colors.navy}`, background: colors.white, color: colors.navy },
-  qBtnBest: { background: colors.amberDeep, borderColor: colors.amberDeep, color: colors.white },
   emptyState: { textAlign: 'center', padding: '50px 20px', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10 },
   errorBox: { background: '#FDECEC', color: '#B3261E', borderRadius: 7, padding: '10px 12px', fontSize: 12.5 },
   confirmView: { maxWidth: 480, margin: '70px auto', textAlign: 'center', padding: '0 32px' },
