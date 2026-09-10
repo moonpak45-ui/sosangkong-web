@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
 
 type BuyerProfileFields = {
   business_name: string
@@ -190,8 +191,7 @@ export default function BuyerProfileEditPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>사업장명 *</label>
-            <input
-              style={styles.input}
+            <Input
               value={form.business_name}
               onChange={(e) => update('business_name', e.target.value)}
               placeholder="예) 상공식자재"
@@ -201,8 +201,7 @@ export default function BuyerProfileEditPage() {
           <div style={styles.fieldRow}>
             <div style={styles.field}>
               <label style={styles.label}>사업자등록번호 *</label>
-              <input
-                style={styles.input}
+              <Input
                 value={form.biz_reg_no}
                 onChange={(e) => update('biz_reg_no', e.target.value)}
                 placeholder="000-00-00000"
@@ -210,8 +209,7 @@ export default function BuyerProfileEditPage() {
             </div>
             <div style={styles.field}>
               <label style={styles.label}>업종 *</label>
-              <input
-                style={styles.input}
+              <Input
                 value={form.industry}
                 onChange={(e) => update('industry', e.target.value)}
                 placeholder="예) 음식점"
@@ -222,8 +220,7 @@ export default function BuyerProfileEditPage() {
           <div style={styles.fieldRow}>
             <div style={styles.field}>
               <label style={styles.label}>지역 *</label>
-              <input
-                style={styles.input}
+              <Input
                 value={form.region}
                 onChange={(e) => update('region', e.target.value)}
                 placeholder="예) 서울 마포구"
@@ -231,8 +228,7 @@ export default function BuyerProfileEditPage() {
             </div>
             <div style={styles.field}>
               <label style={styles.label}>담당자명 *</label>
-              <input
-                style={styles.input}
+              <Input
                 value={form.contact_name}
                 onChange={(e) => update('contact_name', e.target.value)}
                 placeholder="예) 홍길동"
@@ -242,8 +238,7 @@ export default function BuyerProfileEditPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>주소 *</label>
-            <input
-              style={styles.input}
+            <Input
               value={form.address}
               onChange={(e) => update('address', e.target.value)}
               placeholder="사업장 주소"
@@ -252,8 +247,7 @@ export default function BuyerProfileEditPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>연락처</label>
-            <input
-              style={styles.input}
+            <Input
               value={form.phone}
               onChange={(e) => update('phone', e.target.value)}
               placeholder="예) 010-1234-5678"
@@ -303,15 +297,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   fieldRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
   field: { marginBottom: 16 },
   label: { display: 'block', fontSize: 12.8, color: colors.muted, fontWeight: 600, marginBottom: 7 },
-  input: {
-    width: '100%',
-    border: `1px solid ${colors.line}`,
-    borderRadius: 6,
-    padding: '11px 12px',
-    fontSize: 14,
-    color: colors.ink,
-    background: colors.paper2,
-  },
   successBox: {
     background: colors.goodBg,
     color: colors.good,
