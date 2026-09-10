@@ -222,7 +222,7 @@ function QuoteCompareInner() {
           <p style={styles.headP}>회신이 모두 도착하면 조건 기준으로 비교해 보세요.</p>
         </div>
 
-        <div style={styles.reqCard}>
+        <Card style={{ padding: '22px 24px', marginBottom: 14 }}>
           <div style={styles.reqTop}>
             <div>
               <div style={styles.reqTitle}>{requestRow.title || '견적 요청'}</div>
@@ -230,9 +230,15 @@ function QuoteCompareInner() {
                 {new Date(requestRow.created_at).toLocaleDateString('ko-KR')} · {totalCount}곳에 발송
               </div>
             </div>
-            <span style={{ ...styles.reqStatus, ...(respondedCount === totalCount && totalCount > 0 ? styles.reqStatusReady : styles.reqStatusWaiting) }}>
+            <Badge
+              style={
+                respondedCount === totalCount && totalCount > 0
+                  ? { background: colors.goodBg, color: colors.good }
+                  : { background: colors.paper2, color: colors.muted }
+              }
+            >
               회신 {respondedCount}/{totalCount} 완료
-            </span>
+            </Badge>
           </div>
           {totalCount > 0 && (
             <div style={styles.reqProgress}>
@@ -241,7 +247,7 @@ function QuoteCompareInner() {
               ))}
             </div>
           )}
-        </div>
+        </Card>
 
         {isClosed && (
           <div style={styles.closedNote}>이미 확정이 완료된 견적 요청입니다. 마이페이지에서 거래 내역을 확인하세요.</div>
@@ -255,10 +261,10 @@ function QuoteCompareInner() {
         {confirmError && <div style={{ ...styles.errorBox, marginBottom: 16 }}>{confirmError}</div>}
 
         {quotes.length === 0 ? (
-          <div style={styles.emptyState}>
+          <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
             <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>아직 도착한 견적이 없어요</h3>
             <p style={{ fontSize: 13.5, color: colors.muted }}>업체가 견적을 제출하면 이곳에서 비교하실 수 있어요.</p>
-          </div>
+          </Card>
         ) : (
           <div style={styles.quoteGrid}>
             {quotes.map((q) => {
@@ -355,13 +361,9 @@ const styles: { [k: string]: React.CSSProperties } = {
   eyebrow: { fontSize: 13, color: colors.navy, fontWeight: 700, marginBottom: 8 },
   h1: { fontSize: 23, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, margin: 0 },
   headP: { marginTop: 8, color: colors.muted, fontSize: 14 },
-  reqCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: '22px 24px', marginBottom: 14 },
   reqTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
   reqTitle: { fontSize: 15.5, fontWeight: 700 },
   reqMeta: { fontSize: 12.5, color: colors.muted, marginTop: 4 },
-  reqStatus: { fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 14, whiteSpace: 'nowrap' },
-  reqStatusWaiting: { background: colors.paper2, color: colors.muted },
-  reqStatusReady: { background: colors.goodBg, color: colors.good },
   reqProgress: { display: 'flex', gap: 6, marginTop: 14 },
   reqDot: { flex: 1, height: 5, borderRadius: 3, background: colors.paper2 },
   reqDotFilled: { background: colors.navy },
@@ -378,7 +380,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   qDetail: { listStyle: 'none', padding: 0, margin: '0 0 16px', flex: 1 },
   qDetailLi: { display: 'flex', justifyContent: 'space-between', fontSize: 12.8, color: colors.muted, padding: '7px 0', borderBottom: `1px solid ${colors.paper2}` },
   qNote: { background: colors.paper2, borderRadius: 6, padding: '10px 12px', fontSize: 12, color: colors.muted, marginBottom: 16 },
-  emptyState: { textAlign: 'center', padding: '50px 20px', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10 },
   errorBox: { background: '#FDECEC', color: '#B3261E', borderRadius: 7, padding: '10px 12px', fontSize: 12.5 },
   confirmView: { maxWidth: 480, margin: '70px auto', textAlign: 'center', padding: '0 32px' },
   confirmIcon: { width: 60, height: 60, borderRadius: '50%', background: colors.goodBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' },
