@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles } from '../_shared'
 import { useAdminRole, AdminRole } from '../AdminRoleContext'
 import Button from '../../../components/ui/Button'
+import Select from '../../../components/ui/Select'
 
 type AdminRow = {
   id: string
@@ -184,14 +185,13 @@ export default function AdminAccountsPage() {
         </div>
         <div style={styles.field}>
           <label style={styles.label}>역할</label>
-          <select
-            style={styles.input}
+          <Select
             value={newRole}
             onChange={(e) => setNewRole(e.target.value as AdminRole)}
           >
             <option value="sub_admin">중급 관리자 (회원관리·거래견적관리)</option>
             <option value="super_admin">최고 관리자 (전체 기능)</option>
-          </select>
+          </Select>
         </div>
 
         <Button
