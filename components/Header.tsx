@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+import Button from './ui/Button'
 
 export default function Header() {
   const router = useRouter()
@@ -149,9 +150,9 @@ export default function Header() {
               </button>
             </>
           ) : (
-            <a href="/login" style={styles.loginBtn}>
+            <Button variant="primary" size="sm" onClick={() => router.push('/login')}>
               로그인
-            </a>
+            </Button>
           )}
         </nav>
       </div>
@@ -281,15 +282,6 @@ const styles: { [k: string]: React.CSSProperties } = {
     borderRadius: 20,
     minWidth: 15,
     textAlign: 'center',
-  },
-  loginBtn: {
-    fontSize: 13.5,
-    fontWeight: 700,
-    color: colors.white,
-    background: colors.navy,
-    padding: '9px 18px',
-    borderRadius: 7,
-    textDecoration: 'none',
   },
   logoutBtn: {
     fontSize: 13.5,
