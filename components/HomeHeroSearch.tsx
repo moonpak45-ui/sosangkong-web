@@ -20,15 +20,25 @@ const STATIC_STATS = [
 
 const POPULAR_TAGS = ['당일배송', '소량주문가능', '신용거래', '냉장물류', '정기계약할인']
 
-// 메인 홈 상단(히어로+검색바+통계)을 하나로 묶은 컴포넌트. 나중에 /search
-// 상단에도 그대로 재사용할 수 있도록, 특정 페이지의 로컬 CSS/커스텀 변수에
-// 기대지 않고 tokens.css 브랜드 변수(--color-primary/--color-accent 등)만
-// 인라인 스타일로 사용함.
-export default function HomeHeroSearch() {
+type Props = {
+  // /search처럼 이미 URL에 category/region이 들어와 있는 페이지에서 검색바에
+  // 미리 채워 넣을 초기값. 생략하면 빈 값(메인 홈에서의 기존 동작 그대로).
+  initialCategory?: string
+  initialRegion?: string
+  // "소상공인으로 시작하기"/"공급업체로 등록하기" CTA 버튼 노출 여부.
+  // /search처럼 이미 검색 중인 화면에서는 어색해서 숨길 수 있게 함.
+  showCtas?: boolean
+}
+
+// 히어로+검색바+통계를 하나로 묶은 컴포넌트. 메인 홈과 /search 양쪽에서
+// 재사용하므로, 특정 페이지의 로컬 CSS/커스텀 변수에 기대지 않고
+// tokens.css 브랜드 변수(--color-primary/--color-accent 등)만 인라인
+// 스타일로 사용함.
+export default function HomeHeroSearch({ initialCategory = '', initialRegion = '', showCtas = true }: Props) {
   const router = useRouter()
   const [categories, setCategories] = useState<SimpleCategory[]>([])
-  const [category, setCategory] = useState('')
-  const [region, setRegion] = useState('')
+  const [category, setCategory] = useState(initialCategory)
+  const [region, setRegion] = useState(initialRegion)
 
   useEffect(() => {
     supabase
@@ -39,6 +49,15 @@ export default function HomeHeroSearch() {
         if (data) setCategories(data as SimpleCategory[])
       })
   }, [])
+
+  // 뒤로가기 등으로 URL의 category/region이 바뀌면 검색바 값도 따라가도록 동기화.
+  useEffect(() => {
+    setCategory(initialCategory)
+  }, [initialCategory])
+
+  useEffect(() => {
+    setRegion(initialRegion)
+  }, [initialRegion])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -66,14 +85,16 @@ export default function HomeHeroSearch() {
               지역·품목·배송시간·온도조건까지 맞춰 공급업체를 비교하고, 여러 곳에 동시에 견적을 요청하세요.
               거래처에 문제가 생기면 대체 업체도 바로 추천해드립니다.
             </p>
-            <div style={styles.ctaRow}>
-              <RoleAwareCta targetRole="buyer" variant="primary">
-                소상공인으로 시작하기
-              </RoleAwareCta>
-              <RoleAwareCta targetRole="partner" variant="outline-light">
-                공급업체로 등록하기
-              </RoleAwareCta>
-            </div>
+            {showCtas && (
+              <div style={styles.ctaRow}>
+                <RoleAwareCta targetRole="buyer" variant="primary">
+                  소상공인으로 시작하기
+                </RoleAwareCta>
+                <RoleAwareCta targetRole="partner" variant="outline-light">
+                  공급업체로 등록하기
+                </RoleAwareCta>
+              </div>
+            )}
           </div>
 
           <div style={styles.statsCol}>

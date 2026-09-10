@@ -5,15 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import { useFavorites } from '../../lib/useFavorites'
 import FavoriteHeart from '../../components/FavoriteHeart'
+import HomeHeroSearch from '../../components/HomeHeroSearch'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Select from '../../components/ui/Select'
-
-type Category = {
-  id: string
-  name: string
-}
 
 type PartnerRow = {
   id: string
@@ -30,14 +26,9 @@ function SearchPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const initialCategory = searchParams.get('category') || ''
-  const initialRegion = searchParams.get('region') || ''
-  const initialKeyword = searchParams.get('q') || ''
-
-  const [categories, setCategories] = useState<Category[]>([])
-  const [categoryInput, setCategoryInput] = useState(initialCategory)
-  const [regionInput, setRegionInput] = useState(initialRegion)
-  const [keyword] = useState(initialKeyword)
+  const categoryParam = searchParams.get('category') || ''
+  const regionParam = searchParams.get('region') || ''
+  const keywordParam = searchParams.get('q') || ''
 
   const [results, setResults] = useState<PartnerRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,17 +50,6 @@ function SearchPageInner() {
     if (ids.length === 0) return
     router.push(`/quote-request?partner_ids=${ids.join(',')}`)
   }
-
-  // 카테고리 목록 불러오기 (검색바 드롭다운용)
-  useEffect(() => {
-    supabase
-      .from('categories')
-      .select('id, name')
-      .order('sort_order', { ascending: true })
-      .then(({ data }) => {
-        if (data) setCategories(data as Category[])
-      })
-  }, [])
 
   // 검색 실행
   async function runSearch(category: string, region: string, keywordText: string) {
@@ -132,20 +112,13 @@ function SearchPageInner() {
     setLoading(false)
   }
 
+  // HomeHeroSearch가 자체적으로 /search?category=...&region=...로 이동시키므로,
+  // 여기서는 URL의 category/region/q가 바뀔 때마다(초기 진입 포함) 그 값 그대로
+  // 재검색만 하면 됨 - router.push를 직접 호출할 필요 없음.
   useEffect(() => {
-    runSearch(initialCategory, initialRegion, initialKeyword)
+    runSearch(categoryParam, regionParam, keywordParam)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const params = new URLSearchParams()
-    if (categoryInput) params.set('category', categoryInput)
-    if (regionInput) params.set('region', regionInput)
-    if (keyword) params.set('q', keyword)
-    router.push(`/search?${params.toString()}`)
-    runSearch(categoryInput, regionInput, keyword)
-  }
+  }, [categoryParam, regionParam, keywordParam])
 
   const visibleResults = results
     .filter((r) => !verifiedOnly || r.verified_badge)
@@ -156,46 +129,13 @@ function SearchPageInner() {
 
   return (
     <div style={{ background: colors.paper, minHeight: '70vh' }}>
-      <div style={styles.searchBarWrap}>
-        <div style={styles.wrap}>
-          <form onSubmit={handleSearchSubmit} className="search-bar-grid" style={styles.searchBar}>
-            <div style={styles.sbField}>
-              <label style={styles.sbLabel}>카테고리</label>
-              <Select
-                value={categoryInput}
-                onChange={(e) => setCategoryInput(e.target.value)}
-                style={styles.sbSelect}
-              >
-                <option value="">전체</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div style={styles.sbField}>
-              <label style={styles.sbLabel}>지역</label>
-              <input
-                type="text"
-                value={regionInput}
-                onChange={(e) => setRegionInput(e.target.value)}
-                placeholder="예) 서울 마포구"
-                style={styles.sbInput}
-              />
-            </div>
-            <button type="submit" style={styles.sbBtn}>
-              검색
-            </button>
-          </form>
-        </div>
-      </div>
+      <HomeHeroSearch initialCategory={categoryParam} initialRegion={regionParam} showCtas={false} />
 
       <div style={styles.wrap}>
         <div style={styles.resultSummary}>
           <div>
             <h1 style={styles.h1}>
-              {[keyword, categoryInput, regionInput].filter(Boolean).join(' · ') || '전체 카테고리'} 검색결과
+              {[keywordParam, categoryParam, regionParam].filter(Boolean).join(' · ') || '전체 카테고리'} 검색결과
             </h1>
             <div style={styles.rSub}>
               조건에 맞는 업체 <b style={{ color: colors.navy }}>{visibleResults.length}곳</b>을 찾았어요
@@ -348,29 +288,6 @@ const colors = {
 
 const styles: { [k: string]: React.CSSProperties } = {
   wrap: { maxWidth: 1180, margin: '0 auto', padding: '0 32px' },
-  searchBarWrap: { background: colors.deep, padding: '22px 0' },
-  searchBar: {
-    background: colors.white,
-    borderRadius: 10,
-    padding: '16px 18px',
-    alignItems: 'end',
-    boxShadow: '0 14px 30px rgba(5,20,40,0.25)',
-  },
-  sbField: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  sbLabel: { fontSize: 10.5, color: colors.muted, fontWeight: 700 },
-  sbSelect: { border: 'none', background: 'none', fontSize: 14, color: colors.ink, fontWeight: 600, padding: 0, minWidth: 0, width: '100%' },
-  sbInput: { border: 'none', background: 'none', fontSize: 14, color: colors.ink, fontWeight: 600, padding: 0, minWidth: 0, width: '100%' },
-  sbBtn: {
-    background: colors.amber,
-    color: colors.deep,
-    border: 'none',
-    borderRadius: 7,
-    padding: '12px 22px',
-    fontSize: 14,
-    fontWeight: 700,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-  },
   resultSummary: { padding: '20px 0 4px' },
   h1: { fontSize: 19, color: colors.deep },
   rSub: { fontSize: 12.8, color: colors.muted, marginTop: 6 },
