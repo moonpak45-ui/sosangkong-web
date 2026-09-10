@@ -205,20 +205,6 @@ body {
   }
 }
 
-/* /search: each result row (checkbox, icon, info, favorite, match/CTA) */
-.search-result-card {
-  display: grid;
-  grid-template-columns: auto auto 1fr auto auto;
-  gap: 20px;
-  align-items: center;
-}
-@media (max-width: 640px) {
-  .search-result-card {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-}
-
 /* Mobile bottom tab bar (components/MobileTabBar.tsx): native-app style
    fixed nav, only shown <=640px. Kept hidden by default (desktop) since an
    inline `display` on the component would always win over this media query. */
