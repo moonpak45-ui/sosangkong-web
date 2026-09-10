@@ -372,30 +372,39 @@ function MarketingLanding() {
             </div>
           </div>
           <div className="promo-grid">
-            <div className="promo-card p1">
+            <Card
+              className="promo-card p1"
+              style={{ padding: 24, background: 'linear-gradient(135deg,var(--navy),var(--deep))', border: 'none' }}
+            >
               <div className="promo-eyebrow">우선 노출</div>
               <h3>검색 결과 상단 고정</h3>
               <p>조건이 맞는 검색 결과 상단에 업체 정보를 고정 노출합니다.</p>
               <a className="promo-cta" href="/login">
                 상품 안내 보기 ›
               </a>
-            </div>
-            <div className="promo-card p2">
+            </Card>
+            <Card
+              className="promo-card p2"
+              style={{ padding: 24, background: 'linear-gradient(135deg,#0B7A6D,#0A4A44)', border: 'none' }}
+            >
               <div className="promo-eyebrow">카테고리 배지</div>
               <h3>&apos;검증 업체&apos; 인증 배지</h3>
               <p>실사 및 서류 검증을 완료한 업체에 표시되는 신뢰 배지입니다.</p>
               <a className="promo-cta" href="/login">
                 상품 안내 보기 ›
               </a>
-            </div>
-            <div className="promo-card p3">
+            </Card>
+            <Card
+              className="promo-card p3"
+              style={{ padding: 24, background: 'linear-gradient(135deg,var(--amber-deep),#8A5A0E)', border: 'none' }}
+            >
               <div className="promo-eyebrow">리드 알림</div>
               <h3>실시간 견적 요청 알림</h3>
               <p>조건에 맞는 소상공인의 견적 요청을 가장 먼저 받아보세요.</p>
               <a className="promo-cta" href="/login">
                 상품 안내 보기 ›
               </a>
-            </div>
+            </Card>
           </div>
         </div>
       </section>
@@ -620,10 +629,7 @@ const homeCss = `
   .review-biz{font-size:12px;color:var(--muted);}
   .promo{background:var(--white);}
   .promo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
-  .promo-card{ border-radius:10px;padding:24px;color:var(--white);position:relative;overflow:hidden; }
-  .promo-card.p1{background:linear-gradient(135deg,var(--navy),var(--deep));}
-  .promo-card.p2{background:linear-gradient(135deg,#0B7A6D,#0A4A44);}
-  .promo-card.p3{background:linear-gradient(135deg,var(--amber-deep),#8A5A0E);}
+  .promo-card{ color:var(--white);position:relative;overflow:hidden; }
   .promo-eyebrow{font-size:12px;font-weight:700;opacity:0.85;margin-bottom:10px;}
   .promo-card h3{color:var(--white);font-size:18px;margin-bottom:8px;}
   .promo-card p{font-size:13px;opacity:0.9;margin:0 0 18px;line-height:1.6;}
