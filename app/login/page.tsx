@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import Button from '../../components/ui/Button'
+import Input from '../../components/ui/Input'
 
 type AccountType = 'buyer' | 'supplier'
 type Category = { id: string; name: string }
@@ -201,8 +202,7 @@ function LoginPageInner() {
 
               <div style={styles.field}>
                 <label style={styles.label}>이메일</label>
-                <input
-                  style={styles.input}
+                <Input
                   type="email"
                   placeholder="example@email.com"
                   value={email}
@@ -212,8 +212,7 @@ function LoginPageInner() {
               </div>
               <div style={styles.field}>
                 <label style={styles.label}>비밀번호</label>
-                <input
-                  style={styles.input}
+                <Input
                   type="password"
                   placeholder="비밀번호 입력"
                   value={password}
@@ -269,8 +268,7 @@ function LoginPageInner() {
 
               <div style={styles.field}>
                 <label style={styles.label}>이메일</label>
-                <input
-                  style={styles.input}
+                <Input
                   type="email"
                   placeholder="example@email.com"
                   value={email}
@@ -280,8 +278,7 @@ function LoginPageInner() {
               </div>
               <div style={styles.field}>
                 <label style={styles.label}>비밀번호</label>
-                <input
-                  style={styles.input}
+                <Input
                   type="password"
                   placeholder="8자 이상, 영문·숫자 포함"
                   value={password}
@@ -292,8 +289,7 @@ function LoginPageInner() {
               </div>
               <div style={styles.field}>
                 <label style={styles.label}>{accountType === 'buyer' ? '사업장명' : '업체명'}</label>
-                <input
-                  style={styles.input}
+                <Input
                   type="text"
                   placeholder={accountType === 'buyer' ? '예) 마포 소담식당' : '예) 그린테이블 식자재'}
                   value={bizName}
@@ -306,8 +302,7 @@ function LoginPageInner() {
                 <>
                   <div style={styles.field}>
                     <label style={styles.label}>사업자등록번호</label>
-                    <input
-                      style={styles.input}
+                    <Input
                       type="text"
                       placeholder="000-00-00000"
                       value={bizRegNo}
@@ -316,8 +311,7 @@ function LoginPageInner() {
                   </div>
                   <div style={styles.field}>
                     <label style={styles.label}>주요 취급 품목</label>
-                    <input
-                      style={styles.input}
+                    <Input
                       type="text"
                       placeholder="예) 냉동수산, 축산, 식자재"
                       value={mainItems}
@@ -436,15 +430,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   pMuted: { fontSize: 13, color: colors.muted, marginTop: 6 },
   field: { marginBottom: 14 },
   label: { display: 'block', fontSize: 12.5, color: colors.muted, fontWeight: 600, marginBottom: 6 },
-  input: {
-    width: '100%',
-    border: `1px solid ${colors.line}`,
-    borderRadius: 7,
-    padding: '12px 13px',
-    fontSize: 14.5,
-    color: colors.ink,
-    background: colors.paper2,
-  },
   divider: { display: 'flex', alignItems: 'center', gap: 12, margin: '22px 0', color: colors.muted, fontSize: 12 },
   socialRow: { display: 'flex', flexDirection: 'column', gap: 10 },
   kakaoBtn: {
