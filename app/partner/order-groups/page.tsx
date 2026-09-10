@@ -363,7 +363,7 @@ const ogStyles: { [k: string]: React.CSSProperties } = {
     cursor: 'pointer',
     background: colors.white,
   },
-  dayChipSelected: { background: colors.deep, color: colors.white, borderColor: colors.deep },
+  dayChipSelected: { background: colors.deep, color: colors.white, border: `1px solid ${colors.deep}` },
   checkboxRow: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.8, color: colors.muted, marginTop: 8 },
   linkBtn: { border: 'none', background: 'none', color: colors.navy, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0 },
 }
