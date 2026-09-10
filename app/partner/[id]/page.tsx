@@ -1,10 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabaseClient'
 import { useFavorites } from '../../../lib/useFavorites'
 import FavoriteHeart from '../../../components/FavoriteHeart'
+import Card from '../../../components/ui/Card'
+import Badge from '../../../components/ui/Badge'
+import Button from '../../../components/ui/Button'
 
 type PartnerDetail = {
   id: string
@@ -42,6 +45,7 @@ function stars(rating: number) {
 
 export default function PartnerDetailPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const partnerId = params.id
 
   const [partner, setPartner] = useState<PartnerDetail | null | undefined>(undefined)
@@ -101,7 +105,7 @@ export default function PartnerDetailPage() {
   return (
     <div style={{ background: colors.paper, minHeight: '70vh' }}>
       <div style={styles.wrap}>
-        <div style={styles.headCard}>
+        <Card style={{ padding: 28 }}>
           <div style={styles.headTop}>
             <div style={styles.icon}>
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
@@ -111,7 +115,9 @@ export default function PartnerDetailPage() {
             <div style={{ flex: 1 }}>
               <div style={styles.nameRow}>
                 <h1 style={styles.h1}>{partner.name}</h1>
-                {partner.verified_badge && <span style={styles.badge}>✓ 검증 업체</span>}
+                {partner.verified_badge && (
+                  <Badge style={{ background: colors.goodBg, color: colors.good }}>✓ 검증 업체</Badge>
+                )}
               </div>
               <div style={styles.loc}>{partner.region || '지역 정보 없음'}</div>
               <div style={styles.stats}>
@@ -142,21 +148,25 @@ export default function PartnerDetailPage() {
 
           {partner.description && <p style={styles.desc}>{partner.description}</p>}
 
-          <a href={`/quote-request?partner_ids=${partner.id}`} style={styles.btnPrimary}>
+          <Button
+            variant="primary"
+            style={{ marginTop: 24 }}
+            onClick={() => router.push(`/quote-request?partner_ids=${partner.id}`)}
+          >
             무료 견적 요청
-          </a>
-        </div>
+          </Button>
+        </Card>
 
         <div style={styles.reviewSection}>
           <h2 style={styles.reviewH2}>이용자 후기 ({reviews.length})</h2>
 
           {reviews.length === 0 ? (
-            <div style={styles.reviewEmpty}>
+            <Card style={{ textAlign: 'center', padding: '40px 20px' }}>
               <p style={{ fontSize: 13.5, color: colors.muted }}>아직 등록된 후기가 없어요.</p>
-            </div>
+            </Card>
           ) : (
             reviews.map((r) => (
-              <div key={r.id} style={styles.reviewCard}>
+              <Card key={r.id} style={{ padding: '18px 20px', marginBottom: 12 }}>
                 <div style={styles.reviewTop}>
                   <div>
                     <span style={styles.reviewStars}>{stars(r.overall_rating)}</span>
@@ -176,7 +186,7 @@ export default function PartnerDetailPage() {
                   </div>
                 )}
                 {r.content && <p style={styles.reviewContent}>{r.content}</p>}
-              </div>
+              </Card>
             ))
           )}
         </div>
@@ -201,12 +211,10 @@ const colors = {
 
 const styles: { [k: string]: React.CSSProperties } = {
   wrap: { maxWidth: 760, margin: '0 auto', padding: '36px 32px 90px' },
-  headCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 12, padding: 28 },
   headTop: { display: 'flex', alignItems: 'flex-start', gap: 18 },
   icon: { width: 64, height: 64, borderRadius: 14, background: colors.paper2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   nameRow: { display: 'flex', alignItems: 'center', gap: 10 },
   h1: { fontSize: 21, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, margin: 0 },
-  badge: { fontSize: 10.5, fontWeight: 700, background: colors.goodBg, color: colors.good, padding: '3px 8px', borderRadius: 10 },
   loc: { fontSize: 13, color: colors.muted, marginTop: 6 },
   stats: { display: 'flex', gap: 16, marginTop: 10 },
   stat: { fontSize: 12.5, color: colors.muted },
@@ -221,8 +229,6 @@ const styles: { [k: string]: React.CSSProperties } = {
   },
   reviewSection: { marginTop: 32 },
   reviewH2: { fontSize: 17, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, marginBottom: 14 },
-  reviewEmpty: { textAlign: 'center', padding: '40px 20px', background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10 },
-  reviewCard: { background: colors.white, border: `1px solid ${colors.line}`, borderRadius: 10, padding: '18px 20px', marginBottom: 12 },
   reviewTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
   reviewStars: { color: colors.amber, fontSize: 14, marginRight: 8 },
   reviewer: { fontSize: 13, fontWeight: 700, color: colors.ink },
