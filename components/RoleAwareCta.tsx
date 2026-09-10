@@ -9,7 +9,7 @@ type TargetRole = 'buyer' | 'partner'
 
 type Props = {
   targetRole: TargetRole
-  variant?: 'primary' | 'secondary'
+  variant?: 'primary' | 'secondary' | 'outline-light'
   size?: 'md' | 'sm'
   children: React.ReactNode
 }

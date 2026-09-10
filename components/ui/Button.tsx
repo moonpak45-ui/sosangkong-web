@@ -1,6 +1,8 @@
-import { ButtonHTMLAttributes, ReactNode } from "react";
+"use client";
 
-type ButtonVariant = "primary" | "secondary";
+import { ButtonHTMLAttributes, ReactNode, useState } from "react";
+
+type ButtonVariant = "primary" | "secondary" | "outline-light";
 type ButtonSize = "md" | "sm";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -14,8 +16,12 @@ export default function Button({
   size = "md",
   children,
   style,
+  onMouseEnter,
+  onMouseLeave,
   ...rest
 }: ButtonProps) {
+  const [hovered, setHovered] = useState(false);
+
   const base: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
@@ -26,7 +32,7 @@ export default function Button({
     borderRadius: "var(--radius-sm)",
     cursor: "pointer",
     border: "1px solid transparent",
-    transition: "opacity 0.15s ease",
+    transition: "opacity 0.15s ease, background 0.15s ease",
   };
 
   const variants: Record<ButtonVariant, React.CSSProperties> = {
@@ -39,10 +45,26 @@ export default function Button({
       color: "var(--color-text)",
       borderColor: "var(--color-border-strong)",
     },
+    "outline-light": {
+      background: hovered ? "rgba(255,255,255,0.1)" : "transparent",
+      color: "var(--color-on-primary)",
+      borderColor: "rgba(255,255,255,0.6)",
+    },
   };
 
   return (
-    <button style={{ ...base, ...variants[variant], ...style }} {...rest}>
+    <button
+      style={{ ...base, ...variants[variant], ...style }}
+      onMouseEnter={(e) => {
+        setHovered(true);
+        onMouseEnter?.(e);
+      }}
+      onMouseLeave={(e) => {
+        setHovered(false);
+        onMouseLeave?.(e);
+      }}
+      {...rest}
+    >
       {children}
     </button>
   );

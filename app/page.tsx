@@ -107,7 +107,7 @@ function MarketingLanding() {
               <RoleAwareCta targetRole="buyer" variant="primary">
                 소상공인으로 시작하기
               </RoleAwareCta>
-              <RoleAwareCta targetRole="partner" variant="secondary">
+              <RoleAwareCta targetRole="partner" variant="outline-light">
                 공급업체로 등록하기
               </RoleAwareCta>
             </div>
