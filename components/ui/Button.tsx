@@ -43,12 +43,12 @@ export default function Button({
     secondary: {
       background: "transparent",
       color: "var(--color-text)",
-      borderColor: "var(--color-border-strong)",
+      border: "1px solid var(--color-border-strong)",
     },
     "outline-light": {
       background: hovered ? "rgba(255,255,255,0.1)" : "transparent",
       color: "var(--color-on-primary)",
-      borderColor: "rgba(255,255,255,0.6)",
+      border: "1px solid rgba(255,255,255,0.6)",
     },
   };
 

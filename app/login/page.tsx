@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
+import Button from '../../components/ui/Button'
 
 type AccountType = 'buyer' | 'supplier'
 type Category = { id: string; name: string }
@@ -181,18 +182,12 @@ function LoginPageInner() {
       <div style={styles.authWrap}>
         <div style={styles.authCard}>
           <div style={styles.tabs}>
-            <div
-              style={{ ...styles.tab, ...(view === 'login' ? styles.tabActive : {}) }}
-              onClick={() => setView('login')}
-            >
+            <Button type="button" variant="secondary" style={tabButtonStyle(view === 'login')} onClick={() => setView('login')}>
               로그인
-            </div>
-            <div
-              style={{ ...styles.tab, ...(view === 'signup' ? styles.tabActive : {}) }}
-              onClick={() => setView('signup')}
-            >
+            </Button>
+            <Button type="button" variant="secondary" style={tabButtonStyle(view === 'signup')} onClick={() => setView('signup')}>
               회원가입
-            </div>
+            </Button>
           </div>
 
           {errorMsg && <div style={styles.errorBox}>{errorMsg}</div>}
@@ -227,9 +222,9 @@ function LoginPageInner() {
                 />
               </div>
 
-              <button style={styles.btnSubmit} type="submit" disabled={loading}>
+              <Button variant="primary" style={{ width: '100%', marginTop: 4 }} type="submit" disabled={loading}>
                 {loading ? '로그인 중...' : '로그인'}
-              </button>
+              </Button>
 
               <div style={styles.divider}>또는</div>
               <div style={styles.socialRow}>
@@ -366,13 +361,13 @@ function LoginPageInner() {
                 </span>
               </div>
 
-              <button style={styles.btnSubmit} type="submit" disabled={loading}>
+              <Button variant="primary" style={{ width: '100%', marginTop: 4 }} type="submit" disabled={loading}>
                 {loading
                   ? '가입 처리 중...'
                   : accountType === 'buyer'
                   ? '소상공인으로 가입하기'
                   : '공급업체로 가입하기'}
-              </button>
+              </Button>
 
               <div style={styles.switchNote}>
                 이미 계정이 있으신가요?{' '}
@@ -396,6 +391,18 @@ const colors = {
   line: '#D9E3EA',
   muted: '#5B6B79',
   white: '#FFFFFF',
+}
+
+function tabButtonStyle(active: boolean): React.CSSProperties {
+  return {
+    flex: 1,
+    padding: '11px 0',
+    fontSize: 14.5,
+    border: 'none',
+    background: active ? colors.white : 'transparent',
+    color: active ? colors.deep : colors.muted,
+    boxShadow: active ? '0 3px 10px rgba(10,30,61,0.1)' : 'none',
+  }
 }
 
 const styles: { [k: string]: React.CSSProperties } = {
@@ -424,17 +431,6 @@ const styles: { [k: string]: React.CSSProperties } = {
     boxShadow: '0 30px 70px rgba(5,20,40,0.4)',
   },
   tabs: { display: 'flex', background: colors.paper2, borderRadius: 9, padding: 4, marginBottom: 26 },
-  tab: {
-    flex: 1,
-    textAlign: 'center',
-    padding: '11px 0',
-    fontSize: 14.5,
-    fontWeight: 700,
-    color: colors.muted,
-    borderRadius: 7,
-    cursor: 'pointer',
-  },
-  tabActive: { background: colors.white, color: colors.deep, boxShadow: '0 3px 10px rgba(10,30,61,0.1)' },
   headLine: { marginBottom: 22 },
   h2: { fontSize: 19, margin: 0, color: colors.deep },
   pMuted: { fontSize: 13, color: colors.muted, marginTop: 6 },
@@ -448,18 +444,6 @@ const styles: { [k: string]: React.CSSProperties } = {
     fontSize: 14.5,
     color: colors.ink,
     background: colors.paper2,
-  },
-  btnSubmit: {
-    width: '100%',
-    background: colors.navy,
-    color: colors.white,
-    border: 'none',
-    borderRadius: 7,
-    padding: 14,
-    fontSize: 15,
-    fontWeight: 700,
-    cursor: 'pointer',
-    marginTop: 4,
   },
   divider: { display: 'flex', alignItems: 'center', gap: 12, margin: '22px 0', color: colors.muted, fontSize: 12 },
   socialRow: { display: 'flex', flexDirection: 'column', gap: 10 },

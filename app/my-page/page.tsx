@@ -1,9 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import { colors, styles, formatDate } from './_shared'
 import { useMyPageLayout } from './MyPageLayoutContext'
+import Card from '../../components/ui/Card'
+import Badge from '../../components/ui/Badge'
+import Button from '../../components/ui/Button'
 
 type DealPartner = {
   id: string
@@ -42,6 +46,7 @@ function buildPartnerSummaries(rows: DealRow[]): PartnerSummary[] {
 }
 
 export default function MyPagePartnersPage() {
+  const router = useRouter()
   const { buyerProfile, session } = useMyPageLayout()
   const [deals, setDeals] = useState<DealRow[]>([])
   const [arBalanceByPartner, setArBalanceByPartner] = useState<Record<string, number>>({})
@@ -85,7 +90,7 @@ export default function MyPagePartnersPage() {
       <div style={styles.sectionSub}>지금까지 거래한 공급업체입니다.</div>
 
       {partnerSummaries.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>아직 거래 중인 업체가 없어요</h3>
           <p style={{ fontSize: 13.5, color: colors.muted }}>
             검색에서 공급업체를 찾아 견적을 요청하면 이곳에서 거래처를 관리할 수 있어요.
@@ -93,11 +98,11 @@ export default function MyPagePartnersPage() {
           <a href="/search" style={{ ...styles.btnOutline, marginTop: 16 }}>
             공급업체 찾으러 가기
           </a>
-        </div>
+        </Card>
       ) : (
         <div style={styles.activeGrid}>
           {partnerSummaries.map(({ partner, dealCount, lastDealAt }) => (
-            <div key={partner.id} style={styles.activeCard}>
+            <Card key={partner.id} style={{ padding: 20 }}>
               <div style={styles.acTop}>
                 <div style={styles.acIcon}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -108,9 +113,9 @@ export default function MyPagePartnersPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={styles.acName}>{partner.name}</div>
                     {Number(arBalanceByPartner[partner.id] || 0) > 0 && (
-                      <span style={styles.arBadge}>
+                      <Badge style={{ background: colors.warnBg, color: colors.warn, whiteSpace: 'nowrap' }}>
                         미결제 {Number(arBalanceByPartner[partner.id]).toLocaleString('ko-KR')}원
-                      </span>
+                      </Badge>
                     )}
                   </div>
                   <div style={styles.acMeta}>{partner.region || '지역 정보 없음'}</div>
@@ -132,14 +137,24 @@ export default function MyPagePartnersPage() {
                 </div>
               </div>
               <div style={styles.acActions}>
-                <a href={`/quote-request?partner_ids=${partner.id}`} style={{ ...styles.acBtn, ...styles.acBtnPrimary }}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  style={{ flex: 1 }}
+                  onClick={() => router.push(`/quote-request?partner_ids=${partner.id}`)}
+                >
                   재거래 요청
-                </a>
-                <a href="/my-page/history" style={{ ...styles.acBtn, ...styles.acBtnOutline }}>
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  style={{ flex: 1 }}
+                  onClick={() => router.push('/my-page/history')}
+                >
                   거래 이력 보기
-                </a>
+                </Button>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}

@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles } from '../_shared'
 import { useMyPageLayout } from '../MyPageLayoutContext'
+import Card from '../../../components/ui/Card'
+import Button from '../../../components/ui/Button'
 
 type FavoriteRow = {
   id: string
@@ -17,6 +20,7 @@ type FavoriteRow = {
 }
 
 export default function MyPageFavoritesPage() {
+  const router = useRouter()
   const { buyerProfile, refreshFavoriteCount } = useMyPageLayout()
   const [favorites, setFavorites] = useState<FavoriteRow[]>([])
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -56,7 +60,7 @@ export default function MyPageFavoritesPage() {
       <div style={styles.sectionSub}>관심 있는 공급업체를 모아두고 필요할 때 바로 견적을 요청하세요.</div>
 
       {favorites.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>찜한 업체가 없어요</h3>
           <p style={{ fontSize: 13.5, color: colors.muted }}>
             검색결과나 업체 상세페이지에서 하트 아이콘을 누르면 이곳에 모아둘 수 있어요.
@@ -64,7 +68,7 @@ export default function MyPageFavoritesPage() {
           <a href="/search" style={{ ...styles.btnOutline, marginTop: 16 }}>
             공급업체 찾으러 가기
           </a>
-        </div>
+        </Card>
       ) : (
         <div style={styles.activeGrid}>
           {favorites.map((f) => {
@@ -74,7 +78,7 @@ export default function MyPageFavoritesPage() {
               .map((pc) => pc.categories?.name)
               .filter((n): n is string => Boolean(n))
             return (
-              <div key={f.id} style={styles.activeCard}>
+              <Card key={f.id} style={{ padding: 20 }}>
                 <div style={styles.acTop}>
                   <div style={styles.acIcon}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -97,18 +101,25 @@ export default function MyPageFavoritesPage() {
                   </div>
                 </div>
                 <div style={styles.acActions}>
-                  <a href={`/quote-request?partner_ids=${partner.id}`} style={{ ...styles.acBtn, ...styles.acBtnPrimary }}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    style={{ flex: 1 }}
+                    onClick={() => router.push(`/quote-request?partner_ids=${partner.id}`)}
+                  >
                     견적 요청하기
-                  </a>
-                  <button
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    style={{ flex: 1 }}
                     onClick={() => removeFavorite(f.id)}
                     disabled={removingId === f.id}
-                    style={{ ...styles.acBtn, ...styles.acBtnOutline }}
                   >
                     {removingId === f.id ? '해제 중...' : '찜 해제'}
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Card>
             )
           })}
         </div>

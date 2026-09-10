@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
+import Button from '../../../components/ui/Button'
 
 type BuyerProfileFields = {
   business_name: string
@@ -259,14 +260,15 @@ export default function BuyerProfileEditPage() {
             />
           </div>
 
-          <button
-            style={{ ...styles.btnPrimary, width: '100%', marginTop: 6 }}
+          <Button
+            variant="primary"
+            style={{ width: '100%', marginTop: 6 }}
             onClick={save}
             disabled={saving}
             type="button"
           >
             {saving ? '저장 중...' : '저장하기'}
-          </button>
+          </Button>
         </div>
     </div>
   )

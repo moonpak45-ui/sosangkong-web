@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles, formatDate } from '../_shared'
 import { useMyPageLayout } from '../MyPageLayoutContext'
+import Card from '../../../components/ui/Card'
+import Badge from '../../../components/ui/Badge'
 
 type QuoteRequestRow = {
   id: string
@@ -48,7 +50,7 @@ export default function MyPageQuotesPage() {
       <div style={styles.sectionSub}>보낸 견적 요청과 회신 현황입니다. 항목을 클릭하면 받은 견적을 비교할 수 있어요.</div>
 
       {quoteRequests.length === 0 ? (
-        <div style={styles.emptyState}>
+        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
           <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>보낸 견적 요청이 없어요</h3>
           <p style={{ fontSize: 13.5, color: colors.muted }}>
             공급업체를 검색해 견적을 요청하면 이곳에서 회신 현황을 확인할 수 있어요.
@@ -56,30 +58,37 @@ export default function MyPageQuotesPage() {
           <a href="/search" style={{ ...styles.btnOutline, marginTop: 16 }}>
             공급업체 찾으러 가기
           </a>
-        </div>
+        </Card>
       ) : (
         <div>
           {quoteRequests.map((qr) => {
             const total = qr.quote_request_targets.length
             const responded = qr.quote_request_targets.filter((t) => t.status === 'responded').length
             return (
-              <a key={qr.id} href={`/quote-compare/${qr.id}`} style={styles.reqCard}>
-                <div style={styles.reqTop}>
-                  <div>
-                    <div style={styles.reqTitle}>{qr.title || '견적 요청'}</div>
-                    <div style={styles.reqMeta}>
-                      {formatDate(qr.created_at)} · {total}곳에 발송
+              <a
+                key={qr.id}
+                href={`/quote-compare/${qr.id}`}
+                style={{ display: 'block', marginBottom: 12, textDecoration: 'none' }}
+              >
+                <Card style={{ padding: '18px 22px' }}>
+                  <div style={styles.reqTop}>
+                    <div>
+                      <div style={styles.reqTitle}>{qr.title || '견적 요청'}</div>
+                      <div style={styles.reqMeta}>
+                        {formatDate(qr.created_at)} · {total}곳에 발송
+                      </div>
                     </div>
+                    <Badge
+                      style={
+                        qr.status === 'closed'
+                          ? { background: colors.goodBg, color: colors.good }
+                          : { background: colors.paper2, color: colors.muted }
+                      }
+                    >
+                      {qr.status === 'closed' ? REQUEST_STATUS_LABEL.closed : `회신 ${responded}/${total} 완료`}
+                    </Badge>
                   </div>
-                  <span
-                    style={{
-                      ...styles.reqStatus,
-                      ...(qr.status === 'closed' ? styles.reqStatusReady : styles.reqStatusWaiting),
-                    }}
-                  >
-                    {qr.status === 'closed' ? REQUEST_STATUS_LABEL.closed : `회신 ${responded}/${total} 완료`}
-                  </span>
-                </div>
+                </Card>
               </a>
             )
           })}
