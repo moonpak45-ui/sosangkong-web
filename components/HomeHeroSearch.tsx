@@ -77,9 +77,9 @@ export default function HomeHeroSearch({ initialCategory = '', initialRegion = '
               <span style={styles.eyebrowText}>전국 소상공인을 위한 납품 파트너 매칭</span>
             </div>
             <h1 style={styles.h1}>
-              거래처를 찾는 게 아니라,
+              조건에 맞는 공급업체를 한 번에 비교하고
               <br />
-              <em style={styles.em}>나에게 맞는 파트너</em>를 찾으세요
+              <em style={styles.em}>여러 곳에 동시에 견적을 요청하세요</em>
             </h1>
             <p style={styles.sub}>
               지역·품목·배송시간·온도조건까지 맞춰 공급업체를 비교하고, 여러 곳에 동시에 견적을 요청하세요.
@@ -162,6 +162,7 @@ const styles: { [k: string]: React.CSSProperties } = {
     margin: 0,
     fontWeight: 700,
     fontFamily: "'Noto Serif KR', serif",
+    wordBreak: 'keep-all',
   },
   em: { fontStyle: 'normal', color: 'var(--color-accent)' },
   sub: { marginTop: 16, fontSize: 15, lineHeight: 1.6, color: 'rgba(255,255,255,0.8)', maxWidth: '50ch' },
