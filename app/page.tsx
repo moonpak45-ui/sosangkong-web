@@ -9,6 +9,8 @@ import IconCircle from '../components/ui/IconCircle'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
+import Select from '../components/ui/Select'
+import Input from '../components/ui/Input'
 
 type RootStatus = 'checking' | 'guest' | 'buyer' | 'redirecting'
 
@@ -88,99 +90,68 @@ function MarketingLanding() {
       <style>{homeCss}</style>
 
       <header className="hero">
-        <div className="wrap hero-grid">
-          <div>
-            <div className="eyebrow-line">
-              <span className="dash"></span>
-              <span>전국 소상공인을 위한 납품 파트너 매칭</span>
-            </div>
-            <h1>
-              거래처를 찾는 게 아니라,
-              <br />
-              <em>나에게 맞는 파트너</em>를 찾으세요
-            </h1>
-            <p className="sub">
-              지역·품목·배송시간·온도조건까지 맞춰 공급업체를 비교하고, 여러 곳에 동시에 견적을 요청하세요.
-              거래처에 문제가 생기면 대체 업체도 바로 추천해드립니다.
-            </p>
-            <div className="hero-ctas">
-              <RoleAwareCta targetRole="buyer" variant="primary">
-                소상공인으로 시작하기
-              </RoleAwareCta>
-              <RoleAwareCta targetRole="partner" variant="outline-light">
-                공급업체로 등록하기
-              </RoleAwareCta>
-            </div>
+        <div className="wrap hero-content">
+          <div className="eyebrow-line">
+            <span className="dash"></span>
+            <span>전국 소상공인을 위한 납품 파트너 매칭</span>
           </div>
-
-          <div className="search-card">
-            <span className="label">카테고리</span>
-            <div className="search-row">
-              <div className="search-field">냉동수산</div>
-              <div className="search-field">서울 마포구</div>
-            </div>
-            <span className="label">배송 조건</span>
-            <div className="search-row">
-              <div className="search-field">화요일 · 오전</div>
-              <div className="search-field">최소주문 10만원↓</div>
-            </div>
-            <button className="search-btn">공급업체 검색</button>
-
-            <div className="result-preview">
-              <div className="result-row">
-                <div>
-                  <div className="result-name">그린테이블 식자재</div>
-                  <div className="result-sub">배송정시율 97% · 응답률 95%</div>
-                </div>
-                <span className="match-badge">96% 일치</span>
-              </div>
-              <div className="result-row">
-                <div>
-                  <div className="result-name">해오름식자재</div>
-                  <div className="result-sub">배송정시율 91% · 응답률 88%</div>
-                </div>
-                <span className="match-badge">89% 일치</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <section className="cat-nav">
-          <div className="wrap cat-row">
-            {['냉동·수산', '축산', '식자재', '공산품', '배송 파트너', '전국 권역별'].map((label) => (
-              <a className="cat-item" href="/search" key={label}>
-                <IconCircle>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="8" stroke="#065A82" strokeWidth="1.6" />
-                  </svg>
-                </IconCircle>
-                <span>{label}</span>
-              </a>
-            ))}
-          </div>
-        </section>
-
-        <div className="stat-strip">
-          <div className="wrap">
-            <Card className="stat-cell">
-              <div className="stat-num">312개</div>
-              <div className="stat-label">등록 공급업체 (전국)</div>
-            </Card>
-            <Card className="stat-cell">
-              <div className="stat-num">468곳</div>
-              <div className="stat-label">이용 중인 소상공인 사업장</div>
-            </Card>
-            <Card className="stat-cell">
-              <div className="stat-num">96%</div>
-              <div className="stat-label">평균 조건 매칭 정확도</div>
-            </Card>
-            <Card className="stat-cell">
-              <div className="stat-num">92%</div>
-              <div className="stat-label">첫 거래 후 재거래율</div>
-            </Card>
+          <h1>
+            거래처를 찾는 게 아니라,
+            <br />
+            <em>나에게 맞는 파트너</em>를 찾으세요
+          </h1>
+          <p className="sub">
+            지역·품목·배송시간·온도조건까지 맞춰 공급업체를 비교하고, 여러 곳에 동시에 견적을 요청하세요.
+            거래처에 문제가 생기면 대체 업체도 바로 추천해드립니다.
+          </p>
+          <div className="hero-ctas">
+            <RoleAwareCta targetRole="buyer" variant="primary">
+              소상공인으로 시작하기
+            </RoleAwareCta>
+            <RoleAwareCta targetRole="partner" variant="outline-light">
+              공급업체로 등록하기
+            </RoleAwareCta>
           </div>
         </div>
       </header>
+
+      <QuickSearchBar />
+
+      <section className="cat-nav">
+        <div className="wrap cat-row">
+          {['냉동·수산', '축산', '식자재', '공산품', '배송 파트너', '전국 권역별'].map((label) => (
+            <a className="cat-item" href="/search" key={label}>
+              <IconCircle>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="8" stroke="#065A82" strokeWidth="1.6" />
+                </svg>
+              </IconCircle>
+              <span>{label}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <div className="stat-strip">
+        <div className="wrap">
+          <Card className="stat-cell">
+            <div className="stat-num">312개</div>
+            <div className="stat-label">등록 공급업체 (전국)</div>
+          </Card>
+          <Card className="stat-cell">
+            <div className="stat-num">468곳</div>
+            <div className="stat-label">이용 중인 소상공인 사업장</div>
+          </Card>
+          <Card className="stat-cell">
+            <div className="stat-num">96%</div>
+            <div className="stat-label">평균 조건 매칭 정확도</div>
+          </Card>
+          <Card className="stat-cell">
+            <div className="stat-num">92%</div>
+            <div className="stat-label">첫 거래 후 재거래율</div>
+          </Card>
+        </div>
+      </div>
 
       <div className="ad-band">
         <div className="wrap">
@@ -441,6 +412,65 @@ function MarketingLanding() {
   )
 }
 
+type SimpleCategory = { id: string; name: string }
+
+// 히어로에서 빠진 "카테고리+지역" 검색만 남긴 간단 검색바. /search가 이미
+// category/region 쿼리 파라미터를 읽어 초기 검색까지 수행하므로(app/search/page.tsx),
+// 그 형식 그대로 이동시킴.
+function QuickSearchBar() {
+  const router = useRouter()
+  const [categories, setCategories] = useState<SimpleCategory[]>([])
+  const [category, setCategory] = useState('')
+  const [region, setRegion] = useState('')
+
+  useEffect(() => {
+    supabase
+      .from('categories')
+      .select('id, name')
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => {
+        if (data) setCategories(data as SimpleCategory[])
+      })
+  }, [])
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const params = new URLSearchParams()
+    if (category) params.set('category', category)
+    if (region) params.set('region', region)
+    router.push(`/search?${params.toString()}`)
+  }
+
+  return (
+    <section className="quick-search-section">
+      <div className="wrap">
+        <Card className="quick-search-card" style={{ padding: 20 }}>
+          <form onSubmit={handleSubmit} className="quick-search-form">
+            <div className="qs-field">
+              <label className="qs-label">카테고리</label>
+              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="">전체</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="qs-field">
+              <label className="qs-label">지역</label>
+              <Input type="text" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="예) 서울 마포구" />
+            </div>
+            <Button type="submit" variant="primary" style={{ padding: '0 28px', height: 44, flexShrink: 0 }}>
+              검색
+            </Button>
+          </form>
+        </Card>
+      </div>
+    </section>
+  )
+}
+
 function SupplierCard({
   premium,
   name,
@@ -551,8 +581,8 @@ const homeCss = `
   body{ background:var(--paper); }
   h1,h2,h3{ font-family:'Noto Serif KR',serif; font-weight:600; margin:0; color:var(--deep); }
   .wrap{max-width:1180px;margin:0 auto;padding:0 32px;}
-  .hero{ background:var(--deep); background-image: radial-gradient(ellipse at 85% 15%, rgba(28,114,147,0.35), transparent 55%); padding:64px 0 0; position:relative; overflow:hidden; }
-  .hero-grid{ display:grid;grid-template-columns:1.05fr 0.95fr;gap:56px;align-items:center; padding-bottom:64px; }
+  .hero{ background:var(--deep); background-image: radial-gradient(ellipse at 85% 15%, rgba(28,114,147,0.35), transparent 55%); padding:36px 0; position:relative; overflow:hidden; }
+  .hero-content{ max-width:680px; }
   .eyebrow-line{ display:flex;align-items:center;gap:10px;margin-bottom:22px; }
   .eyebrow-line .dash{width:28px;height:2px;background:var(--amber);}
   .eyebrow-line span{color:#9FC3D8;font-size:14px;font-weight:500;}
@@ -560,23 +590,17 @@ const homeCss = `
   .hero h1 em{font-style:normal;color:var(--amber);}
   .hero p.sub{ margin-top:22px;font-size:16px;color:#C7D9E4;max-width:50ch; }
   .hero-ctas{display:flex;gap:14px;margin-top:32px;flex-wrap:wrap;}
-  .search-card{ background:var(--white);border-radius:10px;padding:26px; box-shadow:0 24px 60px rgba(5,20,40,0.35); }
-  .search-card .label{font-size:12.5px;color:var(--muted);font-weight:500;margin-bottom:6px;display:block;}
-  .search-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
-  .search-field{ border:1px solid var(--line);border-radius:6px;padding:10px 12px; font-size:14px;color:var(--ink);background:var(--paper2);font-weight:500; }
-  .search-btn{ width:100%;margin-top:6px;background:var(--navy);color:var(--white); border:none;border-radius:6px;padding:13px;font-size:15px;font-weight:700;cursor:pointer; }
-  .result-preview{ margin-top:18px;border-top:1px dashed var(--line);padding-top:16px; }
-  .result-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--paper2);}
-  .result-row:last-child{border-bottom:none;}
-  .result-name{font-size:14px;font-weight:700;color:var(--ink);}
-  .result-sub{font-size:12px;color:var(--muted);margin-top:2px;}
-  .match-badge{ background:var(--good-bg);color:var(--good);font-size:12.5px;font-weight:700; padding:4px 10px;border-radius:20px; }
-  .stat-strip{ border-top:1px solid rgba(255,255,255,0.1); }
+  .quick-search-section{ padding:28px 0 0; }
+  .quick-search-card{ box-shadow:0 16px 40px rgba(5,20,40,0.12); }
+  .quick-search-form{ display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap; }
+  .qs-field{ flex:1;min-width:180px; }
+  .qs-label{ font-size:12.5px;color:var(--muted);font-weight:500;margin-bottom:6px;display:block; }
+  .stat-strip{ border-top:1px solid var(--line);padding:32px 0 8px; }
   .stat-strip .wrap{ display:grid;grid-template-columns:repeat(4,1fr);gap:16px; }
   .stat-cell{ text-align:center; }
   .stat-num{ font-family:'Noto Serif KR',serif;font-size:26px;font-weight:700;color:var(--navy); }
   .stat-label{ font-size:12.8px;color:var(--muted);margin-top:4px; }
-  .cat-nav{ margin:8px 0 40px; }
+  .cat-nav{ margin:28px 0 8px; }
   .cat-row{ display:flex;justify-content:space-between;gap:8px; background:var(--white);border-radius:14px;padding:26px 20px; box-shadow:0 16px 40px rgba(5,20,40,0.25); }
   .cat-item{ display:flex;flex-direction:column;align-items:center;gap:9px;flex:1;padding:6px 4px;border-radius:8px; text-decoration:none; }
   .cat-item:hover{background:var(--paper2);}
@@ -646,7 +670,6 @@ const homeCss = `
   .ad-band{padding:28px 0;background:var(--white);}
   .ad-band.on-paper2{background:var(--paper2);}
   @media (max-width:900px){
-    .hero-grid{grid-template-columns:1fr;}
     .steps{grid-template-columns:repeat(2,1fr);}
     .step{border-bottom:1px solid var(--line);padding-bottom:20px;}
     .showcase-grid{grid-template-columns:1fr;}
@@ -661,6 +684,7 @@ const homeCss = `
     .cat-row{ display:grid;grid-template-columns:repeat(4,1fr);gap:18px 6px;padding:22px 14px; }
     .cat-item{padding:2px;}
     .cat-item span{font-size:12px;}
+    .quick-search-form{flex-direction:column;align-items:stretch;}
   }
   @media (max-width:380px){
     .cat-row{grid-template-columns:repeat(2,1fr);}
