@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabaseClient'
 import { colors, styles } from '../_shared'
 import { usePartnerLayout } from '../PartnerLayoutContext'
 import { WEEKDAY_LABELS } from '../../../lib/orderGroups'
+import Select from '../../../components/ui/Select'
 
 type GroupRow = {
   id: string
@@ -325,8 +326,8 @@ export default function PartnerOrderGroupsPage() {
                 <tr key={b.buyer_id}>
                   <td style={styles.td}>{b.business_name}</td>
                   <td style={styles.td}>
-                    <select
-                      style={{ ...styles.input, padding: '8px 10px', fontSize: 13 }}
+                    <Select
+                      style={{ padding: '8px 10px', fontSize: 13 }}
                       value={assignments[b.buyer_id] || ''}
                       onChange={(e) => assignGroup(b.buyer_id, e.target.value)}
                     >
@@ -336,7 +337,7 @@ export default function PartnerOrderGroupsPage() {
                           {g.group_name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </td>
                 </tr>
               ))}
