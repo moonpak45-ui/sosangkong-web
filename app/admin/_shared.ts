@@ -38,7 +38,7 @@ export const styles: { [k: string]: React.CSSProperties } = {
   btnDangerSmall: { borderColor: colors.warn, color: colors.warn, background: colors.white },
   tabRow: { display: 'flex', gap: 8, marginBottom: 22 },
   tab: { padding: '9px 18px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `1px solid ${colors.line}`, background: colors.white, color: colors.muted },
-  tabActive: { background: colors.deep, color: colors.white, borderColor: colors.deep },
+  tabActive: { background: colors.deep, color: colors.white, border: `1px solid ${colors.deep}` },
   field: { marginBottom: 14 },
   label: { display: 'block', fontSize: 12.5, color: colors.muted, fontWeight: 600, marginBottom: 6 },
   input: { width: '100%', border: `1px solid ${colors.line}`, borderRadius: 6, padding: '10px 12px', fontSize: 14, color: colors.ink, background: colors.paper2 },
