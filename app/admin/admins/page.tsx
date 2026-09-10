@@ -62,10 +62,12 @@ export default function AdminAccountsPage() {
 
     // service role key가 없어서 관리자 계정도 client의 signUp()으로
     // 만들 수밖에 없음 - signUp()은 이 프로젝트 설정상(이메일 확인 꺼짐)
-    // 성공하면 브라우저 세션을 방금 만든 새 계정으로 즉시 바꿔버림. 그래서
-    // signUp 전에 지금(super_admin) 세션을 미리 저장해뒀다가, 새 계정의
-    // users 행을 insert한 직후 다시 원래 세션으로 복구함 - 이 화면을 쓰는
-        // super_admin이 자기도 모르게 로그아웃되거나 새 계정으로 바뀌는 일이 없도록.
+    // 성공하면 브라우저 세션을 방금 만든 새 계정으로 즉시 바꿔버림. users
+    // insert는 RLS 정책 users_insert_super_admin(qd_is_super_admin()) 하나로만
+    // 허용되는데, 이 정책은 "insert를 실행하는 현재 세션"이 이미
+    // super_admin인지를 본다. 그래서 insert 전에 반드시 원래(super_admin)
+    // 세션으로 복구해둬야 함 - insert 이후에 복구하면 그 시점엔 이미 새
+    // 계정(아직 admin 아님) 세션이라 RLS가 거부함(42501).
     const {
       data: { session: currentSession },
     } = await supabase.auth.getSession()
@@ -86,14 +88,18 @@ export default function AdminAccountsPage() {
       setCreateError('계정 생성 중 오류가 발생했습니다: ' + signUpError.message)
       return
     }
+
+    // signUp()이 세션을 새 계정으로 바꿨을 수 있으니, insert 전에 원래
+    // super_admin 세션으로 복구.
+    await supabase.auth.setSession({
+      access_token: currentSession.access_token,
+      refresh_token: currentSession.refresh_token,
+    })
+
     // Supabase는 이미 가입된 이메일이어도 에러 대신 identities가 빈 배열인
     // "가짜" user를 돌려줄 수 있음(이메일 목록 유출 방지 정책) - 이 경우도
     // 실패로 처리.
     if (!signUpData.user || signUpData.user.identities?.length === 0) {
-      await supabase.auth.setSession({
-        access_token: currentSession.access_token,
-        refresh_token: currentSession.refresh_token,
-      })
       setCreating(false)
       setCreateError('이미 가입된 이메일이거나 계정 생성에 실패했습니다.')
       return
@@ -104,12 +110,6 @@ export default function AdminAccountsPage() {
       email: email.trim(),
       role: 'admin',
       admin_role: newRole,
-    })
-
-    // signUp()이 세션을 바꿨을 수 있으니 무조건 원래 세션으로 복구
-    await supabase.auth.setSession({
-      access_token: currentSession.access_token,
-      refresh_token: currentSession.refresh_token,
     })
 
     setCreating(false)
