@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
+import Input from '../../components/ui/Input'
+import Textarea from '../../components/ui/Textarea'
 
 type SelectedPartner = {
   id: string
@@ -343,29 +345,29 @@ function QuoteRequestInner() {
               </div>
               {items.map((item, i) => (
                 <div key={i} className="quote-item-row" style={styles.itemRow}>
-                  <input
+                  <Input
                     type="text"
                     placeholder="품목명 (예: 냉동 흰살생선)"
                     value={item.name}
                     onChange={(e) => updateItem(i, 'name', e.target.value)}
                     className="quote-item-name"
-                    style={styles.itemInput}
+                    style={{ fontSize: 13.5, minWidth: 0 }}
                   />
-                  <input
+                  <Input
                     type="text"
                     placeholder="수량"
                     value={item.qty}
                     onChange={(e) => updateItem(i, 'qty', e.target.value)}
                     className="quote-item-qty"
-                    style={styles.itemInput}
+                    style={{ fontSize: 13.5, minWidth: 0 }}
                   />
-                  <input
+                  <Input
                     type="text"
                     placeholder="단위"
                     value={item.unit}
                     onChange={(e) => updateItem(i, 'unit', e.target.value)}
                     className="quote-item-unit"
-                    style={styles.itemInput}
+                    style={{ fontSize: 13.5, minWidth: 0 }}
                   />
                   <button
                     type="button"
@@ -389,9 +391,8 @@ function QuoteRequestInner() {
               <div style={styles.fieldRow}>
                 <div style={styles.field}>
                   <label style={styles.label}>희망 배송일</label>
-                  <input
+                  <Input
                     type="date"
-                    style={styles.input}
                     min={todayDateString()}
                     value={desiredDate}
                     onChange={(e) => setDesiredDate(e.target.value)}
@@ -399,9 +400,8 @@ function QuoteRequestInner() {
                 </div>
                 <div style={styles.field}>
                   <label style={styles.label}>배송지</label>
-                  <input
+                  <Input
                     type="text"
-                    style={styles.input}
                     placeholder="사업장 주소"
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
@@ -424,8 +424,7 @@ function QuoteRequestInner() {
               </div>
               <div style={styles.field}>
                 <label style={styles.label}>요청사항 (선택)</label>
-                <textarea
-                  style={styles.textarea}
+                <Textarea
                   placeholder="예: 냉동 상태 확인 부탁드립니다. 오전 11시 이전 도착 희망합니다."
                   value={requestNote}
                   onChange={(e) => setRequestNote(e.target.value)}
@@ -520,14 +519,11 @@ const styles: { [k: string]: React.CSSProperties } = {
   selRemove: { width: 22, height: 22, borderRadius: '50%', border: `1px solid ${colors.line}`, background: colors.white, color: colors.muted, fontSize: 13, lineHeight: 1, cursor: 'pointer', flexShrink: 0 },
   selAdd: { display: 'block', textAlign: 'center', fontSize: 13, fontWeight: 700, color: colors.navy, padding: '12px 0 2px', borderTop: `1px dashed ${colors.line}`, marginTop: 6, cursor: 'pointer', textDecoration: 'none' },
   itemRow: { marginBottom: 10, alignItems: 'center' },
-  itemInput: { border: `1px solid ${colors.line}`, borderRadius: 6, padding: '10px 11px', fontSize: 13.5, background: colors.paper2, width: '100%', minWidth: 0 },
   itemDel: { width: 32, height: 32, borderRadius: 6, border: `1px solid ${colors.line}`, background: colors.white, color: colors.muted, cursor: 'pointer', fontSize: 14 },
   itemAdd: { fontSize: 13, fontWeight: 700, color: colors.navy, cursor: 'pointer', padding: '2px 0', display: 'inline-block' },
   fieldRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
   field: { marginBottom: 16 },
   label: { display: 'block', fontSize: 12.8, color: colors.muted, fontWeight: 600, marginBottom: 7 },
-  input: { width: '100%', border: `1px solid ${colors.line}`, borderRadius: 6, padding: '11px 12px', fontSize: 14, color: colors.ink, background: colors.paper2 },
-  textarea: { width: '100%', border: `1px solid ${colors.line}`, borderRadius: 6, padding: '11px 12px', fontSize: 14, color: colors.ink, background: colors.paper2, minHeight: 84, resize: 'vertical', fontFamily: "'Noto Sans KR', sans-serif" },
   radioGroup: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   radioChip: { border: `1px solid ${colors.line}`, borderRadius: 20, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: colors.ink, cursor: 'pointer', background: colors.white },
   radioChipSel: { background: colors.deep, color: colors.white, borderColor: colors.deep },
