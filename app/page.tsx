@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import RoleAwareCta from '../components/RoleAwareCta'
-import BuyerHomeFeed from '../components/BuyerHomeFeed'
 import HomeHeroSearch from '../components/HomeHeroSearch'
 import { supabase } from '../lib/supabaseClient'
 import IconCircle from '../components/ui/IconCircle'
@@ -11,13 +10,15 @@ import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 
-type RootStatus = 'checking' | 'guest' | 'buyer' | 'redirecting'
+type RootStatus = 'checking' | 'guest' | 'redirecting'
 
 // "/"는 로그인 여부/role과 무관하게 항상 같은 마케팅 랜딩이 보이던 곳이었음
 // (Header는 로그인 상태를 반영하는데 정작 메인 화면은 그대로였던 버그의 근본
 // 원인). role별로 완전히 다른 홈을 보여주도록 분기:
 // - 비로그인 → 기존 마케팅 랜딩 그대로
-// - buyer → 매칭 공급업체 피드(BuyerHomeFeed)
+// - buyer → /search로 리다이렉트(별도 buyer 전용 홈 피드는 삭제됨 - /search가
+//   그 역할을 흡수: 쿼리 파라미터 없이 buyer로 들어오면 즐겨찾기·최근거래
+//   우선 정렬이 기본 적용됨, app/search/page.tsx 참고)
 // - partner → /partner/dashboard로 리다이렉트(이미 있는 대시보드가 곧 홈)
 // - admin/sub_admin → /admin/dashboard로 리다이렉트
 export default function RootPage() {
@@ -58,7 +59,8 @@ export default function RootPage() {
       }
 
       if (role === 'buyer') {
-        if (!cancelled) setStatus('buyer')
+        if (!cancelled) setStatus('redirecting')
+        router.replace('/search')
         return
       }
 
@@ -74,10 +76,6 @@ export default function RootPage() {
 
   if (status === 'checking' || status === 'redirecting') {
     return <div style={{ padding: 80, textAlign: 'center', color: '#5B6B79' }}>불러오는 중...</div>
-  }
-
-  if (status === 'buyer') {
-    return <BuyerHomeFeed />
   }
 
   return <MarketingLanding />

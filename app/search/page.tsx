@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import { useFavorites } from '../../lib/useFavorites'
@@ -23,8 +23,8 @@ type PartnerRow = {
   matchScore: number
 }
 
-// 박스광고 섹션에 노출할 개수 상한. BuyerHomeFeed(components/BuyerHomeFeed.tsx)와
-// 동일한 값/동일한 로테이션 방식을 그대로 이식함.
+// 박스광고 섹션에 노출할 개수 상한. 이전 홈 피드(buyer 로그인 시 "/"에서
+// 보이던 피드, 지금은 삭제됨)와 동일한 값/동일한 로테이션 방식을 그대로 이식함.
 const MAX_BOX_ADS = 4
 
 function SearchPageInner() {
@@ -40,12 +40,40 @@ function SearchPageInner() {
   const [lineAdPartnerIds, setLineAdPartnerIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [verifiedOnly, setVerifiedOnly] = useState(false)
-  const [sortKey, setSortKey] = useState<'match' | 'rating'>('match')
+  const [sortKey, setSortKey] = useState<'favorites' | 'match' | 'rating'>('match')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const { favoritePartnerIds, toggleFavorite, pendingId } = useFavorites()
+  const [recentPartnerIds, setRecentPartnerIds] = useState<Set<string>>(new Set())
+  const sortTouchedRef = useRef(false)
+  const { favoritePartnerIds, toggleFavorite, pendingId, buyerProfileId } = useFavorites()
+
+  // buyer의 최근 거래처(즐겨찾기·최근거래 우선 정렬용) - 이전 홈 피드
+  // (components/BuyerHomeFeed.tsx, 삭제됨)와 동일한 방식.
+  useEffect(() => {
+    if (!buyerProfileId) return
+    supabase
+      .from('deals')
+      .select('partner_id')
+      .eq('buyer_id', buyerProfileId)
+      .order('confirmed_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        setRecentPartnerIds(new Set((data || []).map((r) => r.partner_id as string)))
+      })
+  }, [buyerProfileId])
+
+  // 카테고리/지역/검색어 없이(= "/"에서 buyer가 리다이렉트돼 들어온 경우 포함)
+  // buyer로 로그인한 상태로 들어왔을 때만 "즐겨찾기·최근거래 우선"을
+  // 기본값으로 적용. 사용자가 정렬을 한 번이라도 직접 바꾸면(sortTouchedRef)
+  // 그 뒤로는 이 기본값 로직이 절대 덮어쓰지 않음.
+  useEffect(() => {
+    if (sortTouchedRef.current) return
+    if (categoryParam || regionParam || keywordParam) return
+    if (!buyerProfileId) return
+    setSortKey('favorites')
+  }, [buyerProfileId, categoryParam, regionParam, keywordParam])
 
   // 박스광고 — 카테고리/지역 검색 조건과 무관하게 항상 같은 자리(결과 목록
-  // 상단)에 고정 노출되는 별도 섹션. BuyerHomeFeed와 동일한 로직을 그대로
+  // 상단)에 고정 노출되는 별도 섹션. 이전 홈 피드와 동일한 로직을 그대로
   // 이식: 승인된(status='active') 박스광고가 MAX_BOX_ADS보다 많으면 매번
   // 무작위로 그만큼만 뽑아 보여줌(로테이션), end_date 지난 건 자동 제외,
   // 같은 업체가 여러 건 보유해도 partner 기준 중복 제거.
@@ -74,7 +102,7 @@ function SearchPageInner() {
   }, [])
 
   // 줄광고 — 별도 섹션이 아니라 일반 검색 결과 목록 안에 "섞여서" 최우선
-  // 정렬 + "광고" 배지로만 구분(BuyerHomeFeed와 동일). 현재 검색/필터
+  // 정렬 + "광고" 배지로만 구분(이전 홈 피드와 동일). 현재 검색/필터
   // 결과에 있는 업체에 한해서만 의미가 있으므로, partner_id 집합만 들고
   // 있다가 visibleResults 정렬에서 사용.
   useEffect(() => {
@@ -176,11 +204,23 @@ function SearchPageInner() {
   const visibleResults = results
     .filter((r) => !verifiedOnly || r.verified_badge)
     .sort((a, b) => {
-      // 줄광고는 정렬 기준(조건 일치도순/평점순)과 무관하게 항상 최우선
-      // (BuyerHomeFeed와 동일한 우선순위 규칙).
+      // 줄광고는 정렬 기준(즐겨찾기·최근거래 우선/조건 일치도순/평점순)과
+      // 무관하게 항상 최우선(이전 홈 피드와 동일한 우선순위 규칙).
       const aAd = lineAdPartnerIds.has(a.id)
       const bAd = lineAdPartnerIds.has(b.id)
       if (aAd !== bAd) return aAd ? -1 : 1
+
+      if (sortKey === 'favorites') {
+        const aFav = favoritePartnerIds.has(a.id)
+        const bFav = favoritePartnerIds.has(b.id)
+        if (aFav !== bFav) return aFav ? -1 : 1
+
+        const aRecent = recentPartnerIds.has(a.id)
+        const bRecent = recentPartnerIds.has(b.id)
+        if (aRecent !== bRecent) return aRecent ? -1 : 1
+
+        return b.matchScore - a.matchScore
+      }
 
       if (sortKey === 'rating') return b.rating_avg - a.rating_avg
       return b.matchScore - a.matchScore
@@ -256,9 +296,13 @@ function SearchPageInner() {
             <div style={styles.listToolbar}>
               <Select
                 value={sortKey}
-                onChange={(e) => setSortKey(e.target.value as 'match' | 'rating')}
+                onChange={(e) => {
+                  sortTouchedRef.current = true
+                  setSortKey(e.target.value as 'favorites' | 'match' | 'rating')
+                }}
                 style={{ width: 'auto', fontSize: 13.3 }}
               >
+                <option value="favorites">즐겨찾기·최근거래 우선</option>
                 <option value="match">조건 일치도순</option>
                 <option value="rating">평점순</option>
               </Select>
