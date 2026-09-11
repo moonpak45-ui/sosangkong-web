@@ -7,7 +7,9 @@ import { colors, styles } from './_shared'
 import { MyPageLayoutContext, BuyerProfile } from './MyPageLayoutContext'
 
 const NAV_ITEMS = [
-  { href: '/my-page', label: '거래처 관리' },
+  { href: '/my-page', label: '대시보드' },
+  { href: '/my-page/partners', label: '거래처 관리' },
+  { href: '/my-page/statements', label: '거래명세서' },
   { href: '/my-page/history', label: '거래 이력' },
   { href: '/my-page/quotes', label: '견적 요청 현황' },
   { href: '/my-page/favorites', label: '찜한 업체', badge: true as const },

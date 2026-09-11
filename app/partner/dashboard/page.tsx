@@ -2,300 +2,149 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
-import { colors, styles } from '../_shared'
+import { colors } from '../_shared'
 import { usePartnerLayout } from '../PartnerLayoutContext'
-import Card from '../../../components/ui/Card'
-import Button from '../../../components/ui/Button'
+import { buildMonthlyAmounts, currentMonthTotal, MonthlyAmount } from '../../../lib/deals/monthlyAmounts'
+import { buildRiskItems, RiskItem } from '../../../lib/deals/riskItems'
+import DashboardCard from '../../../components/DashboardCard'
+import MonthlyAmountChart from '../../../components/MonthlyAmountChart'
+import Badge from '../../../components/ui/Badge'
 
-type QuoteItem = { name: string; qty?: string; unit?: string }
-
-type RequestAttributes = {
-  items?: QuoteItem[]
-  desired_delivery_date?: string
-  delivery_address?: string
-  payment_method?: string
-  request_note?: string
+type DealRow = {
+  id: string
+  amount: number
+  status: 'in_progress' | 'completed' | 'disputed'
+  confirmed_at: string
+  buyer_profiles: { id: string; business_name: string } | null
 }
 
-type ReceivedRequest = {
-  id: string // quote_request_targets.id
-  sent_at: string
-  quote_requests: {
-    id: string
-    title: string | null
-    attributes: RequestAttributes | null
-    created_at: string
-    categories: { name: string } | null
-    buyer_profiles: { business_name: string; region: string | null; industry: string | null } | null
-  } | null
-}
+type ArRow = { buyer_id: string; balance: number }
 
-const PAYMENT_METHODS = ['계좌이체', '현금', '월말 정산']
-
-function itemsText(attrs: RequestAttributes | null): string {
-  const items = attrs?.items
-  if (!items || items.length === 0) return '품목 정보 없음'
-  return items.map((it) => [it.name, it.qty, it.unit].filter(Boolean).join(' ')).join(' · ')
-}
-
-export default function PartnerRequestsPage() {
-  const { partner, refreshCounts } = usePartnerLayout()
-
-  const [targets, setTargets] = useState<ReceivedRequest[]>([])
+// 공급업체 대시보드 메인(첫 화면) — 쿠팡 윙 판매자센터 스타일 카드 그리드.
+// 기존 "받은 견적요청" 목록은 /partner/dashboard/requests로 옮기고, 이
+// 화면은 요약 카드 4개(월별 매출 추이 / 미결제 외상 / 진행 중 거래 /
+// 리스크 알림)로 구성한다.
+export default function PartnerDashboardHome() {
+  const { partner } = usePartnerLayout()
+  const [monthly, setMonthly] = useState<MonthlyAmount[]>([])
+  const [inProgressCount, setInProgressCount] = useState(0)
+  const [totalUnpaid, setTotalUnpaid] = useState(0)
+  const [risks, setRisks] = useState<RiskItem[]>([])
   const [loading, setLoading] = useState(true)
-
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [forms, setForms] = useState<
-    Record<string, { price: string; eta: string; paymentTerms: string; note: string }>
-  >({})
-  const [submittingId, setSubmittingId] = useState<string | null>(null)
-  const [formError, setFormError] = useState<Record<string, string>>({})
 
   useEffect(() => {
     async function load() {
-      const { data: targetRows } = await supabase
-        .from('quote_request_targets')
-        .select(
-          `id, sent_at,
-           quote_requests (
-             id, title, attributes, created_at,
-             categories ( name ),
-             buyer_profiles ( business_name, region, industry )
-           )`
-        )
-        .eq('partner_id', partner.id)
-        .eq('status', 'waiting')
-        .order('sent_at', { ascending: false })
+      const [{ data: dealRows }, { data: arRows }] = await Promise.all([
+        supabase
+          .from('deals')
+          .select('id, amount, status, confirmed_at, buyer_profiles ( id, business_name )')
+          .eq('partner_id', partner.id)
+          .order('confirmed_at', { ascending: false }),
+        // ar_balances.buyer_id는 auth.users(id)라 buyer_profiles와 직접 FK로
+        // 이어지지 않아 PostgREST 임베드가 안 됨(app/partner/ledger/page.tsx와
+        // 동일한 주의사항) — buyer_profiles를 user_id로 별도 조회해서 매칭.
+        supabase.from('ar_balances').select('buyer_id, balance').eq('partner_id', partner.id),
+      ])
 
-      setTargets((targetRows || []) as unknown as ReceivedRequest[])
+      const deals = (dealRows || []) as unknown as DealRow[]
+      const arRows_ = (arRows || []) as ArRow[]
+      const unpaidRows = arRows_.filter((r) => Number(r.balance) > 0)
+
+      let buyerNameByUserId: Record<string, string> = {}
+      if (unpaidRows.length > 0) {
+        const { data: profiles } = await supabase
+          .from('buyer_profiles')
+          .select('user_id, business_name')
+          .in('user_id', unpaidRows.map((r) => r.buyer_id))
+        buyerNameByUserId = Object.fromEntries((profiles || []).map((p) => [p.user_id as string, p.business_name as string]))
+      }
+
+      setMonthly(buildMonthlyAmounts(deals, 6))
+      setInProgressCount(deals.filter((d) => d.status === 'in_progress').length)
+      setTotalUnpaid(arRows_.reduce((sum, r) => sum + Number(r.balance || 0), 0))
+      setRisks(
+        buildRiskItems(
+          deals
+            .filter((d) => d.status === 'disputed' && d.buyer_profiles)
+            .map((d) => ({ id: d.id, counterpartName: d.buyer_profiles!.business_name })),
+          unpaidRows.map((r) => ({
+            id: r.buyer_id,
+            counterpartName: buyerNameByUserId[r.buyer_id] || '거래처',
+            balance: Number(r.balance),
+          }))
+        )
+      )
       setLoading(false)
     }
 
     load()
   }, [partner.id])
 
-  function openForm(target: ReceivedRequest) {
-    setOpenId(target.id)
-    if (!forms[target.id]) {
-      setForms((prev) => ({
-        ...prev,
-        [target.id]: {
-          price: '',
-          eta: target.quote_requests?.attributes?.desired_delivery_date || '',
-          paymentTerms: target.quote_requests?.attributes?.payment_method || PAYMENT_METHODS[0],
-          note: '',
-        },
-      }))
-    }
-  }
-
-  function updateForm(id: string, field: 'price' | 'eta' | 'paymentTerms' | 'note', value: string) {
-    setForms((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }))
-  }
-
-  async function submitQuote(target: ReceivedRequest) {
-    const form = forms[target.id]
-    const price = Number(form?.price)
-
-    if (!form || !form.price.trim() || Number.isNaN(price) || price <= 0) {
-      setFormError((prev) => ({ ...prev, [target.id]: '가격을 올바르게 입력해주세요.' }))
-      return
-    }
-    if (!target.quote_requests) {
-      setFormError((prev) => ({ ...prev, [target.id]: '요청 정보를 불러오지 못했습니다.' }))
-      return
-    }
-
-    setFormError((prev) => ({ ...prev, [target.id]: '' }))
-    setSubmittingId(target.id)
-
-    const { error: quoteError } = await supabase.from('quotes').insert({
-      quote_request_id: target.quote_requests.id,
-      partner_id: partner.id,
-      price,
-      match_score: null,
-      eta_or_schedule: form.eta,
-      payment_terms: form.paymentTerms,
-      note: form.note,
-      responded_at: new Date().toISOString(),
-    })
-
-    if (quoteError) {
-      setSubmittingId(null)
-      setFormError((prev) => ({ ...prev, [target.id]: '견적 저장 중 오류: ' + quoteError.message }))
-      return
-    }
-
-    const { error: targetError } = await supabase
-      .from('quote_request_targets')
-      .update({ status: 'responded' })
-      .eq('id', target.id)
-
-    setSubmittingId(null)
-
-    if (targetError) {
-      setFormError((prev) => ({ ...prev, [target.id]: '요청 상태 업데이트 중 오류: ' + targetError.message }))
-      return
-    }
-
-    setTargets((prev) => prev.filter((t) => t.id !== target.id))
-    setOpenId(null)
-    refreshCounts()
-  }
-
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: colors.muted }}>불러오는 중...</div>
   }
 
+  const thisMonthTotal = currentMonthTotal(monthly)
+
   return (
     <div>
-      <div style={styles.sectionTitle}>안녕하세요, {partner.name}님</div>
-      <div style={styles.sectionSub}>
-        {targets.length > 0
-          ? `새로 들어온 견적요청 ${targets.length}건이 있어요. 빠른 응답이 거래 성사율을 높여요.`
-          : '아직 새로 들어온 견적요청이 없어요.'}
+      <div style={{ fontSize: 19, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, marginBottom: 4 }}>
+        안녕하세요, {partner.name}님
       </div>
+      <div style={{ fontSize: 13.5, color: colors.muted, marginBottom: 22 }}>거래 현황을 한눈에 확인하세요.</div>
 
-      <div style={{ ...styles.sectionTitle, fontSize: 19, marginTop: 8 }}>받은 견적요청</div>
-      <div style={styles.sectionSub}>회신 대기 중인 소상공인의 견적요청입니다.</div>
+      <div style={styles.grid}>
+        <div style={styles.wide}>
+          <DashboardCard title="월별 매출 금액 추이" href="/partner/dashboard/statements">
+            <div style={styles.heroNumber}>{thisMonthTotal.toLocaleString('ko-KR')}원</div>
+            <div style={styles.heroLabel}>이번 달 누적 매출</div>
+            <div style={{ marginTop: 12 }}>
+              <MonthlyAmountChart data={monthly} />
+            </div>
+          </DashboardCard>
+        </div>
 
-      {targets.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
-          <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>대기 중인 견적요청이 없어요</h3>
-          <p style={{ fontSize: 13.5, color: colors.muted }}>
-            검색결과에 노출되면 소상공인의 견적요청이 이곳에 도착합니다.
-          </p>
-        </Card>
-      ) : (
-        targets.map((target) => {
-          const qr = target.quote_requests
-          const form = forms[target.id]
-          return (
-            <Card key={target.id} style={{ padding: 20, marginBottom: 12 }}>
-              <div style={styleLeadTop}>
-                <div>
-                  <div style={styleLeadBuyer}>{qr?.buyer_profiles?.business_name || '요청자 정보 없음'} 사장님</div>
-                  <div style={styleLeadMeta}>
-                    {[qr?.buyer_profiles?.region, qr?.buyer_profiles?.industry, qr?.categories?.name]
-                      .filter(Boolean)
-                      .join(' · ') || '조건 정보 없음'}
-                  </div>
+        <DashboardCard title="미결제 외상 현황" href="/partner/ledger">
+          <div style={{ ...styles.bigNumber, color: totalUnpaid > 0 ? colors.warn : colors.navy }}>
+            {totalUnpaid.toLocaleString('ko-KR')}원
+          </div>
+          <div style={styles.smallNote}>{totalUnpaid > 0 ? '매출·재고 현황에서 자세히 보기 ›' : '미결제 외상이 없어요'}</div>
+        </DashboardCard>
+
+        <DashboardCard title="진행 중 거래 건수" href="/partner/dashboard/deals">
+          <div style={styles.bigNumber}>{inProgressCount}건</div>
+          <div style={styles.smallNote}>진행 중인 거래에서 자세히 보기 ›</div>
+        </DashboardCard>
+
+        <DashboardCard title="리스크 알림" href="/partner/dashboard/deals">
+          {risks.length === 0 ? (
+            <div style={styles.smallNote}>지금은 특별한 리스크가 없어요.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {risks.slice(0, 4).map((r) => (
+                <div key={r.key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <Badge style={{ background: colors.warnBg, color: colors.warn }}>{r.label}</Badge>
+                  <span style={{ fontSize: 11.5, color: colors.muted }}>{r.detail}</span>
                 </div>
-                <div style={styleLeadDate}>{qr ? new Date(qr.created_at).toLocaleDateString('ko-KR') : ''}</div>
-              </div>
-
-              <div style={styleLeadItems}>
-                {itemsText(qr?.attributes ?? null)}
-                {qr?.attributes?.desired_delivery_date && ` — 희망 배송일 ${qr.attributes.desired_delivery_date}`}
-              </div>
-
-              {qr?.attributes?.delivery_address && (
-                <div style={styleLeadDetailRow}>배송지: {qr.attributes.delivery_address}</div>
-              )}
-              {qr?.attributes?.payment_method && (
-                <div style={styleLeadDetailRow}>희망 결제방식: {qr.attributes.payment_method}</div>
-              )}
-              {qr?.attributes?.request_note && (
-                <div style={styleLeadDetailRow}>요청사항: {qr.attributes.request_note}</div>
-              )}
-
-              {openId !== target.id ? (
-                <div style={styleLeadActions}>
-                  <Button variant="primary" size="sm" style={{ flex: 1 }} onClick={() => openForm(target)}>
-                    견적 제출하기
-                  </Button>
-                </div>
-              ) : (
-                <div style={styleQuoteForm}>
-                  <div style={styles.fieldRow}>
-                    <div style={styles.field}>
-                      <label style={styles.label}>가격 (원)</label>
-                      <input
-                        type="number"
-                        style={styles.input}
-                        placeholder="예) 103000"
-                        value={form?.price || ''}
-                        onChange={(e) => updateForm(target.id, 'price', e.target.value)}
-                      />
-                    </div>
-                    <div style={styles.field}>
-                      <label style={styles.label}>배송/착수 예정</label>
-                      <input
-                        type="text"
-                        style={styles.input}
-                        placeholder="예) 9.9(화) 오전"
-                        value={form?.eta || ''}
-                        onChange={(e) => updateForm(target.id, 'eta', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div style={styles.field}>
-                    <label style={styles.label}>결제 조건</label>
-                    <div style={styleRadioGroup}>
-                      {PAYMENT_METHODS.map((m) => (
-                        <div
-                          key={m}
-                          style={{
-                            ...styleRadioChip,
-                            ...(form?.paymentTerms === m ? styleRadioChipSel : {}),
-                          }}
-                          onClick={() => updateForm(target.id, 'paymentTerms', m)}
-                        >
-                          {m}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div style={styles.field}>
-                    <label style={styles.label}>메모 (선택)</label>
-                    <textarea
-                      style={styles.textarea}
-                      placeholder="예) 화요일 오전 배송 가능합니다."
-                      value={form?.note || ''}
-                      onChange={(e) => updateForm(target.id, 'note', e.target.value)}
-                    />
-                  </div>
-
-                  {formError[target.id] && <div style={styles.errorBox}>{formError[target.id]}</div>}
-
-                  <div style={styleLeadActions}>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      style={{ flex: 1 }}
-                      onClick={() => setOpenId(null)}
-                      disabled={submittingId === target.id}
-                    >
-                      취소
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      style={{ flex: 1 }}
-                      onClick={() => submitQuote(target)}
-                      disabled={submittingId === target.id}
-                    >
-                      {submittingId === target.id ? '제출 중...' : '견적 제출하기'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </Card>
-          )
-        })
-      )}
+              ))}
+            </div>
+          )}
+        </DashboardCard>
+      </div>
     </div>
   )
 }
 
-const styleLeadTop: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }
-const styleLeadBuyer: React.CSSProperties = { fontSize: 14.5, fontWeight: 700 }
-const styleLeadMeta: React.CSSProperties = { fontSize: 12, color: colors.muted, marginTop: 3 }
-const styleLeadDate: React.CSSProperties = { fontSize: 11.5, color: colors.muted, flexShrink: 0 }
-const styleLeadItems: React.CSSProperties = { fontSize: 13, color: colors.ink, background: colors.paper2, borderRadius: 6, padding: '11px 13px', marginTop: 12, marginBottom: 6 }
-const styleLeadDetailRow: React.CSSProperties = { fontSize: 12, color: colors.muted, marginTop: 6 }
-const styleLeadActions: React.CSSProperties = { display: 'flex', gap: 10, marginTop: 14 }
-const styleQuoteForm: React.CSSProperties = { marginTop: 16, paddingTop: 16, borderTop: `1px dashed ${colors.line}` }
-const styleRadioGroup: React.CSSProperties = { display: 'flex', gap: 10, flexWrap: 'wrap' }
-const styleRadioChip: React.CSSProperties = { border: `1px solid ${colors.line}`, borderRadius: 20, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, color: colors.ink, cursor: 'pointer', background: colors.white }
-const styleRadioChipSel: React.CSSProperties = { background: colors.deep, color: colors.white, border: `1px solid ${colors.deep}` }
+const styles: { [k: string]: React.CSSProperties } = {
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: 16,
+    paddingBottom: 40,
+  },
+  wide: { gridColumn: '1 / -1' },
+  heroNumber: { fontSize: 30, fontFamily: "'Noto Serif KR', serif", fontWeight: 700, color: colors.deep },
+  heroLabel: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  bigNumber: { fontSize: 26, fontFamily: "'Noto Serif KR', serif", fontWeight: 700, color: colors.deep },
+  smallNote: { fontSize: 12, color: colors.muted, marginTop: 8 },
+}

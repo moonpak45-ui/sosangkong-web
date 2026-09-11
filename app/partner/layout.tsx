@@ -7,8 +7,10 @@ import { colors, styles } from './_shared'
 import { PartnerLayoutContext, PartnerInfo } from './PartnerLayoutContext'
 
 const NAV_ITEMS = [
-  { href: '/partner/dashboard', label: '받은 견적요청', badge: 'request' as const },
+  { href: '/partner/dashboard', label: '대시보드' },
+  { href: '/partner/dashboard/requests', label: '받은 견적요청', badge: 'request' as const },
   { href: '/partner/dashboard/deals', label: '진행 중인 거래', badge: 'deal' as const },
+  { href: '/partner/dashboard/statements', label: '거래명세서' },
   { href: '/partner/dashboard/ledger-entry', label: '거래전표 등록' },
   { href: '/partner/ledger', label: '매출·재고 현황' },
   { href: '/partner/dashboard/settlement', label: '정산' },
