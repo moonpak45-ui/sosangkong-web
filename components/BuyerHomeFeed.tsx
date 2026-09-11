@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useFavorites } from '../lib/useFavorites'
 import FavoriteHeart from './FavoriteHeart'
 import AdRollingBanner from './AdRollingBanner'
+import DailyFortuneCard from './DailyFortuneCard'
 import Card from './ui/Card'
 import Badge from './ui/Badge'
 import Button from './ui/Button'
@@ -262,6 +263,10 @@ export default function BuyerHomeFeed() {
       </div>
 
       <div style={styles.wrap}>
+        <div style={{ marginTop: 22 }}>
+          <DailyFortuneCard />
+        </div>
+
         <div style={{ marginTop: 22 }}>
           <AdRollingBanner />
         </div>
