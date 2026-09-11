@@ -6,7 +6,6 @@ import RoleAwareCta from '../components/RoleAwareCta'
 import BuyerHomeFeed from '../components/BuyerHomeFeed'
 import HomeHeroSearch from '../components/HomeHeroSearch'
 import { supabase } from '../lib/supabaseClient'
-import { useCountUp } from '../lib/useCountUp'
 import IconCircle from '../components/ui/IconCircle'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
@@ -365,62 +364,6 @@ function MarketingLanding() {
   )
 }
 
-type HomepageStats = {
-  deals_today: number
-  quotes_waiting: number
-  partners_approved: number
-}
-
-// 집계 전용 RPC(qd_public_homepage_stats, supabase/migrations/
-// 20260921000000_public_homepage_stats_rpc.sql)를 호출 - deals/
-// quote_request_targets는 비로그인 사용자에게 select 권한이 없어서
-// (buyer/partner 본인 또는 admin만 조회 가능) 개별 행 대신 숫자 3개만
-// 반환하는 함수를 통해서만 값을 가져올 수 있음.
-function ActivityStats() {
-  const [stats, setStats] = useState<HomepageStats | null>(null)
-
-  useEffect(() => {
-    supabase
-      .rpc('qd_public_homepage_stats')
-      .then(({ data, error }) => {
-        if (error || !data) return
-        const row = Array.isArray(data) ? data[0] : data
-        if (row) {
-          setStats({
-            deals_today: Number(row.deals_today) || 0,
-            quotes_waiting: Number(row.quotes_waiting) || 0,
-            partners_approved: Number(row.partners_approved) || 0,
-          })
-        }
-      })
-  }, [])
-
-  const dealsToday = useCountUp(stats ? stats.deals_today : null)
-  const quotesWaiting = useCountUp(stats ? stats.quotes_waiting : null)
-  const partnersApproved = useCountUp(stats ? stats.partners_approved : null)
-
-  return (
-    <section className="activity-stats-section">
-      <div className="wrap">
-        <div className="activity-stats-grid">
-          <Card className="activity-stat-card">
-            <div className="as-num">{dealsToday.toLocaleString('ko-KR')}건</div>
-            <div className="as-label">오늘 등록된 신규 거래</div>
-          </Card>
-          <Card className="activity-stat-card">
-            <div className="as-num">{quotesWaiting.toLocaleString('ko-KR')}건</div>
-            <div className="as-label">현재 검토 중인 견적</div>
-          </Card>
-          <Card className="activity-stat-card">
-            <div className="as-num">{partnersApproved.toLocaleString('ko-KR')}곳</div>
-            <div className="as-label">등록된 공급업체</div>
-          </Card>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 function SupplierCard({
   premium,
   name,
@@ -531,11 +474,6 @@ const homeCss = `
   body{ background:var(--paper); }
   h1,h2,h3{ font-family:'Noto Serif KR',serif; font-weight:600; margin:0; color:var(--deep); }
   .wrap{max-width:1180px;margin:0 auto;padding:0 32px;}
-  .activity-stats-section{ padding:20px 0 0; }
-  .activity-stats-grid{ display:grid;grid-template-columns:repeat(3,1fr);gap:16px; }
-  .activity-stat-card{ text-align:center;padding:22px 16px; }
-  .as-num{ font-family:'Noto Serif KR',serif;font-size:30px;font-weight:700;color:var(--navy); }
-  .as-label{ font-size:13px;color:var(--muted);margin-top:6px; }
   .cat-nav{ margin:28px 0 8px; }
   .cat-row{ display:flex;justify-content:space-between;gap:8px; background:var(--white);border-radius:14px;padding:26px 20px; box-shadow:0 16px 40px rgba(5,20,40,0.25); }
   .cat-item{ display:flex;flex-direction:column;align-items:center;gap:9px;flex:1;padding:6px 4px;border-radius:8px; text-decoration:none; }
@@ -614,7 +552,6 @@ const homeCss = `
     .promo-grid{grid-template-columns:1fr;}
     .cat-row{flex-wrap:wrap;}
     .cat-item{flex:0 0 30%;}
-    .activity-stats-grid{grid-template-columns:1fr;}
   }
   @media (max-width:640px){
     .cat-row{ display:grid;grid-template-columns:repeat(4,1fr);gap:18px 6px;padding:22px 14px; }

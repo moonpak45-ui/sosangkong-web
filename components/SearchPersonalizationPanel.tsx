@@ -2,9 +2,68 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useCountUp } from '../lib/useCountUp'
 import Card from './ui/Card'
 import Badge from './ui/Badge'
 import { formatDate } from '../app/my-page/_shared'
+
+type HomepageStats = {
+  deals_today: number
+  quotes_waiting: number
+  partners_approved: number
+}
+
+// app/page.tsx(마케팅 랜딩)에 있었으나 렌더되는 곳이 없어 사실상 죽어있던
+// 컴포넌트를 이 패널 상단으로 이전. 집계 전용 RPC(qd_public_homepage_stats,
+// supabase/migrations/20260921000000_public_homepage_stats_rpc.sql)를
+// 호출 - deals/quote_request_targets는 비로그인 사용자에게 select 권한이
+// 없어서(buyer/partner 본인 또는 admin만 조회 가능) 개별 행 대신 숫자
+// 3개만 반환하는 함수를 통해서만 값을 가져올 수 있음. 랜딩의 3열 그리드
+// 레이아웃 대신, 260px 폭 사이드바에 맞춰 다른 카드들과 같은 세로 목록
+// 형태로 배치.
+function ActivityStats() {
+  const [stats, setStats] = useState<HomepageStats | null>(null)
+
+  useEffect(() => {
+    supabase
+      .rpc('qd_public_homepage_stats')
+      .then(({ data, error }) => {
+        if (error || !data) return
+        const row = Array.isArray(data) ? data[0] : data
+        if (row) {
+          setStats({
+            deals_today: Number(row.deals_today) || 0,
+            quotes_waiting: Number(row.quotes_waiting) || 0,
+            partners_approved: Number(row.partners_approved) || 0,
+          })
+        }
+      })
+  }, [])
+
+  const dealsToday = useCountUp(stats ? stats.deals_today : null)
+  const quotesWaiting = useCountUp(stats ? stats.quotes_waiting : null)
+  const partnersApproved = useCountUp(stats ? stats.partners_approved : null)
+
+  return (
+    <Card style={styles.card}>
+      <div style={styles.title}>실시간 현황</div>
+      <div style={styles.activityList}>
+        <div style={styles.activityRow}>
+          <span style={styles.activityLabel}>오늘 등록된 신규 거래</span>
+          <b style={styles.activityValue}>{dealsToday.toLocaleString('ko-KR')}건</b>
+        </div>
+        <div style={styles.activityRow}>
+          <span style={styles.activityLabel}>현재 검토 중인 견적</span>
+          <b style={styles.activityValue}>{quotesWaiting.toLocaleString('ko-KR')}건</b>
+        </div>
+        <div style={styles.activityRow}>
+          <span style={styles.activityLabel}>등록된 공급업체</span>
+          <b style={styles.activityValue}>{partnersApproved.toLocaleString('ko-KR')}곳</b>
+        </div>
+      </div>
+    </Card>
+  )
+}
 
 type DealRow = {
   id: string
@@ -132,6 +191,8 @@ export default function SearchPersonalizationPanel() {
 
   return (
     <div style={styles.wrap}>
+      <ActivityStats />
+
       <Card style={styles.card}>
         <div style={styles.title}>내 거래 현황</div>
         <div style={styles.statsRow}>
@@ -208,6 +269,10 @@ const styles: { [k: string]: React.CSSProperties } = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 16, flex: '0 0 260px', minWidth: 260 },
   card: { padding: 18 },
   title: { fontSize: 14, fontWeight: 700, color: colors.deep, marginBottom: 12 },
+  activityList: { display: 'flex', flexDirection: 'column', gap: 8 },
+  activityRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
+  activityLabel: { fontSize: 11.5, color: colors.muted },
+  activityValue: { fontSize: 14, fontFamily: "'Noto Serif KR', serif", color: colors.navy, flexShrink: 0 },
   statsRow: {
     display: 'flex',
     gap: 10,
