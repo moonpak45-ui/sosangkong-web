@@ -17,15 +17,16 @@ const PARTNER_LINKS: FooterLink[] = [
   { label: '수수료 안내', href: null },
 ]
 
-// 자주 묻는 질문/문의하기/공지사항/이용약관/개인정보처리방침 전부 아직
-// 실제 페이지가 없어서(이 리포에 해당 라우트 자체가 없음) href를 null로
-// 두어 비활성(회색 텍스트)으로 표시함 - 페이지가 생기면 href만 채우면 됨.
+// 자주 묻는 질문/문의하기/공지사항은 아직 실제 페이지가 없어서(이 리포에
+// 해당 라우트 자체가 없음) href를 null로 두어 비활성(회색 텍스트)으로
+// 표시함 - 페이지가 생기면 href만 채우면 됨. 이용약관/개인정보처리방침은
+// app/terms, app/privacy 추가로 실제 페이지가 생겨 활성화함.
 const SUPPORT_LINKS: FooterLink[] = [
   { label: '자주 묻는 질문', href: null },
   { label: '문의하기', href: null },
   { label: '공지사항', href: null },
-  { label: '이용약관', href: null },
-  { label: '개인정보처리방침', href: null },
+  { label: '이용약관', href: '/terms' },
+  { label: '개인정보처리방침', href: '/privacy' },
 ]
 
 export default function Footer() {
