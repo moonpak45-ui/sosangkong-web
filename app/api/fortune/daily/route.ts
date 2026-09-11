@@ -48,13 +48,18 @@ export async function GET(request: NextRequest) {
 
   const { data: cached } = await supabase
     .from('daily_fortune_cache')
-    .select('cards')
+    .select('cards, premium_teaser')
     .eq('user_id', user.id)
     .eq('fortune_date', today)
     .maybeSingle()
 
   if (cached) {
-    return NextResponse.json({ date: today, cards: cached.cards })
+    return NextResponse.json({
+      date: today,
+      cards: cached.cards,
+      premiumTeaser: cached.premium_teaser,
+      premiumLocked: true,
+    })
   }
 
   // 3. 사용자 일주 vs 오늘 일진 관계 판정
@@ -79,16 +84,32 @@ export async function GET(request: NextRequest) {
     })
   )
 
-  // 5. 하루 1회 캐싱 저장
+  // 5. 심화 리포트(유료 예정) 미리보기 문구 생성
+  const { data: premiumCandidates } = await supabase
+    .from('fortune_content_bank')
+    .select('content')
+    .eq('category', '상세조언')
+    .eq('relation_type', relationType)
+    .eq('is_active', true)
+
+  const premiumContent =
+    premiumCandidates && premiumCandidates.length > 0
+      ? premiumCandidates[Math.floor(Math.random() * premiumCandidates.length)].content
+      : '오늘의 심화 리포트를 준비 중입니다.'
+
+  const premiumTeaser = premiumContent.slice(0, 20)
+
+  // 6. 하루 1회 캐싱 저장
   await supabase.from('daily_fortune_cache').upsert(
     {
       user_id: user.id,
       fortune_date: today,
       relation_type: relationType,
       cards,
+      premium_teaser: premiumTeaser,
     },
     { onConflict: 'user_id,fortune_date' }
   )
 
-  return NextResponse.json({ date: today, cards })
+  return NextResponse.json({ date: today, cards, premiumTeaser, premiumLocked: true })
 }

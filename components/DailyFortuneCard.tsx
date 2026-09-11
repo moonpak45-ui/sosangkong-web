@@ -13,7 +13,7 @@ type LoadState =
   | { status: 'signed-out' }
   | { status: 'needs-profile' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; date: string; cards: FortuneCard[] }
+  | { status: 'ready'; date: string; cards: FortuneCard[]; premiumTeaser: string | null }
 
 const TONE_LABEL: Record<Tone, string> = { '길': '길', '중': '중', '흉': '주의' }
 const TONE_COLOR: Record<Tone, string> = { '길': '#0B7A6D', '중': '#8A6D1F', '흉': '#B5460B' }
@@ -24,6 +24,7 @@ const TONE_COLOR: Record<Tone, string> = { '길': '#0B7A6D', '중': '#8A6D1F', '
 // 여기서도 supabase.auth.getSession()의 access_token을 그대로 실어 보낸다.
 export default function DailyFortuneCard() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
+  const [showPremiumNotice, setShowPremiumNotice] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -59,7 +60,12 @@ export default function DailyFortuneCard() {
           return
         }
 
-        setState({ status: 'ready', date: json.date, cards: json.cards as FortuneCard[] })
+        setState({
+          status: 'ready',
+          date: json.date,
+          cards: json.cards as FortuneCard[],
+          premiumTeaser: json.premiumTeaser ?? null,
+        })
       } catch {
         if (!cancelled) {
           setState({ status: 'error', message: '네트워크 오류로 오늘의 운세를 불러오지 못했어요.' })
@@ -85,7 +91,7 @@ export default function DailyFortuneCard() {
       {state.status === 'needs-profile' && (
         <p style={styles.notice}>
           사주 프로필을 등록하면 오늘의 운세를 확인할 수 있어요.{' '}
-          <a href="/my-page/saju" style={styles.noticeLink}>
+          <a href="/fortune/register" style={styles.noticeLink}>
             지금 등록하기 ›
           </a>
         </p>
@@ -108,6 +114,26 @@ export default function DailyFortuneCard() {
           ))}
         </div>
       )}
+
+      {state.status === 'ready' && state.premiumTeaser && (
+        <div style={styles.premiumSection}>
+          <div style={styles.premiumHeader}>
+            <span style={styles.lockIcon} aria-hidden="true">🔒</span>
+            <b style={styles.premiumTitle}>오늘의 심화 리포트</b>
+          </div>
+          <p style={styles.premiumTeaser}>{state.premiumTeaser}...</p>
+          <button
+            type="button"
+            style={styles.premiumButton}
+            onClick={() => setShowPremiumNotice(true)}
+          >
+            심화 리포트 보기
+          </button>
+          {showPremiumNotice && (
+            <p style={styles.premiumNotice}>결제 기능은 준비 중입니다.</p>
+          )}
+        </div>
+      )}
     </Card>
   )
 }
@@ -124,4 +150,37 @@ const styles: { [k: string]: React.CSSProperties } = {
   itemHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   category: { fontSize: 13, color: 'var(--color-text)' },
   content: { fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0 },
+  premiumSection: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTop: '1px solid var(--color-border)',
+  },
+  premiumHeader: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 },
+  lockIcon: { fontSize: 13 },
+  premiumTitle: { fontSize: 13, color: 'var(--color-text)' },
+  premiumTeaser: {
+    fontSize: 12.5,
+    color: 'var(--color-text-secondary)',
+    lineHeight: 1.5,
+    margin: '0 0 10px',
+    filter: 'blur(3px)',
+    userSelect: 'none',
+  },
+  premiumButton: {
+    width: '100%',
+    padding: '10px 0',
+    fontSize: 13,
+    fontWeight: 700,
+    color: 'var(--color-primary)',
+    background: 'transparent',
+    border: '1px solid var(--color-primary)',
+    borderRadius: 8,
+    cursor: 'pointer',
+  },
+  premiumNotice: {
+    fontSize: 12,
+    color: 'var(--color-text-muted)',
+    margin: '8px 0 0',
+    textAlign: 'center',
+  },
 }
