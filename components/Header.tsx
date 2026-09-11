@@ -29,6 +29,7 @@ function getNavItems(session: Session | null, role: Role): NavItem[] {
       { label: '공급업체 찾기', href: '/search' },
       { label: '견적 요청', href: '/quote-request' },
       { label: '거래 관리', href: '/my-page' },
+      { label: '오늘의 운세', href: '/fortune' },
     ]
   }
   if (role === 'partner') {
@@ -37,6 +38,7 @@ function getNavItems(session: Session | null, role: Role): NavItem[] {
     return [
       { label: '거래 관리', href: '/partner/dashboard' },
       { label: '광고 상품', href: '/partner/ads/apply' },
+      { label: '오늘의 운세', href: '/fortune' },
     ]
   }
   return []

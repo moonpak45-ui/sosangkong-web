@@ -13,7 +13,6 @@ const NAV_ITEMS = [
   { href: '/my-page/history', label: '거래 이력' },
   { href: '/my-page/quotes', label: '견적 요청 현황' },
   { href: '/my-page/favorites', label: '찜한 업체', badge: true as const },
-  { href: '/my-page/saju', label: '사주 프로필' },
   { href: '/my-page/profile', label: '사업장 정보 수정' },
   { href: '/my-page/account', label: '계정 설정' },
 ]
