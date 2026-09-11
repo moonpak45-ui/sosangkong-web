@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: '/admin/members', label: '회원 관리' },
   { href: '/admin/deals', label: '거래·견적 관리' },
   { href: '/admin/ads', label: '광고 관리' },
+  { href: '/admin/notices', label: '공지사항 관리' },
   { href: '/admin/categories', label: '카테고리 관리', superAdminOnly: true },
   { href: '/admin/admins', label: '관리자 계정 관리', superAdminOnly: true },
   { href: '/admin/account', label: '내 계정' },
