@@ -5,6 +5,7 @@ import { supabase } from '../../../../lib/supabaseClient'
 import { colors, styles, formatDate } from '../../_shared'
 import { usePartnerLayout } from '../../PartnerLayoutContext'
 import Card from '../../../../components/ui/Card'
+import DirectDealRegisterModal from '../../../../components/partner/DirectDealRegisterModal'
 
 type QuoteItem = { name: string; qty?: string; unit?: string }
 type RequestAttributes = { items?: QuoteItem[] }
@@ -95,23 +96,25 @@ export default function PartnerDealsPage() {
   const [deals, setDeals] = useState<DealRow[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
+
+  async function loadDeals() {
+    const { data } = await supabase
+      .from('deals')
+      .select(
+        `id, amount, status, confirmed_at, buyer_id,
+         buyer_profiles ( business_name ),
+         quotes ( id, quote_requests ( attributes ) )`
+      )
+      .eq('partner_id', partner.id)
+      .order('confirmed_at', { ascending: false })
+    setDeals((data || []) as unknown as DealRow[])
+    setLoading(false)
+  }
 
   useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from('deals')
-        .select(
-          `id, amount, status, confirmed_at, buyer_id,
-           buyer_profiles ( business_name ),
-           quotes ( id, quote_requests ( attributes ) )`
-        )
-        .eq('partner_id', partner.id)
-        .order('confirmed_at', { ascending: false })
-      setDeals((data || []) as unknown as DealRow[])
-      setLoading(false)
-    }
-
-    load()
+    loadDeals()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partner.id])
 
   if (loading) {
@@ -120,8 +123,27 @@ export default function PartnerDealsPage() {
 
   return (
     <div>
-      <div style={styles.sectionTitle}>진행 중인 거래</div>
-      <div style={styles.sectionSub}>확정된 거래 내역입니다. 상태가 바뀌면 이곳에서 확인할 수 있어요.</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={styles.sectionTitle}>진행 중인 거래</div>
+          <div style={styles.sectionSub}>확정된 거래 내역입니다. 상태가 바뀌면 이곳에서 확인할 수 있어요.</div>
+        </div>
+        <button
+          type="button"
+          style={{ ...styles.btn, ...styles.btnPrimarySmall, flexShrink: 0 }}
+          onClick={() => setShowRegisterModal(true)}
+        >
+          + 거래처 직접 등록
+        </button>
+      </div>
+
+      {showRegisterModal && (
+        <DirectDealRegisterModal
+          partnerId={partner.id}
+          onClose={() => setShowRegisterModal(false)}
+          onCompleted={loadDeals}
+        />
+      )}
 
       {deals.length === 0 ? (
         <Card style={{ textAlign: 'center', padding: '50px 20px' }}>

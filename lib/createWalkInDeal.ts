@@ -45,6 +45,43 @@ export async function createWalkInDeal(input: WalkInDealInput): Promise<WalkInDe
     return { error: '세션이 만료됐어요. 새로고침 후 다시 시도해주세요.' }
   }
 
+  // 안전장치: 같은 상호명의 거래처가 이미 있으면(이 partner와 deals로
+  // 이미 연결된 buyer_profiles 중에서) 그쪽을 재사용하고, 매번 새 그림자
+  // 계정을 또 만들지 않는다. buyer_profiles_select_partner_deal_target
+  // RLS(20260915010000)가 이미 "이 partner와 deals로 연결된 buyer_profiles만
+  // 보이게" 걸러주므로 별도 조건 없이 business_name만 비교하면 된다 -
+  // 아직 partner 원래 세션 그대로인 시점(아래 signUp 이전)에 확인해야
+  // RLS가 이 partner 기준으로 평가된다.
+  const trimmedName = input.businessName.trim()
+  const { data: existingProfile } = await supabase
+    .from('deals')
+    .select('buyer_profiles!inner ( id, business_name )')
+    .eq('partner_id', input.partnerId)
+    .eq('buyer_profiles.business_name', trimmedName)
+    .limit(1)
+    .maybeSingle()
+
+  if (existingProfile) {
+    const reusedBuyerId = (existingProfile as unknown as { buyer_profiles: { id: string } }).buyer_profiles.id
+    const { data: dealRow, error: dealError } = await supabase
+      .from('deals')
+      .insert({
+        buyer_id: reusedBuyerId,
+        partner_id: input.partnerId,
+        category_id: input.categoryId,
+        amount: input.amount,
+        status: 'in_progress',
+        confirmed_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single()
+
+    if (dealError || !dealRow) {
+      return { error: '거래 생성 중 오류가 발생했어요: ' + (dealError?.message || '') }
+    }
+    return { dealId: dealRow.id }
+  }
+
   const uid = crypto.randomUUID()
   const email = `walkin-${uid}@sosangkong-walkin.invalid`
   const password = `Wk${uid.replace(/-/g, '')}!1`
