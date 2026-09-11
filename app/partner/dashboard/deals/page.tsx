@@ -117,6 +117,22 @@ export default function PartnerDealsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partner.id])
 
+  // 대시보드 카드("거래처 직접 등록" 진입점, app/partner/dashboard/page.tsx)에서
+  // /partner/dashboard/deals?openRegister=1 로 넘어오면 모달을 자동으로 염.
+  // useSearchParams() 대신 URLSearchParams를 직접 읽는 이유: 이 훅을 쓰면
+  // Next.js가 페이지 전체를 <Suspense>로 감싸야 해서(예: app/search/page.tsx)
+  // 이 페이지 구조를 바꿔야 하는데, 여기선 최초 마운트 시 한 번만 확인하면
+  // 되는 용도라 그 정도 구조 변경은 과함. 열고 나면 새로고침 시 다시 안
+  // 열리도록 쿼리 파라미터를 URL에서 지움(뒤로가기 히스토리는 늘리지 않게
+  // replaceState).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('openRegister') === '1') {
+      setShowRegisterModal(true)
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
+
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: colors.muted }}>불러오는 중...</div>
   }

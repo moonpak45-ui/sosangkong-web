@@ -91,7 +91,15 @@ export default function PartnerDashboardHome() {
       <div style={{ fontSize: 19, fontFamily: "'Noto Serif KR', serif", fontWeight: 600, color: colors.deep, marginBottom: 4 }}>
         안녕하세요, {partner.name}님
       </div>
-      <div style={{ fontSize: 13.5, color: colors.muted, marginBottom: 22 }}>거래 현황을 한눈에 확인하세요.</div>
+      <div style={{ fontSize: 13.5, color: colors.muted, marginBottom: 16 }}>거래 현황을 한눈에 확인하세요.</div>
+
+      <a href="/partner/dashboard/deals?openRegister=1" style={styles.registerBanner}>
+        <div>
+          <div style={styles.registerBannerTitle}>+ 거래처 직접 등록</div>
+          <div style={styles.registerBannerSub}>소상공닷컴이 매칭하지 않은, 원래 갖고 있던 거래처의 주문도 여기서 등록하세요.</div>
+        </div>
+        <span style={styles.registerBannerArrow}>›</span>
+      </a>
 
       <div style={styles.grid}>
         <div style={styles.wide}>
@@ -136,6 +144,21 @@ export default function PartnerDashboardHome() {
 }
 
 const styles: { [k: string]: React.CSSProperties } = {
+  registerBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+    background: 'var(--color-primary)',
+    color: 'var(--color-on-primary)',
+    borderRadius: 'var(--radius-md)',
+    padding: '18px 22px',
+    marginBottom: 20,
+    textDecoration: 'none',
+  },
+  registerBannerTitle: { fontSize: 15, fontWeight: 700 },
+  registerBannerSub: { fontSize: 12, opacity: 0.85, marginTop: 4 },
+  registerBannerArrow: { fontSize: 22, flexShrink: 0 },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
