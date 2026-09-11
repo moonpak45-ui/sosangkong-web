@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabaseClient'
+import { useCountUp } from '../lib/useCountUp'
 import Card from './ui/Card'
 import Button from './ui/Button'
 import Select from './ui/Select'
@@ -12,11 +13,25 @@ import RoleAwareCta from './RoleAwareCta'
 type SimpleCategory = { id: string; name: string }
 
 const STATIC_STATS = [
-  { num: '312개', label: '등록 공급업체 (전국)' },
-  { num: '468곳', label: '이용 중인 소상공인 사업장' },
-  { num: '96%', label: '평균 조건 매칭 정확도' },
-  { num: '92%', label: '첫 거래 후 재거래율' },
+  { value: 312, suffix: '개', label: '등록 공급업체 (전국)' },
+  { value: 468, suffix: '곳', label: '이용 중인 소상공인 사업장' },
+  { value: 96, suffix: '%', label: '평균 조건 매칭 정확도' },
+  { value: 92, suffix: '%', label: '첫 거래 후 재거래율' },
 ]
+
+// 마운트 시 0에서 목표값까지 ease-out으로 올라가는 카운트업(app/page.tsx의
+// ActivityStats와 동일한 lib/useCountUp 훅 사용). 값은 정적이라 target이
+// 처음부터 확정돼 있어, 컴포넌트가 마운트되는 즉시(=히어로가 화면에
+// 나타나는 즉시) 애니메이션이 시작된다.
+function AnimatedStat({ value, suffix }: { value: number; suffix: string }) {
+  const count = useCountUp(value)
+  return (
+    <>
+      {count.toLocaleString('ko-KR')}
+      {suffix}
+    </>
+  )
+}
 
 const POPULAR_TAGS = ['당일배송', '소량주문가능', '신용거래', '냉장물류', '정기계약할인']
 
@@ -96,7 +111,9 @@ export default function HomeHeroSearch({ initialCategory = '', initialRegion = '
           <div style={styles.statsCol}>
             {STATIC_STATS.map((s) => (
               <div key={s.label} style={styles.statCell}>
-                <div style={styles.statNum}>{s.num}</div>
+                <div style={styles.statNum}>
+                  <AnimatedStat value={s.value} suffix={s.suffix} />
+                </div>
                 <div style={styles.statLabel}>{s.label}</div>
               </div>
             ))}

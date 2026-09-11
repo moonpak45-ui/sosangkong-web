@@ -6,6 +6,7 @@ import RoleAwareCta from '../components/RoleAwareCta'
 import BuyerHomeFeed from '../components/BuyerHomeFeed'
 import HomeHeroSearch from '../components/HomeHeroSearch'
 import { supabase } from '../lib/supabaseClient'
+import { useCountUp } from '../lib/useCountUp'
 import IconCircle from '../components/ui/IconCircle'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
@@ -368,36 +369,6 @@ type HomepageStats = {
   deals_today: number
   quotes_waiting: number
   partners_approved: number
-}
-
-// 0부터 target까지 ease-out으로 올라가는 카운트업 애니메이션. target이
-// null인 동안(RPC 응답 전)은 애니메이션을 시작하지 않음 - 0에서 멈춰있다가
-// 실제 값이 오면 그때부터 올라감.
-function useCountUp(target: number | null, durationMs = 1000) {
-  const [value, setValue] = useState(0)
-
-  useEffect(() => {
-    if (target === null) return
-    if (target <= 0) {
-      setValue(0)
-      return
-    }
-
-    let raf = 0
-    const start = performance.now()
-
-    function tick(now: number) {
-      const progress = Math.min(1, (now - start) / durationMs)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setValue(Math.round((target as number) * eased))
-      if (progress < 1) raf = requestAnimationFrame(tick)
-    }
-
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [target, durationMs])
-
-  return value
 }
 
 // 집계 전용 RPC(qd_public_homepage_stats, supabase/migrations/
