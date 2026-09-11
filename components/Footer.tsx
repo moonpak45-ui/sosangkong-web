@@ -6,21 +6,26 @@ type FooterLink = {
 const SERVICE_LINKS: FooterLink[] = [
   { label: '공급업체 찾기', href: '/search' },
   { label: '견적 요청', href: '/quote-request' },
-  { label: '거래 관리', href: '/my-page/history' },
+  { label: '마이페이지', href: '/my-page' },
+  { label: '거래 이력', href: '/my-page/history' },
 ]
 
 const PARTNER_LINKS: FooterLink[] = [
-  { label: '업체 등록', href: '/login?view=signup&type=supplier' },
+  { label: '공급업체 등록', href: '/login?view=signup&type=supplier' },
+  { label: '공급업체 대시보드', href: '/partner/dashboard' },
   { label: '광고 상품 안내', href: '/partner/ads/apply' },
   { label: '수수료 안내', href: null },
 ]
 
-// 이용약관/개인정보처리방침/공지사항은 아직 실제 페이지가 없어서(이 리포에
-// 해당 라우트 자체가 없음) "#"로 남겨둠 - 페이지가 생기면 href만 바꾸면 됨.
+// 자주 묻는 질문/문의하기/공지사항/이용약관/개인정보처리방침 전부 아직
+// 실제 페이지가 없어서(이 리포에 해당 라우트 자체가 없음) href를 null로
+// 두어 비활성(회색 텍스트)으로 표시함 - 페이지가 생기면 href만 채우면 됨.
 const SUPPORT_LINKS: FooterLink[] = [
-  { label: '이용약관', href: '#' },
-  { label: '개인정보처리방침', href: '#' },
-  { label: '공지사항', href: '#' },
+  { label: '자주 묻는 질문', href: null },
+  { label: '문의하기', href: null },
+  { label: '공지사항', href: null },
+  { label: '이용약관', href: null },
+  { label: '개인정보처리방침', href: null },
 ]
 
 export default function Footer() {
@@ -39,6 +44,14 @@ export default function Footer() {
             <FooterColumn title="공급업체" links={PARTNER_LINKS} />
             <FooterColumn title="고객지원" links={SUPPORT_LINKS} />
           </div>
+        </div>
+
+        {/* 사업자 정보(전자상거래법상 통신판매업자 표시 의무 항목) - 실제
+            상호 외 대표자/사업자등록번호/통신판매업신고번호/주소 등은 실제
+            값을 지어낼 수 없어 비워둠. 운영사 쪽에서 실제 값을 알려주면
+            아래 bizInfo 값만 채우면 됨. */}
+        <div style={styles.bizInfo}>
+          상호: 소상공닷컴 · 대표자·사업자등록번호·통신판매업신고번호·주소 등 사업자 정보는 등록 후 표시됩니다.
         </div>
 
         <p style={styles.copyright}>© {new Date().getFullYear()} 소상공닷컴. All rights reserved.</p>
@@ -102,9 +115,15 @@ const styles: { [k: string]: React.CSSProperties } = {
   colList: { listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 },
   link: { fontSize: 13, color: 'var(--color-text-secondary)', textDecoration: 'none' },
   linkDisabled: { fontSize: 13, color: 'var(--color-text-muted)' },
-  copyright: {
+  bizInfo: {
     fontSize: 11.5,
     color: 'var(--color-text-muted)',
     margin: '20px 0 0',
+    lineHeight: 1.6,
+  },
+  copyright: {
+    fontSize: 11.5,
+    color: 'var(--color-text-muted)',
+    margin: '8px 0 0',
   },
 }
