@@ -83,7 +83,12 @@ export default function DailyFortuneCard() {
       </div>
 
       {state.status === 'needs-profile' && (
-        <p style={styles.notice}>사주 프로필을 등록하면 오늘의 운세를 확인할 수 있어요.</p>
+        <p style={styles.notice}>
+          사주 프로필을 등록하면 오늘의 운세를 확인할 수 있어요.{' '}
+          <a href="/my-page/saju" style={styles.noticeLink}>
+            지금 등록하기 ›
+          </a>
+        </p>
       )}
 
       {state.status === 'error' && <p style={styles.notice}>{state.message}</p>}
@@ -113,6 +118,7 @@ const styles: { [k: string]: React.CSSProperties } = {
   title: { fontSize: 15, fontWeight: 700, color: 'var(--color-text)' },
   date: { fontSize: 11.5, color: 'var(--color-text-muted)' },
   notice: { fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 },
+  noticeLink: { color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'underline' },
   grid: { display: 'grid', gap: 10 },
   item: { borderTop: '1px dashed var(--color-border)', paddingTop: 10 },
   itemHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },

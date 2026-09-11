@@ -1,9 +1,9 @@
 // lib/saju/relationType.ts
 
-type Ohaeng = '목' | '화' | '토' | '금' | '수';
+export type Ohaeng = '목' | '화' | '토' | '금' | '수';
 export type RelationType = '생' | '극' | '합' | '충' | '비화';
 
-const GAN_OHAENG: Record<string, Ohaeng> = {
+export const GAN_OHAENG: Record<string, Ohaeng> = {
   '甲': '목', '乙': '목',
   '丙': '화', '丁': '화',
   '戊': '토', '己': '토',
