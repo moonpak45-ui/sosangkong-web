@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabaseClient'
 import { useFavorites } from '../../lib/useFavorites'
 import FavoriteHeart from '../../components/FavoriteHeart'
 import HomeHeroSearch from '../../components/HomeHeroSearch'
+import SearchPersonalizationPanel from '../../components/SearchPersonalizationPanel'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -223,8 +224,11 @@ function SearchPageInner() {
             </div>
           </div>
 
-          {/* 결과 리스트 */}
-          <div>
+          {/* 결과 리스트 + 우측 개인화 패널(buyer 로그인 시에만, 컴포넌트가
+              자체적으로 null을 렌더해서 조건부 노출 — flex라 패널이 없을 때
+              빈 공간이 남지 않음) */}
+          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 480px', minWidth: 0 }}>
             {boxAds.length > 0 && (
               <div style={styles.boxAdSection}>
                 <div style={styles.boxAdHeading}>
@@ -297,6 +301,9 @@ function SearchPageInner() {
                   />
                 ))}
             </div>
+          </div>
+
+          <SearchPersonalizationPanel />
           </div>
         </div>
       </div>
