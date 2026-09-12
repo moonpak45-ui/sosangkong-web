@@ -43,6 +43,26 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // 1-1. 헤더 인사말용 표시 이름 조회 — buyer는 buyer_profiles.contact_name,
+  // partner는 담당자명 컬럼이 없어 partners.name(상호명)으로 대체.
+  let displayName: string | null = null
+  const { data: buyerProfile } = await supabase
+    .from('buyer_profiles')
+    .select('contact_name')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (buyerProfile?.contact_name) {
+    displayName = buyerProfile.contact_name
+  } else {
+    const { data: partner } = await supabase
+      .from('partners')
+      .select('name')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (partner?.name) displayName = partner.name
+  }
+
   // 2. 오늘 일진(한국 시간 기준) 계산 + 일자별 캐시 확인
   const { pillar: todayPillar, date: today } = calcTodayIljin()
 
@@ -59,6 +79,7 @@ export async function GET(request: NextRequest) {
       cards: cached.cards,
       premiumTeaser: cached.premium_teaser,
       relationType: cached.relation_type,
+      displayName,
       premiumLocked: true,
     })
   }
@@ -112,5 +133,5 @@ export async function GET(request: NextRequest) {
     { onConflict: 'user_id,fortune_date' }
   )
 
-  return NextResponse.json({ date: today, cards, premiumTeaser, relationType, premiumLocked: true })
+  return NextResponse.json({ date: today, cards, premiumTeaser, relationType, displayName, premiumLocked: true })
 }

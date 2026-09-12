@@ -7,13 +7,14 @@
   --color-accent: #f2891d;
   --color-accent-bg: #fff1e0;
 
-  /* Semantic (tone coding: 길/중/흉 등) */
-  --color-success: #0b7a6d;
-  --color-success-bg: #e3f4f1;
+  /* Semantic (tone coding: 길/중/흉 등) — 카드 좌측 테두리·톤 배지에서
+     한눈에 구분되도록 채도를 높게 잡은 값 */
+  --color-success: #15a362;
+  --color-success-bg: #d9f5e6;
   --color-neutral-tone: #6b7280;
-  --color-neutral-tone-bg: #f0f1f3;
-  --color-danger: #c23b3b;
-  --color-danger-bg: #fbe9e9;
+  --color-neutral-tone-bg: #eceef1;
+  --color-danger: #e0332f;
+  --color-danger-bg: #fbdcdb;
 
   /* Text */
   --color-text: #1a1d29;

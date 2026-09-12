@@ -27,7 +27,14 @@ type LoadState =
   | { status: 'signed-out' }
   | { status: 'needs-profile' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; date: string; cards: FortuneCard[]; premiumTeaser: string | null; relationType: RelationType }
+  | {
+      status: 'ready'
+      date: string
+      cards: FortuneCard[]
+      premiumTeaser: string | null
+      relationType: RelationType
+      displayName: string | null
+    }
 
 const TONE_LABEL: Record<Tone, string> = { '길': '길', '중': '중', '흉': '주의' }
 const TONE_VARIANT: Record<Tone, 'success' | 'neutral' | 'danger'> = { '길': 'success', '중': 'neutral', '흉': 'danger' }
@@ -124,6 +131,7 @@ export default function DailyFortuneCard() {
           cards: json.cards as FortuneCard[],
           premiumTeaser: json.premiumTeaser ?? null,
           relationType: json.relationType as RelationType,
+          displayName: json.displayName ?? null,
         })
       } catch {
         if (!cancelled) {
@@ -169,6 +177,7 @@ export default function DailyFortuneCard() {
             <div style={styles.energyBody}>
               <span style={styles.date}>{state.date}</span>
               <p style={styles.energyHeadline}>
+                {state.displayName && `${state.displayName}님, `}
                 오늘은 <b style={{ color: relation.color }}>{state.relationType}({relation.hanja})</b>의 기운입니다
               </p>
               <p style={styles.energyDesc}>{relation.description}</p>
@@ -290,7 +299,7 @@ const styles: { [k: string]: React.CSSProperties } = {
 
   grid: { display: 'grid', gap: 10 },
   item: {
-    borderLeft: '3px solid var(--color-border)',
+    borderLeft: '4px solid var(--color-border)',
     borderRadius: 'var(--radius-sm)',
     background: 'var(--color-surface-muted)',
     padding: '10px 12px',
