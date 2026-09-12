@@ -351,3 +351,39 @@ body {
     opacity: 1;
   }
 }
+
+/* /search: 박스광고 그리드 위 롤링 광고 가로 스크롤 마퀴
+   (components/AdRollingBanner.tsx). 위 .fortune-marquee-*와 같은 이유로
+   @keyframes/:hover/prefers-reduced-motion만 클래스로 분리하고 나머지는
+   컴포넌트 inline style 그대로 둔다. 텍스트 1줄이 아니라 이미지 여러 장을
+   이어붙여 매끄럽게(seamless) 반복해야 해서, 트랙 안에 배너 목록을 통째로
+   두 번 렌더링한 뒤 정확히 자기 폭의 절반(-50%)만큼 이동시키는 방식을
+   쓴다 - 배너 개수와 무관하게 이음매 없이 반복된다. */
+.ad-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: ad-marquee-scroll 24s linear infinite;
+}
+.ad-marquee:hover .ad-marquee-track {
+  animation-play-state: paused;
+}
+@keyframes ad-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-marquee-track {
+    animation: none;
+    transform: none;
+    width: auto;
+    flex-wrap: wrap;
+  }
+  .ad-marquee-clone {
+    display: none;
+  }
+}

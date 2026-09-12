@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabaseClient'
 import { useFavorites } from '../../lib/useFavorites'
 import FavoriteHeart from '../../components/FavoriteHeart'
 import HomeHeroSearch from '../../components/HomeHeroSearch'
+import AdRollingBanner from '../../components/AdRollingBanner'
 import SearchPersonalizationPanel from '../../components/SearchPersonalizationPanel'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
@@ -269,6 +270,8 @@ function SearchPageInner() {
               빈 공간이 남지 않음) */}
           <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 480px', minWidth: 0 }}>
+            <AdRollingBanner />
+
             {boxAds.length > 0 && (
               <div style={styles.boxAdSection}>
                 <div style={styles.boxAdHeading}>
