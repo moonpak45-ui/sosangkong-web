@@ -228,7 +228,10 @@ function SearchPageInner() {
     })
 
   return (
-    <div style={{ background: colors.paper, minHeight: '70vh' }}>
+    // overflow-x: hidden - 근본 원인(아래 --rtc-cols의 minmax(0, 1fr))을
+    // 고쳤지만, 카드 설명 길이 등 예측 못 한 다른 요인으로 콘텐츠가 다시
+    // 넘치더라도 페이지 전체가 가로 스크롤되지는 않도록 하는 보조 안전장치.
+    <div style={{ background: colors.paper, minHeight: '70vh', overflowX: 'hidden' }}>
       <HomeHeroSearch initialCategory={categoryParam} initialRegion={regionParam} showCtas={false} />
 
       <div style={styles.wrap}>
@@ -245,7 +248,11 @@ function SearchPageInner() {
 
         <div
           className="responsive-two-col"
-          style={{ ...styles.layout, ['--rtc-cols' as string]: '230px 1fr', ['--rtc-gap' as string]: '28px' } as React.CSSProperties}
+          // minmax(0, 1fr), not bare 1fr - 안 그러면 이 트랙 안의 결과 카드
+          // 그리드(auto-fill)가 자기 max-content 기준으로 커지면서 이 트랙과
+          // 페이지 전체를 뷰포트보다 넓게 밀어내 가로 스크롤이 생긴다
+          // (globals.css의 .responsive-two-col 모바일 대응 주석과 동일한 문제).
+          style={{ ...styles.layout, ['--rtc-cols' as string]: '230px minmax(0, 1fr)', ['--rtc-gap' as string]: '28px' } as React.CSSProperties}
         >
           {/* 필터 사이드바 */}
           <div className="search-filter-panel" style={styles.filterPanel}>
@@ -382,6 +389,7 @@ function SupplierResultCard({
   return (
     <Card
       style={{
+        position: 'relative',
         padding: large ? 22 : 16,
         // 박스광고: 2px 주황 테두리로 확실히 구분. 줄광고: 흰 배경 그대로
         // 유지하고 아래 "광고" 배지만으로 은은하게 구분(박스광고보다 튀지
@@ -390,7 +398,9 @@ function SupplierResultCard({
       }}
     >
       {isAd && (
-        <div style={styles.adBadgeRow}>
+        // absolute 오버레이로 배지를 flow에서 빼서, 광고 카드가 일반
+        // 카드보다 세로로 더 길어져 같은 grid row 정렬이 어긋나지 않게 함.
+        <div style={styles.adBadgeOverlay}>
           {large ? (
             <Badge style={{ background: 'var(--color-accent)', color: 'var(--color-on-primary)', fontWeight: 700 }}>
               광고
@@ -525,7 +535,9 @@ const styles: { [k: string]: React.CSSProperties } = {
     gap: 16,
     marginBottom: 4,
   },
-  adBadgeRow: { display: 'flex', marginBottom: 8 },
+  // pointerEvents: 'none' - 배지가 카드 코너에 겹쳐 올라가도 그 아래
+  // 체크박스/찜하기 버튼 클릭을 절대 가로막지 않게 함.
+  adBadgeOverlay: { position: 'absolute', top: 8, right: 8, zIndex: 1, pointerEvents: 'none' },
   cardTop: { display: 'flex', alignItems: 'center', gap: 9 },
   rcIcon: {
     width: 40,
