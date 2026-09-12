@@ -279,7 +279,12 @@ export default function AdminCategoriesPage() {
 
       <div
         className="responsive-two-col"
-        style={{ alignItems: 'start', ['--rtc-cols' as string]: '300px 1fr', ['--rtc-gap' as string]: '24px' } as React.CSSProperties}
+        // minmax(0, 1fr), not bare 1fr - 안 그러면 이 트랙 안의 콘텐츠가
+        // 자기 max-content 기준으로 커지면서 트랙과 페이지 전체를
+        // 뷰포트보다 넓게 밀어내 가로 스크롤이 생긴다(app/search/page.tsx와
+        // 동일한 문제, globals.css의 .responsive-two-col 모바일 대응
+        // 주석 참고).
+        style={{ alignItems: 'start', ['--rtc-cols' as string]: '300px minmax(0, 1fr)', ['--rtc-gap' as string]: '24px' } as React.CSSProperties}
       >
         <div>
           <Card style={{ padding: 20, marginBottom: 16 }}>

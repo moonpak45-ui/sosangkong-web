@@ -302,7 +302,12 @@ function QuoteRequestInner() {
 
         <div
           className="responsive-two-col"
-          style={{ ...styles.layout, ['--rtc-cols' as string]: '1fr 300px', ['--rtc-gap' as string]: '32px' } as React.CSSProperties}
+          // minmax(0, 1fr), not bare 1fr - 안 그러면 이 트랙 안의 콘텐츠가
+          // 자기 max-content 기준으로 커지면서 트랙과 페이지 전체를
+          // 뷰포트보다 넓게 밀어내 가로 스크롤이 생긴다(app/search/page.tsx와
+          // 동일한 문제, globals.css의 .responsive-two-col 모바일 대응
+          // 주석 참고). 여기는 유동 트랙이 첫 번째 컬럼.
+          style={{ ...styles.layout, ['--rtc-cols' as string]: 'minmax(0, 1fr) 300px', ['--rtc-gap' as string]: '32px' } as React.CSSProperties}
         >
           <div>
             {/* 선택된 업체 */}
