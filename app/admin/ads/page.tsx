@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabaseClient'
 import { buildSafeUploadPath } from '../../../lib/safeUploadPath'
 import { colors, styles, formatDate, statusBadgeStyle } from '../_shared'
@@ -66,11 +67,10 @@ const EMPTY_REGISTER_FORM: RegisterForm = { adType: 'box', advertiserName: '', e
 // 실제로 노출되진 않음(범위 밖 - 별도 렌더링 경로 필요). banner는
 // AdRollingBanner.tsx가 이미지+링크만 쓰므로 정상 노출됨.
 export default function AdminAdsPage() {
+  const router = useRouter()
   const [ads, setAds] = useState<AdRow[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'pending' | 'active' | 'rejected' | 'all'>('pending')
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
-  const [actionError, setActionError] = useState('')
 
   const [mode, setMode] = useState<'list' | 'form'>('list')
   const [regForm, setRegForm] = useState<RegisterForm>(EMPTY_REGISTER_FORM)
@@ -96,50 +96,6 @@ export default function AdminAdsPage() {
   useEffect(() => {
     load()
   }, [])
-
-  async function approve(id: string) {
-    setActionError('')
-    setUpdatingId(id)
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    const { error } = await supabase
-      .from('ads')
-      .update({ status: 'active', reject_reason: null, reviewed_by: session?.user.id ?? null, reviewed_at: new Date().toISOString() })
-      .eq('id', id)
-
-    setUpdatingId(null)
-    if (error) {
-      setActionError('처리 중 오류가 발생했습니다: ' + error.message)
-      return
-    }
-    setAds((prev) => prev.map((a) => (a.id === id ? { ...a, status: 'active', reject_reason: null } : a)))
-  }
-
-  async function reject(id: string, isStop: boolean) {
-    const reason = window.prompt(isStop ? '게재를 중단할 사유를 입력해주세요 (선택)' : '반려 사유를 입력해주세요 (선택)') || null
-
-    setActionError('')
-    setUpdatingId(id)
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    const { error } = await supabase
-      .from('ads')
-      .update({ status: 'rejected', reject_reason: reason, reviewed_by: session?.user.id ?? null, reviewed_at: new Date().toISOString() })
-      .eq('id', id)
-
-    setUpdatingId(null)
-    if (error) {
-      setActionError('처리 중 오류가 발생했습니다: ' + error.message)
-      return
-    }
-    setAds((prev) => prev.map((a) => (a.id === id ? { ...a, status: 'rejected', reject_reason: reason } : a)))
-  }
 
   function startCreate() {
     setRegForm(EMPTY_REGISTER_FORM)
@@ -349,15 +305,17 @@ export default function AdminAdsPage() {
             ))}
           </div>
 
-          {actionError && <div style={{ ...styles.errorBox, marginBottom: 16 }}>{actionError}</div>}
-
           {visible.length === 0 ? (
             <Card style={{ textAlign: 'center', padding: '50px 20px' }}>
               <h3 style={{ fontSize: 16, marginBottom: 8, color: colors.deep }}>해당하는 광고 신청이 없어요</h3>
             </Card>
           ) : (
             visible.map((ad) => (
-              <Card key={ad.id} style={{ padding: 20, marginBottom: 16 }}>
+              <Card
+                key={ad.id}
+                style={{ padding: 20, marginBottom: 16, cursor: 'pointer' }}
+                onClick={() => router.push(`/admin/ads/${ad.id}`)}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: 16, flex: 1, minWidth: 260 }}>
                     {ad.banner_image_url && (
@@ -389,40 +347,7 @@ export default function AdminAdsPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    {ad.status === 'pending' && (
-                      <>
-                        <Button variant="primary" size="sm" disabled={updatingId === ad.id} onClick={() => approve(ad.id)}>
-                          승인
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          style={{ color: colors.warn, border: `1px solid ${colors.warn}` }}
-                          disabled={updatingId === ad.id}
-                          onClick={() => reject(ad.id, false)}
-                        >
-                          반려
-                        </Button>
-                      </>
-                    )}
-                    {ad.status === 'active' && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        style={{ color: colors.warn, border: `1px solid ${colors.warn}` }}
-                        disabled={updatingId === ad.id}
-                        onClick={() => reject(ad.id, true)}
-                      >
-                        게재 중단
-                      </Button>
-                    )}
-                    {ad.status === 'rejected' && (
-                      <Button variant="primary" size="sm" disabled={updatingId === ad.id} onClick={() => approve(ad.id)}>
-                        승인
-                      </Button>
-                    )}
-                  </div>
+                  <div style={{ fontSize: 13, color: colors.muted, flexShrink: 0, alignSelf: 'center' }}>자세히 보기 ›</div>
                 </div>
               </Card>
             ))
