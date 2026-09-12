@@ -5,7 +5,8 @@ import { supabase } from '../lib/supabaseClient'
 
 type BannerAd = {
   id: string
-  partner_id: string
+  partner_id: string | null
+  advertiser_name: string | null
   banner_image_url: string
   partners: { name: string } | null
 }
@@ -26,7 +27,7 @@ export default function AdRollingBanner() {
     const todayIso = new Date().toISOString().slice(0, 10)
     supabase
       .from('ads')
-      .select('id, partner_id, banner_image_url, partners ( name )')
+      .select('id, partner_id, advertiser_name, banner_image_url, partners ( name )')
       .eq('status', 'active')
       .eq('ad_type', 'banner')
       .or(`end_date.is.null,end_date.gte.${todayIso}`)
@@ -39,8 +40,8 @@ export default function AdRollingBanner() {
   if (!banners || banners.length === 0) return null
 
   // 배너 개수가 늘어나도 체감 속도(px/초)가 비슷하게 유지되도록 개수에
-  // 비례해 한 사이클 길이를 늘린다 — 최소 18초(느긋한 속도).
-  const durationSec = Math.max(18, banners.length * 6)
+  // 비례해 한 사이클 길이를 늘린다 — 최소 8초(기존 대비 2배 이상 빠른 속도).
+  const durationSec = Math.max(8, banners.length * 2.5)
 
   return (
     <div className="ad-marquee" style={styles.wrap}>
@@ -62,9 +63,18 @@ export default function AdRollingBanner() {
 }
 
 function BannerItem({ banner }: { banner: BannerAd }) {
+  const alt = banner.partners?.name || banner.advertiser_name || '광고 배너'
+  const img = <img src={banner.banner_image_url} alt={alt} style={styles.img} />
+
+  // 관리자가 파트너 없이 직접 등록한(제3자 광고주) 배너는 연결할 상세
+  // 페이지가 없으므로 링크 없이 이미지만 표시.
+  if (!banner.partner_id) {
+    return <div style={styles.item}>{img}</div>
+  }
+
   return (
     <a href={`/partner/${banner.partner_id}`} style={styles.item}>
-      <img src={banner.banner_image_url} alt={banner.partners?.name || '광고 배너'} style={styles.img} />
+      {img}
     </a>
   )
 }
