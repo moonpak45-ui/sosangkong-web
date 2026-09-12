@@ -291,3 +291,62 @@ body {
   size: A4 portrait;
   margin: 12mm;
 }
+
+/* /fortune: "오늘의 기운" 카드 위 안내 마퀴 배너 (DailyFortuneCard.tsx).
+   스크롤 애니메이션(@keyframes)과 :hover 일시정지, prefers-reduced-motion
+   분기는 inline style로 표현할 수 없어 여기서만 클래스로 관리한다 - 그 외
+   레이아웃/색상은 전부 컴포넌트의 inline style 그대로 유지. */
+.fortune-marquee-viewport {
+  position: relative;
+  overflow: hidden;
+  height: 1.4em;
+}
+.fortune-marquee-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  white-space: nowrap;
+  transform: translate(100%, -50%);
+  animation: fortune-marquee-scroll 18s linear infinite;
+}
+.fortune-marquee:hover .fortune-marquee-track {
+  animation-play-state: paused;
+}
+@keyframes fortune-marquee-scroll {
+  from {
+    transform: translate(100%, -50%);
+  }
+  to {
+    transform: translate(-100%, -50%);
+  }
+}
+
+.fortune-marquee-icon {
+  animation: fortune-marquee-pulse 2.2s ease-in-out infinite;
+}
+@keyframes fortune-marquee-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fortune-marquee-viewport {
+    overflow: visible;
+    height: auto;
+  }
+  .fortune-marquee-track {
+    animation: none;
+    position: static;
+    transform: none;
+    white-space: normal;
+  }
+  .fortune-marquee-icon {
+    animation: none;
+    opacity: 1;
+  }
+}

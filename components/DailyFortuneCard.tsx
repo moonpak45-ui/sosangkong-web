@@ -10,6 +10,7 @@ import {
   Link2,
   Zap,
   CircleEqual,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
@@ -143,92 +144,116 @@ export default function DailyFortuneCard() {
   const luckyColor = state.status === 'ready' ? pickLuckyColor(state.date) : null
 
   return (
-    <Card style={styles.card}>
-      {state.status !== 'ready' && (
-        <div style={styles.header}>
-          <span style={styles.title}>오늘의 운세</span>
+    <>
+      <div className="fortune-marquee" style={styles.marqueeWrap}>
+        <Sparkles className="fortune-marquee-icon" size={14} color="var(--color-accent)" style={styles.marqueeIcon} />
+        <div className="fortune-marquee-viewport" style={styles.marqueeViewport}>
+          <span className="fortune-marquee-track" style={styles.marqueeTrack}>
+            매일매일 사장님의 오늘의 운세를 제공합니다
+          </span>
         </div>
-      )}
+      </div>
 
-      {state.status === 'ready' && relation && luckyColor && (
-        <div style={styles.energyHeader}>
-          <IconCircle size={48}>
-            <relation.Icon size={22} color={relation.color} />
-          </IconCircle>
-          <div style={styles.energyBody}>
-            <span style={styles.date}>{state.date}</span>
-            <p style={styles.energyHeadline}>
-              오늘은 <b style={{ color: relation.color }}>{state.relationType}({relation.hanja})</b>의 기운입니다
-            </p>
-            <p style={styles.energyDesc}>{relation.description}</p>
-            <p style={styles.luckyFlavor}>
-              오늘의 행운 컬러{' '}
-              <span style={{ ...styles.luckyDot, background: luckyColor.hex }} aria-hidden="true" />
-              {luckyColor.name} · 행운의 방향 {RELATION_DIRECTION[state.relationType]}
-            </p>
+      <Card style={styles.card}>
+        {state.status !== 'ready' && (
+          <div style={styles.header}>
+            <span style={styles.title}>오늘의 운세</span>
           </div>
-        </div>
-      )}
+        )}
 
-      {state.status === 'needs-profile' && (
-        <p style={styles.notice}>
-          사주 프로필을 등록하면 오늘의 운세를 확인할 수 있어요.{' '}
-          <a href="/fortune/register" style={styles.noticeLink}>
-            지금 등록하기 ›
-          </a>
-        </p>
-      )}
+        {state.status === 'ready' && relation && luckyColor && (
+          <div style={styles.energyHeader}>
+            <IconCircle size={48}>
+              <relation.Icon size={22} color={relation.color} />
+            </IconCircle>
+            <div style={styles.energyBody}>
+              <span style={styles.date}>{state.date}</span>
+              <p style={styles.energyHeadline}>
+                오늘은 <b style={{ color: relation.color }}>{state.relationType}({relation.hanja})</b>의 기운입니다
+              </p>
+              <p style={styles.energyDesc}>{relation.description}</p>
+              <p style={styles.luckyFlavor}>
+                오늘의 행운 컬러{' '}
+                <span style={{ ...styles.luckyDot, background: luckyColor.hex }} aria-hidden="true" />
+                {luckyColor.name} · 행운의 방향 {RELATION_DIRECTION[state.relationType]}
+              </p>
+            </div>
+          </div>
+        )}
 
-      {state.status === 'error' && <p style={styles.notice}>{state.message}</p>}
+        {state.status === 'needs-profile' && (
+          <p style={styles.notice}>
+            사주 프로필을 등록하면 오늘의 운세를 확인할 수 있어요.{' '}
+            <a href="/fortune/register" style={styles.noticeLink}>
+              지금 등록하기 ›
+            </a>
+          </p>
+        )}
 
-      {state.status === 'ready' && (
-        <div style={styles.grid}>
-          {state.cards.map((c) => {
-            const Icon = CATEGORY_ICON[c.category]
-            return (
-              <div key={c.category} style={{ ...styles.item, borderLeftColor: TONE_BORDER_COLOR[c.tone] }}>
-                <div style={styles.itemHead}>
-                  <div style={styles.itemTitleRow}>
-                    {Icon && (
-                      <IconCircle size={28}>
-                        <Icon size={14} color="var(--color-accent)" />
-                      </IconCircle>
-                    )}
-                    <b style={styles.category}>{c.category}</b>
+        {state.status === 'error' && <p style={styles.notice}>{state.message}</p>}
+
+        {state.status === 'ready' && (
+          <div style={styles.grid}>
+            {state.cards.map((c) => {
+              const Icon = CATEGORY_ICON[c.category]
+              return (
+                <div key={c.category} style={{ ...styles.item, borderLeftColor: TONE_BORDER_COLOR[c.tone] }}>
+                  <div style={styles.itemHead}>
+                    <div style={styles.itemTitleRow}>
+                      {Icon && (
+                        <IconCircle size={28}>
+                          <Icon size={14} color="var(--color-accent)" />
+                        </IconCircle>
+                      )}
+                      <b style={styles.category}>{c.category}</b>
+                    </div>
+                    <Badge variant={TONE_VARIANT[c.tone]}>{TONE_LABEL[c.tone]}</Badge>
                   </div>
-                  <Badge variant={TONE_VARIANT[c.tone]}>{TONE_LABEL[c.tone]}</Badge>
+                  <p style={styles.content}>{c.content}</p>
                 </div>
-                <p style={styles.content}>{c.content}</p>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {state.status === 'ready' && state.premiumTeaser && (
-        <div style={styles.premiumSection}>
-          <div style={styles.premiumHeader}>
-            <span style={styles.lockIcon} aria-hidden="true">🔒</span>
-            <b style={styles.premiumTitle}>오늘의 심화 리포트</b>
+              )
+            })}
           </div>
-          <p style={styles.premiumTeaser}>{state.premiumTeaser}...</p>
-          <button
-            type="button"
-            style={styles.premiumButton}
-            onClick={() => setShowPremiumNotice(true)}
-          >
-            심화 리포트 보기
-          </button>
-          {showPremiumNotice && (
-            <p style={styles.premiumNotice}>결제 기능은 준비 중입니다.</p>
-          )}
-        </div>
-      )}
-    </Card>
+        )}
+
+        {state.status === 'ready' && state.premiumTeaser && (
+          <div style={styles.premiumSection}>
+            <div style={styles.premiumHeader}>
+              <span style={styles.lockIcon} aria-hidden="true">🔒</span>
+              <b style={styles.premiumTitle}>오늘의 심화 리포트</b>
+            </div>
+            <p style={styles.premiumTeaser}>{state.premiumTeaser}...</p>
+            <button
+              type="button"
+              style={styles.premiumButton}
+              onClick={() => setShowPremiumNotice(true)}
+            >
+              심화 리포트 보기
+            </button>
+            {showPremiumNotice && (
+              <p style={styles.premiumNotice}>결제 기능은 준비 중입니다.</p>
+            )}
+          </div>
+        )}
+      </Card>
+    </>
   )
 }
 
 const styles: { [k: string]: React.CSSProperties } = {
+  marqueeWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    padding: '7px 12px',
+    borderRadius: 'var(--radius-sm)',
+    background: 'var(--color-accent-bg)',
+  },
+  marqueeIcon: { flexShrink: 0 },
+  marqueeViewport: { flex: 1, minWidth: 0 },
+  marqueeTrack: { fontSize: 12, fontWeight: 500, color: 'var(--color-primary)' },
+
   card: { marginBottom: 18 },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 },
   title: { fontSize: 15, fontWeight: 700, color: 'var(--color-text)' },
