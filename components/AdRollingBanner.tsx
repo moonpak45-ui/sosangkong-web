@@ -5,9 +5,9 @@ import { supabase } from '../lib/supabaseClient'
 
 type BannerAd = {
   id: string
-  partner_id: string | null
   advertiser_name: string | null
   banner_image_url: string
+  link_url: string | null
   partners: { name: string } | null
 }
 
@@ -27,7 +27,7 @@ export default function AdRollingBanner() {
     const todayIso = new Date().toISOString().slice(0, 10)
     supabase
       .from('ads')
-      .select('id, partner_id, advertiser_name, banner_image_url, partners ( name )')
+      .select('id, advertiser_name, banner_image_url, link_url, partners ( name )')
       .eq('status', 'active')
       .eq('ad_type', 'banner')
       .or(`end_date.is.null,end_date.gte.${todayIso}`)
@@ -66,14 +66,13 @@ function BannerItem({ banner }: { banner: BannerAd }) {
   const alt = banner.partners?.name || banner.advertiser_name || '광고 배너'
   const img = <img src={banner.banner_image_url} alt={alt} style={styles.img} />
 
-  // 관리자가 파트너 없이 직접 등록한(제3자 광고주) 배너는 연결할 상세
-  // 페이지가 없으므로 링크 없이 이미지만 표시.
-  if (!banner.partner_id) {
+  // link_url이 없으면(예: 링크 없이 등록된 직접 등록 광고) 클릭 안 되게 이미지만 표시.
+  if (!banner.link_url) {
     return <div style={styles.item}>{img}</div>
   }
 
   return (
-    <a href={`/partner/${banner.partner_id}`} style={styles.item}>
+    <a href={banner.link_url} style={styles.item}>
       {img}
     </a>
   )

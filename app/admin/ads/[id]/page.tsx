@@ -24,6 +24,7 @@ type AdDetail = {
   created_at: string
   advertiser_name: string | null
   partner_id: string | null
+  link_url: string | null
   partners: { id: string; name: string } | null
 }
 
@@ -53,6 +54,7 @@ export default function AdminAdDetailPage() {
 
   const [advertiserName, setAdvertiserName] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [linkUrl, setLinkUrl] = useState('')
   const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null)
   const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -69,7 +71,7 @@ export default function AdminAdDetailPage() {
     supabase
       .from('ads')
       .select(
-        'id, ad_type, status, banner_image_url, memo, reject_reason, end_date, created_at, advertiser_name, partner_id, partners ( id, name )'
+        'id, ad_type, status, banner_image_url, memo, reject_reason, end_date, created_at, advertiser_name, partner_id, link_url, partners ( id, name )'
       )
       .eq('id', adId)
       .maybeSingle()
@@ -83,6 +85,7 @@ export default function AdminAdDetailPage() {
         setAd(row)
         setAdvertiserName(row.advertiser_name || '')
         setEndDate(row.end_date || '')
+        setLinkUrl(row.link_url || '')
         setBannerImageUrl(row.banner_image_url)
         setLoading(false)
       })
@@ -139,12 +142,18 @@ export default function AdminAdDetailPage() {
       setSaveError('광고주명을 입력해주세요.')
       return
     }
+    const trimmedLinkUrl = linkUrl.trim()
+    if (trimmedLinkUrl && !/^(https?:\/\/|\/)/i.test(trimmedLinkUrl)) {
+      setSaveError('연결 링크는 http://, https:// 또는 /로 시작해야 해요.')
+      return
+    }
 
     setSaving(true)
 
-    const update: { banner_image_url: string | null; end_date: string | null; advertiser_name?: string } = {
+    const update: { banner_image_url: string | null; end_date: string | null; link_url: string | null; advertiser_name?: string } = {
       banner_image_url: bannerImageUrl,
       end_date: endDate || null,
+      link_url: trimmedLinkUrl || null,
     }
     if (isDirect) {
       update.advertiser_name = advertiserName.trim()
@@ -264,6 +273,14 @@ export default function AdminAdDetailPage() {
               style={{ marginTop: 12, width: '100%', maxWidth: 420, borderRadius: 8, border: `1px solid ${colors.line}` }}
             />
           )}
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>연결 링크 (선택)</label>
+          <div style={{ fontSize: 11.5, color: colors.muted, marginBottom: 8 }}>
+            배너 클릭 시 이동할 주소. 비워두면 클릭해도 이동하지 않아요.
+          </div>
+          <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://example.com" />
         </div>
 
         <div style={styles.field}>

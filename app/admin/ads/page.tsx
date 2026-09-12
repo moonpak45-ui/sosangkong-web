@@ -50,9 +50,10 @@ type RegisterForm = {
   adType: Extract<AdType, 'box' | 'line' | 'banner'>
   advertiserName: string
   endDate: string
+  linkUrl: string
 }
 
-const EMPTY_REGISTER_FORM: RegisterForm = { adType: 'box', advertiserName: '', endDate: '' }
+const EMPTY_REGISTER_FORM: RegisterForm = { adType: 'box', advertiserName: '', endDate: '', linkUrl: '' }
 
 // 광고 승인 화면. box/line/free/banner 4종 신청을 한곳에서 검토·승인/반려.
 // 결제는 오프라인 계좌이체로 이뤄지고(이 프로젝트에 결제 연동 자체가 없음),
@@ -164,6 +165,11 @@ export default function AdminAdsPage() {
       setRegSubmitError('배너 이미지를 업로드해주세요.')
       return
     }
+    const trimmedLinkUrl = regForm.linkUrl.trim()
+    if (trimmedLinkUrl && !/^(https?:\/\/|\/)/i.test(trimmedLinkUrl)) {
+      setRegSubmitError('연결 링크는 http:// 또는 https://로 시작해야 해요.')
+      return
+    }
 
     setRegSubmitting(true)
 
@@ -178,6 +184,7 @@ export default function AdminAdsPage() {
       status: 'active',
       banner_image_url: regForm.adType === 'banner' ? regBannerUploadedUrl : null,
       end_date: regForm.endDate || null,
+      link_url: trimmedLinkUrl || null,
       reviewed_by: session?.user.id ?? null,
       reviewed_at: new Date().toISOString(),
     })
@@ -279,6 +286,18 @@ export default function AdminAdsPage() {
               value={regForm.endDate}
               onChange={(e) => updateRegForm('endDate', e.target.value)}
               style={{ maxWidth: 220 }}
+            />
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>연결 링크 (선택)</label>
+            <div style={{ fontSize: 11.5, color: colors.muted, marginBottom: 8 }}>
+              배너 클릭 시 이동할 광고주 사이트 주소. 비워두면 클릭해도 이동하지 않아요.
+            </div>
+            <Input
+              value={regForm.linkUrl}
+              onChange={(e) => updateRegForm('linkUrl', e.target.value)}
+              placeholder="https://example.com"
             />
           </div>
 

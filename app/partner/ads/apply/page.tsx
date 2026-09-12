@@ -137,6 +137,10 @@ export default function PartnerAdsApplyPage() {
       memo: memo.trim() || null,
       banner_image_url: adType === 'banner' ? bannerUploadedUrl : null,
       end_date: endDate || null,
+      // 배너 클릭 시 이동할 위치 - 직접 등록(제3자 광고주)과 달리 파트너
+      // 신청 광고는 항상 본인 업체 상세 페이지로 고정되므로 입력받지 않고
+      // 자동으로 채운다.
+      link_url: `/partner/${partner.id}`,
     })
     setSubmitting(false)
 
