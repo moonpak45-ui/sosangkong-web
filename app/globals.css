@@ -7,6 +7,14 @@
   --color-accent: #f2891d;
   --color-accent-bg: #fff1e0;
 
+  /* Semantic (tone coding: 길/중/흉 등) */
+  --color-success: #0b7a6d;
+  --color-success-bg: #e3f4f1;
+  --color-neutral-tone: #6b7280;
+  --color-neutral-tone-bg: #f0f1f3;
+  --color-danger: #c23b3b;
+  --color-danger-bg: #fbe9e9;
+
   /* Text */
   --color-text: #1a1d29;
   --color-text-secondary: #6b7280;

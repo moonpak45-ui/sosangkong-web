@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
   const { data: cached } = await supabase
     .from('daily_fortune_cache')
-    .select('cards, premium_teaser')
+    .select('cards, premium_teaser, relation_type')
     .eq('user_id', user.id)
     .eq('fortune_date', today)
     .maybeSingle()
@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
       date: today,
       cards: cached.cards,
       premiumTeaser: cached.premium_teaser,
+      relationType: cached.relation_type,
       premiumLocked: true,
     })
   }
@@ -111,5 +112,5 @@ export async function GET(request: NextRequest) {
     { onConflict: 'user_id,fortune_date' }
   )
 
-  return NextResponse.json({ date: today, cards, premiumTeaser, premiumLocked: true })
+  return NextResponse.json({ date: today, cards, premiumTeaser, relationType, premiumLocked: true })
 }
