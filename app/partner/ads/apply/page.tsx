@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../../lib/supabaseClient'
+import { buildSafeUploadPath } from '../../../../lib/safeUploadPath'
 import { colors, styles, formatDate } from '../../_shared'
 import { usePartnerLayout } from '../../PartnerLayoutContext'
 import Card from '../../../../components/ui/Card'
@@ -103,7 +104,9 @@ export default function PartnerAdsApplyPage() {
     setBannerUploadedUrl(null)
     setUploading(true)
 
-    const path = `${partner.id}/${Date.now()}-${file.name}`
+    // 원본 파일명(한글/공백/특수문자 포함 가능)은 Storage 키로 쓰지 않고
+    // 확장자만 유지해 새로 생성한다("Invalid key" 에러 방지).
+    const path = buildSafeUploadPath(partner.id, file)
     const { error: uploadErr } = await supabase.storage.from('partner-ad-banners').upload(path, file)
 
     if (uploadErr) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
+import { buildSafeUploadPath } from '../../../lib/safeUploadPath'
 import { colors, styles, formatDate, statusBadgeStyle } from '../_shared'
 import Card from '../../../components/ui/Card'
 import Badge from '../../../components/ui/Badge'
@@ -180,7 +181,9 @@ export default function AdminAdsPage() {
 
     // admin/ 경로로 업로드 - storage RLS(partner_ad_banners_insert_admin)가
     // 이 경로 접두사 + qd_is_admin()을 요구함(20260930000000 마이그레이션).
-    const path = `admin/${Date.now()}-${file.name}`
+    // 원본 파일명(한글/공백/특수문자 포함 가능)은 Storage 키로 쓰지 않고
+    // 확장자만 유지해 새로 생성한다("Invalid key" 에러 방지).
+    const path = buildSafeUploadPath('admin', file)
     const { error: uploadErr } = await supabase.storage.from('partner-ad-banners').upload(path, file)
 
     if (uploadErr) {
